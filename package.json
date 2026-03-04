@@ -1,0 +1,11 @@
+{
+  "name": "monohroshi",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint": "npm --prefix mobile run lint"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
