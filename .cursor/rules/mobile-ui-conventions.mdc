@@ -21,11 +21,9 @@ Never use relative paths that traverse directories (`../`, `../../`). Use the co
 ```tsx
 // ❌ BAD
 import { Button } from "../../src/components/ui/Button";
-import { colors } from "../../constants/colors";
 
 // ✅ GOOD
 import { Button } from "@components/ui/Button";
-import { colors } from "@constants/colors";
 ```
 
 Same-folder imports (e.g. sibling files) may use `./` relative paths.
@@ -37,15 +35,13 @@ Same-folder imports (e.g. sibling files) may use `./` relative paths.
 <View style={{ flex: 1, padding: 16 }}>
 
 // ✅ GOOD
-const s = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-});
+const s = StyleSheet.create({ container: { flex: 1, padding: 16 } });
 <View style={s.container}>
 ```
 
 Dynamic styles (e.g. from `pressed` state) are the only exception — keep them minimal.
 
-## 2. Colors Come From `colors` Constant
+## 3. Colors Come From `colors` Constant
 
 All colors must come from `mobile/src/constants/colors.ts`. Never use raw hex or rgba strings.
 
@@ -60,7 +56,21 @@ style={{ color: colors.textPrimary, backgroundColor: colors.background }}
 
 When adding new colors, add them to `colors.ts` first.
 
-## 3. All User-Visible Text Must Use i18n
+## 4. Never Put `t` in Hook Dependency Arrays
+
+`t` from `useTranslation()` is a stable reference — it does not need to be in deps. If a hook must react to a language change, use `i18n.language` instead.
+
+```tsx
+const { t, i18n } = useTranslation();
+
+// ❌ BAD
+const sections = useMemo(() => buildSections(t), [t]);
+
+// ✅ GOOD
+const sections = useMemo(() => buildSections(t), [i18n.language]);
+```
+
+## 5. All User-Visible Text Must Use i18n
 
 Add keys to both `mobile/src/i18n/locales/en.json` and `uk.json`.
 
@@ -72,7 +82,7 @@ Add keys to both `mobile/src/i18n/locales/en.json` and `uk.json`.
 <Typography variant="button" i18nKey="onboarding.welcome.getStarted" />
 ```
 
-## 4. Use `Typography` for All Text
+## 6. Use `Typography` for All Text
 
 Located at `mobile/src/components/ui/Typography.tsx`.
 
@@ -101,7 +111,7 @@ Located at `mobile/src/components/ui/Typography.tsx`.
 <Typography variant="caption">{transaction.date}</Typography>
 ```
 
-## 5. Use `Button` for All Tappable Actions
+## 7. Use `Button` for All Tappable Actions
 
 Located at `mobile/src/components/ui/Button.tsx`.
 
@@ -122,16 +132,17 @@ Located at `mobile/src/components/ui/Button.tsx`.
 | `danger`    | Destructive action — red background  |
 
 ```tsx
-<Button variant="primary" size="md" i18nKey="onboarding.welcome.getStarted" onPress={handleStart} />
+<Button variant="primary" i18nKey="onboarding.welcome.getStarted" onPress={handleStart} />
 <Button variant="ghost" size="sm" i18nKey="onboarding.welcome.login" onPress={handleLogin} />
 <Button variant="danger" i18nKey="common.delete" onPress={handleDelete} disabled={loading} />
 ```
 
-## 6. Reuse Existing UI Components
+## 8. Reuse Existing UI Components
 
 Before building a new component or screen, check `mobile/src/components/ui/` for existing primitives:
 
 - **`Typography`** — all text
-- **`Button`** — all tappable actions (CTAs, links, icon buttons)
+- **`Button`** — all tappable actions
+- **`Dropdown`** — selector rows that open a picker
 
 Compose screens from these building blocks. Only create a new component if no existing one fits.

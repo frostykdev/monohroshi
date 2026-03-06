@@ -2,6 +2,7 @@ import { StyleSheet, View, ViewStyle } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import { CardIllustration } from "@components/onboarding/card-illustration";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
@@ -14,7 +15,7 @@ const WelcomeScreen = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    // TODO: navigate to next onboarding step
+    router.push("/(onboarding)/currency-select");
   };
 
   const handleLogin = () => {
