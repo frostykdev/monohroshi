@@ -1,0 +1,93 @@
+import { StyleSheet, View, ViewStyle } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import { CardIllustration } from "@components/onboarding/card-illustration";
+import { Typography } from "@components/ui/Typography";
+import { Button } from "@components/ui/Button";
+import { colors } from "@constants/colors";
+
+const WelcomeScreen = () => {
+  const insets = useSafeAreaInsets();
+
+  const handleGetStarted = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // TODO: navigate to next onboarding step
+  };
+
+  const handleLogin = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    // TODO: navigate to login screen
+  };
+
+  return (
+    <View
+      style={[
+        s.container,
+        { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
+      ]}
+    >
+      <Animated.View
+        entering={FadeInDown.delay(100).duration(600).springify()}
+        style={s.illustration}
+      >
+        <CardIllustration />
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInUp.delay(300).duration(500)}
+        style={s.textContent}
+      >
+        <Typography variant="h1" i18nKey="onboarding.welcome.title" />
+        <Typography
+          variant="body"
+          color="textSecondary"
+          i18nKey="onboarding.welcome.subtitle"
+        />
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInUp.delay(450).duration(500)}
+        style={s.actions}
+      >
+        <Button
+          variant="primary"
+          i18nKey="onboarding.welcome.getStarted"
+          onPress={handleGetStarted}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          i18nKey="onboarding.welcome.login"
+          onPress={handleLogin}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingHorizontal: 24,
+  } as ViewStyle,
+  illustration: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  textContent: {
+    gap: 12,
+    marginBottom: 40,
+  } as ViewStyle,
+  actions: {
+    gap: 12,
+  } as ViewStyle,
+});
+
+export default WelcomeScreen;

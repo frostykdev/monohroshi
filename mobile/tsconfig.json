@@ -5,7 +5,10 @@
     "baseUrl": ".",
     "paths": {
       "@stores/*": ["./src/stores/*"],
-      "@constants/*": ["./src/constants/*"]
+      "@constants/*": ["./src/constants/*"],
+      "@components/*": ["./src/components/*"],
+      "@i18n": ["./src/i18n/index.ts"],
+      "@i18n/*": ["./src/i18n/*"]
     }
   },
   "include": [

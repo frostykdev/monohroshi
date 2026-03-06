@@ -1,0 +1,18 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "back": "Back",
+    "loading": "Loading..."
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Your money\nunder control",
+      "subtitle": "Manage expenses, income\nand cards in one place.",
+      "getStarted": "Get started",
+      "login": "I already have an account"
+    }
+  }
+}

@@ -1,0 +1,137 @@
+---
+description: UI conventions for the mobile Expo app — styling, colors, i18n, and component reuse
+globs: mobile/**/*.tsx
+alwaysApply: false
+---
+
+# Mobile UI Conventions
+
+## 1. Always Use Path Aliases for Imports
+
+Never use relative paths that traverse directories (`../`, `../../`). Use the configured aliases from `tsconfig.json`:
+
+| Alias | Resolves to |
+|---|---|
+| `@components/*` | `src/components/*` |
+| `@constants/*` | `src/constants/*` |
+| `@stores/*` | `src/stores/*` |
+| `@i18n` | `src/i18n/index.ts` |
+| `@i18n/*` | `src/i18n/*` |
+
+```tsx
+// ❌ BAD
+import { Button } from "../../src/components/ui/Button";
+import { colors } from "../../constants/colors";
+
+// ✅ GOOD
+import { Button } from "@components/ui/Button";
+import { colors } from "@constants/colors";
+```
+
+Same-folder imports (e.g. sibling files) may use `./` relative paths.
+
+## 2. No Inline Styles — Always Use `StyleSheet.create`
+
+```tsx
+// ❌ BAD
+<View style={{ flex: 1, padding: 16 }}>
+
+// ✅ GOOD
+const s = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+});
+<View style={s.container}>
+```
+
+Dynamic styles (e.g. from `pressed` state) are the only exception — keep them minimal.
+
+## 2. Colors Come From `colors` Constant
+
+All colors must come from `mobile/src/constants/colors.ts`. Never use raw hex or rgba strings.
+
+```tsx
+// ❌ BAD
+style={{ color: "#FFFFFF", backgroundColor: "#1B1F2E" }}
+
+// ✅ GOOD
+import { colors } from "@constants/colors";
+style={{ color: colors.textPrimary, backgroundColor: colors.background }}
+```
+
+When adding new colors, add them to `colors.ts` first.
+
+## 3. All User-Visible Text Must Use i18n
+
+Add keys to both `mobile/src/i18n/locales/en.json` and `uk.json`.
+
+```tsx
+// ❌ BAD
+<Text>Розпочати</Text>
+
+// ✅ GOOD
+<Typography variant="button" i18nKey="onboarding.welcome.getStarted" />
+```
+
+## 4. Use `Typography` for All Text
+
+Located at `mobile/src/components/ui/Typography.tsx`.
+
+- `i18nKey` — for translated strings
+- `color` — token from `AppColor` (defaults to `textPrimary`)
+- `children` — for dynamic/non-translatable content
+- Never use raw `<Text>` from `react-native` for user-visible content
+
+### Variants
+
+| Variant       | Use for                          |
+|---------------|----------------------------------|
+| `h1`          | Screen titles                    |
+| `h2`          | Section headings                 |
+| `h3`          | Sub-headings                     |
+| `body`        | Default body text                |
+| `bodySmall`   | Secondary / supporting text      |
+| `label`       | Form labels                      |
+| `caption`     | Metadata, timestamps, hints      |
+| `button`      | Primary button labels            |
+| `buttonSmall` | Secondary / ghost button labels  |
+
+```tsx
+<Typography variant="h1" i18nKey="onboarding.welcome.title" />
+<Typography variant="body" color="textSecondary" i18nKey="onboarding.welcome.subtitle" />
+<Typography variant="caption">{transaction.date}</Typography>
+```
+
+## 5. Use `Button` for All Tappable Actions
+
+Located at `mobile/src/components/ui/Button.tsx`.
+
+- `variant` — controls appearance
+- `size` — `md` (default, 58pt) or `sm` (44pt)
+- `i18nKey` — label text (translated)
+- `disabled` / `loading` — for state management
+- Never build custom `Pressable` + `Text` combos for standard actions
+
+### Variants
+
+| Variant     | Use for                              |
+|-------------|--------------------------------------|
+| `primary`   | Main CTA — accent background         |
+| `secondary` | Secondary action — elevated bg       |
+| `ghost`     | Subtle action — no background        |
+| `outline`   | Bordered action — transparent bg     |
+| `danger`    | Destructive action — red background  |
+
+```tsx
+<Button variant="primary" size="md" i18nKey="onboarding.welcome.getStarted" onPress={handleStart} />
+<Button variant="ghost" size="sm" i18nKey="onboarding.welcome.login" onPress={handleLogin} />
+<Button variant="danger" i18nKey="common.delete" onPress={handleDelete} disabled={loading} />
+```
+
+## 6. Reuse Existing UI Components
+
+Before building a new component or screen, check `mobile/src/components/ui/` for existing primitives:
+
+- **`Typography`** — all text
+- **`Button`** — all tappable actions (CTAs, links, icon buttons)
+
+Compose screens from these building blocks. Only create a new component if no existing one fits.
