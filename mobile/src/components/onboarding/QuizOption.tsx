@@ -1,4 +1,10 @@
-import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  TextStyle,
+  View,
+  ViewStyle,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
@@ -65,7 +71,7 @@ const s = StyleSheet.create({
   } as ViewStyle,
   label: {
     flex: 1,
-  } as ViewStyle,
+  } as TextStyle,
   radio: {
     width: 22,
     height: 22,
