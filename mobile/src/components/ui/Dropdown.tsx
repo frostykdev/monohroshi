@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
-import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 
@@ -36,12 +36,7 @@ export const Dropdown = ({
         )}
       </View>
 
-      <Image
-        source="sf:chevron.down"
-        style={s.chevron}
-        tintColor={colors.textTertiary}
-        contentFit="contain"
-      />
+      <Ionicons name="chevron-down" size={16} color={colors.textTertiary} />
     </Pressable>
   );
 };
@@ -72,8 +67,4 @@ const s = StyleSheet.create({
     flex: 1,
     gap: 2,
   } as ViewStyle,
-  chevron: {
-    width: 16,
-    height: 16,
-  },
 });

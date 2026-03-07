@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { StyleSheet, View, ViewStyle } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,14 +15,14 @@ import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { Dropdown } from "@components/ui/Dropdown";
 import { CurrencyPickerModal } from "@components/onboarding/currency-picker-modal";
-
-const DEFAULT_CURRENCY = "UAH";
+import { useOnboardingStore } from "@stores/useOnboardingStore";
 
 const CurrencySelectScreen = () => {
   const insets = useSafeAreaInsets();
   const { i18n } = useTranslation();
   const modalRef = useRef<BottomSheetModal>(null);
-  const [selectedCode, setSelectedCode] = useState(DEFAULT_CURRENCY);
+  const selectedCode = useOnboardingStore((s) => s.selectedCurrencyCode);
+  const setSelectedCode = useOnboardingStore((s) => s.setSelectedCurrencyCode);
 
   const selectedCurrency = ALL_CURRENCIES.find((c) => c.code === selectedCode);
 

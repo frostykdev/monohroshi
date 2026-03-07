@@ -3,10 +3,10 @@ import {
   Pressable,
   SectionListData,
   StyleSheet,
-  TextStyle,
   View,
   ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -24,6 +24,7 @@ import {
   getCurrencyDisplayName,
 } from "@constants/currencies";
 import { Typography } from "@components/ui/Typography";
+import { SearchBar } from "@components/ui/SearchBar";
 
 type Section = SectionListData<Currency, { title: string }>;
 
@@ -35,6 +36,7 @@ type Props = {
 export const CurrencyPickerModal = forwardRef<BottomSheetModal, Props>(
   ({ selectedCode, onSelect }, ref) => {
     const { t, i18n } = useTranslation();
+    const { top } = useSafeAreaInsets();
     const [search, setSearch] = useState("");
 
     const getDisplayName = useMemo(
@@ -85,11 +87,6 @@ export const CurrencyPickerModal = forwardRef<BottomSheetModal, Props>(
       [],
     );
 
-    const handleDismiss = useCallback(() => {
-      (ref as React.RefObject<BottomSheetModal>)?.current?.dismiss();
-      setSearch("");
-    }, [ref]);
-
     const handleSelect = useCallback(
       (code: string) => {
         onSelect(code);
@@ -102,48 +99,21 @@ export const CurrencyPickerModal = forwardRef<BottomSheetModal, Props>(
       <BottomSheetModal
         ref={ref}
         snapPoints={["92%"]}
+        topInset={top}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
         backgroundStyle={s.sheetBackground}
         handleIndicatorStyle={s.handle}
       >
-        {/* Header */}
-        <View style={s.header}>
-          <Pressable onPress={handleDismiss} style={s.closeButton} hitSlop={8}>
-            <Typography variant="label" color="textSecondary">
-              ✕
-            </Typography>
-          </Pressable>
-          <Typography variant="label" color="textPrimary">
-            {t("onboarding.currencySelect.modalTitle")}
-          </Typography>
-          <View style={s.closeButton} />
-        </View>
-
         {/* Search */}
         <View style={s.searchRow}>
-          <View style={s.searchContainer}>
-            <Typography variant="body" color="textTertiary">
-              🔍
-            </Typography>
-            <BottomSheetTextInput
-              style={s.searchInput}
-              placeholder={t("onboarding.currencySelect.search")}
-              placeholderTextColor={colors.textTertiary}
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              autoCapitalize="none"
-              clearButtonMode="while-editing"
-            />
-          </View>
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")} hitSlop={8}>
-              <Typography variant="label" color="accent">
-                {t("common.cancel")}
-              </Typography>
-            </Pressable>
-          )}
+          <SearchBar
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t("onboarding.currencySelect.search")}
+            InputComponent={BottomSheetTextInput}
+            onCancel={() => setSearch("")}
+          />
         </View>
 
         {/* List */}
@@ -152,6 +122,7 @@ export const CurrencyPickerModal = forwardRef<BottomSheetModal, Props>(
           keyExtractor={(item: Currency) => item.code}
           contentContainerStyle={s.listContent}
           stickySectionHeadersEnabled={false}
+          keyboardShouldPersistTaps="handled"
           renderSectionHeader={({ section }: { section: Section }) => (
             <View style={s.sectionHeader}>
               <Typography variant="caption" color="textSecondary">
@@ -216,28 +187,9 @@ const s = StyleSheet.create({
     justifyContent: "center",
   } as ViewStyle,
   searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 16,
-    gap: 10,
     marginBottom: 8,
   } as ViewStyle,
-  searchContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.backgroundSurface,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  } as ViewStyle,
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.textPrimary,
-  } as TextStyle,
   listContent: {
     paddingBottom: 40,
   } as ViewStyle,

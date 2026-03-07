@@ -144,5 +144,48 @@ Before building a new component or screen, check `mobile/src/components/ui/` for
 - **`Typography`** — all text
 - **`Button`** — all tappable actions
 - **`Dropdown`** — selector rows that open a picker
+- **`SearchBar`** — search input with search + clear icons
 
 Compose screens from these building blocks. Only create a new component if no existing one fits.
+
+### `SearchBar` usage
+
+```tsx
+import { SearchBar } from "@components/ui/SearchBar";
+
+// Standard usage
+<SearchBar
+  value={query}
+  onChangeText={setQuery}
+  placeholder={t("common.search")}
+/>
+
+// Inside a bottom sheet — pass BottomSheetTextInput so focus works correctly
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+
+<SearchBar
+  value={query}
+  onChangeText={setQuery}
+  placeholder={t("common.search")}
+  InputComponent={BottomSheetTextInput}
+  onCancel={() => setQuery("")}  // shows "Cancel" button while typing
+/>
+```
+
+## 9. Always Use `@expo/vector-icons` for Icons
+
+Never use emoji or custom SVG components for icons. Always import from `@expo/vector-icons`.
+
+```tsx
+// ❌ BAD
+<Typography variant="body">🔍</Typography>
+<Text>✓</Text>
+
+// ✅ GOOD
+import { Ionicons } from "@expo/vector-icons";
+
+<Ionicons name="search" size={18} color={colors.textTertiary} />
+<Ionicons name="checkmark" size={18} color={colors.accent} />
+```
+
+Prefer `Ionicons` as the default icon set. Use `size` and `color` directly on the icon — never wrap in `Typography`.

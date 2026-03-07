@@ -1,3 +1,3 @@
 export enum ZustandStoreNames {
-  CounterStore = "CounterStore",
+  OnboardingStore = "OnboardingStore",
 }
