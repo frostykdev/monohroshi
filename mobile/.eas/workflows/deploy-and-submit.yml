@@ -1,4 +1,4 @@
-name: Deploy and Submit on dev push
+name: Build and Submit iOS on dev push
 
 on:
   push:
@@ -11,12 +11,6 @@ jobs:
     params:
       platform: ios
       profile: production
-
-  deploy:
-    name: Deploy to EAS Hosting
-    type: deploy
-    params:
-      prod: true
 
   submit_ios:
     name: Submit iOS to App Store
