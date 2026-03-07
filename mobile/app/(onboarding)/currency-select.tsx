@@ -1,6 +1,5 @@
 import { useMemo, useRef } from "react";
 import { StyleSheet, View, ViewStyle } from "react-native";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
@@ -60,10 +59,7 @@ const CurrencySelectScreen = () => {
         { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
       ]}
     >
-      <Animated.View
-        entering={FadeInDown.delay(100).duration(500)}
-        style={s.content}
-      >
+      <View style={s.content}>
         <View style={s.textContent}>
           <Typography variant="h2" i18nKey="onboarding.currencySelect.title" />
           <Typography
@@ -85,18 +81,15 @@ const CurrencySelectScreen = () => {
           }
           onPress={handleOpenPicker}
         />
-      </Animated.View>
+      </View>
 
-      <Animated.View
-        entering={FadeInUp.delay(250).duration(500)}
-        style={s.footer}
-      >
+      <View style={s.footer}>
         <Button
           variant="primary"
           i18nKey="common.continue"
           onPress={handleContinue}
         />
-      </Animated.View>
+      </View>
 
       <CurrencyPickerModal
         ref={modalRef}

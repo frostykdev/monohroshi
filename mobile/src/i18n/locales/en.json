@@ -15,6 +15,64 @@
       "getStarted": "Get started",
       "login": "I already have an account"
     },
+    "quiz": {
+      "financialFeeling": {
+        "question": "How do you feel about\nyour finances today?",
+        "stressed": "Stressed, I want to hide",
+        "unsure": "Unsure — not much direction",
+        "stable": "Stable — no fires to put out",
+        "confident": "Confident — ready for my TED talk"
+      },
+      "spendingOn": {
+        "question": "Who do you spend\nmoney on?",
+        "myself": "On myself",
+        "partner": "My partner",
+        "otherAdults": "Other adults",
+        "kids": "Kids",
+        "pets": "Pets",
+        "other": "Other"
+      },
+      "savingFor": {
+        "question": "Are you saving, or planning\nto, for any of these?",
+        "emergencyFund": "Emergency fund",
+        "retirement": "Retirement",
+        "investments": "Investments",
+        "newHome": "New home",
+        "newCar": "New car",
+        "vacation": "Vacation",
+        "other": "Other"
+      },
+      "habitEase": {
+        "question": "How easy is it for you\nto stick to new habits?",
+        "habitPro": "I'm a habit pro",
+        "strongStart": "I start strong but fall off",
+        "needReminders": "Reminders really help me",
+        "whatHabits": "New habits? What are those?"
+      },
+      "goal": {
+        "question": "What is your main goal\nwith Monohroshi?",
+        "control": "Keep my finances under control",
+        "invest": "Save money to invest regularly",
+        "habits": "Improve spending habits",
+        "bigPurchase": "Plan for a big one-time purchase",
+        "temporaryBudget": "Manage a temporary budget (e.g. vacation, trip, wedding)",
+        "somethingElse": "Something else"
+      },
+      "notifications": {
+        "title": "Users who turn on reminders are 2x more consistent",
+        "subtitle": "Monohroshi helps you build strong financial habits by reminding you to check in, track progress, and stay on track — just a few seconds a week.",
+        "enable": "Enable Notifications",
+        "skip": "Skip"
+      },
+      "socialProof": {
+        "chartTitle": "Savings Growth",
+        "chartLabel": "Without Monohroshi",
+        "chartAxisStart": "Month 1",
+        "chartAxisEnd": "Month 6",
+        "title": "85% of users reach\ntheir goal with Monohroshi",
+        "subtitle": "Whether your goal is keeping your finances under control, improving spending habits or saving up for a vacation, Monohroshi is here for you."
+      }
+    },
     "currencySelect": {
       "title": "Choose your primary\ncurrency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",

@@ -15,7 +15,7 @@ const WelcomeScreen = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    router.push("/(onboarding)/currency-select");
+    router.push("/(onboarding)/quiz");
   };
 
   const handleLogin = () => {
