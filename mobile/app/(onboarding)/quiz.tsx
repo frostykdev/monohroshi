@@ -25,6 +25,8 @@ import { ProgressBar } from "@components/ui/ProgressBar";
 import { QuizOption } from "@components/onboarding/QuizOption";
 import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
+import { useAppleSignIn } from "@hooks/useAppleSignIn";
+import { useGoogleSignIn } from "@hooks/useGoogleSignIn";
 
 // ─── Step config ─────────────────────────────────────────────────────────────
 
@@ -340,13 +342,15 @@ const QuizScreen = () => {
     infoSheetRef.current?.present();
   }, []);
 
-  const handleApplePress = useCallback(() => {
-    // TODO: implement Apple sign-in
+  const onSignUpSuccess = useCallback(() => {
+    router.replace("/(onboarding)/currency-select");
   }, []);
 
-  const handleGooglePress = useCallback(() => {
-    // TODO: implement Google sign-in
-  }, []);
+  const { handleSignIn: handleApplePress, loading: appleLoading } =
+    useAppleSignIn(onSignUpSuccess);
+
+  const { handleSignIn: handleGooglePress, loading: googleLoading } =
+    useGoogleSignIn(onSignUpSuccess);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -504,6 +508,8 @@ const QuizScreen = () => {
       <AuthBottomSheet
         ref={authSheetRef}
         mode="signup"
+        appleLoading={appleLoading}
+        googleLoading={googleLoading}
         onApplePress={handleApplePress}
         onGooglePress={handleGooglePress}
       />

@@ -3,8 +3,15 @@ import "../src/i18n";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { env } from "@constants/env";
 
-export default function RootLayout() {
+GoogleSignin.configure({
+  webClientId: env.googleWebClientId,
+  offlineAccess: true,
+});
+
+const RootLayout = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
@@ -12,4 +19,6 @@ export default function RootLayout() {
       </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
-}
+};
+
+export default RootLayout;

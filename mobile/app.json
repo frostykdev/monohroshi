@@ -10,12 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.monohroshi",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleAllowMixedLocalizations": true
-      }
+      },
+      "appleTeamId": "77D6J7AP4B"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,6 +49,8 @@
         }
       ],
       "expo-web-browser",
+      "expo-apple-authentication",
+      "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
       [
         "expo-build-properties",

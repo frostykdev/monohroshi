@@ -1,5 +1,6 @@
 import { forwardRef, useCallback } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -25,12 +26,24 @@ type AuthMode = "signup" | "signin";
 
 type Props = {
   mode: AuthMode;
+  appleLoading?: boolean;
+  googleLoading?: boolean;
   onApplePress: () => void;
   onGooglePress: () => void;
 };
 
 export const AuthBottomSheet = forwardRef<BottomSheetModal, Props>(
-  ({ mode, onApplePress, onGooglePress }, ref) => {
+  (
+    {
+      mode,
+      appleLoading = false,
+      googleLoading = false,
+      onApplePress,
+      onGooglePress,
+    },
+    ref,
+  ) => {
+    const anyLoading = appleLoading || googleLoading;
     const { t } = useTranslation();
     const { bottom } = useSafeAreaInsets();
 
@@ -81,11 +94,17 @@ export const AuthBottomSheet = forwardRef<BottomSheetModal, Props>(
               style={({ pressed }) => [
                 s.authButton,
                 s.appleButton,
-                pressed && s.pressed,
+                (appleLoading || pressed) && s.pressed,
+                !appleLoading && anyLoading && s.disabledButton,
               ]}
               onPress={onApplePress}
+              disabled={anyLoading}
             >
-              <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+              {appleLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+              )}
               <Typography variant="button" color="textPrimary">
                 {t(`onboarding.auth.${mode}.withApple`)}
               </Typography>
@@ -96,15 +115,21 @@ export const AuthBottomSheet = forwardRef<BottomSheetModal, Props>(
               style={({ pressed }) => [
                 s.authButton,
                 s.googleButton,
-                pressed && s.pressed,
+                (googleLoading || pressed) && s.pressed,
+                !googleLoading && anyLoading && s.disabledButton,
               ]}
               onPress={onGooglePress}
+              disabled={anyLoading}
             >
-              <Ionicons
-                name="logo-google"
-                size={20}
-                color={colors.textPrimary}
-              />
+              {googleLoading ? (
+                <ActivityIndicator color={colors.textPrimary} />
+              ) : (
+                <Ionicons
+                  name="logo-google"
+                  size={20}
+                  color={colors.textPrimary}
+                />
+              )}
               <Typography variant="button" color="textPrimary">
                 {t(`onboarding.auth.${mode}.withGoogle`)}
               </Typography>
@@ -170,6 +195,9 @@ const s = StyleSheet.create({
   } as ViewStyle,
   pressed: {
     opacity: 0.75,
+  } as ViewStyle,
+  disabledButton: {
+    opacity: 0.4,
   } as ViewStyle,
   divider: {
     height: 1,

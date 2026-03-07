@@ -10,10 +10,23 @@ import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { colors } from "@constants/colors";
+import { useAppleSignIn } from "@hooks/useAppleSignIn";
+import { useGoogleSignIn } from "@hooks/useGoogleSignIn";
 
 const WelcomeScreen = () => {
   const insets = useSafeAreaInsets();
   const authSheetRef = useRef<BottomSheetModal>(null);
+
+  const onSignInSuccess = useCallback(() => {
+    // TODO: replace with main app route once available
+    router.replace("/(onboarding)/currency-select");
+  }, []);
+
+  const { handleSignIn: handleApplePress, loading: appleLoading } =
+    useAppleSignIn(onSignInSuccess);
+
+  const { handleSignIn: handleGooglePress, loading: googleLoading } =
+    useGoogleSignIn(onSignInSuccess);
 
   const handleGetStarted = () => {
     if (process.env.EXPO_OS === "ios") {
@@ -28,14 +41,6 @@ const WelcomeScreen = () => {
     }
     authSheetRef.current?.present();
   };
-
-  const handleApplePress = useCallback(() => {
-    // TODO: implement Apple sign-in
-  }, []);
-
-  const handleGooglePress = useCallback(() => {
-    // TODO: implement Google sign-in
-  }, []);
 
   return (
     <View
@@ -83,6 +88,8 @@ const WelcomeScreen = () => {
       <AuthBottomSheet
         ref={authSheetRef}
         mode="signin"
+        appleLoading={appleLoading}
+        googleLoading={googleLoading}
         onApplePress={handleApplePress}
         onGooglePress={handleGooglePress}
       />
