@@ -20,12 +20,14 @@ type TypographyProps = Omit<TextProps, "style"> & {
   i18nKey?: ParseKeys;
   i18nValues?: Record<string, string | number>;
   style?: TextStyle | TextStyle[];
+  align?: "left" | "center" | "right";
   children?: React.ReactNode;
 };
 
 export const Typography = ({
   variant = "body",
   color = "textPrimary",
+  align = "left",
   i18nKey,
   i18nValues,
   style,
@@ -36,11 +38,16 @@ export const Typography = ({
 
   const content = i18nKey ? t(i18nKey as never, i18nValues) : children;
 
+  const textStyle = {
+    ...s.base,
+    ...s[variant],
+    color: colors[color],
+    ...(align && { textAlign: align }),
+    ...style,
+  };
+
   return (
-    <Text
-      style={[s.base, s[variant], { color: colors[color] }, style]}
-      {...rest}
-    >
+    <Text style={textStyle} {...rest}>
       {content}
     </Text>
   );

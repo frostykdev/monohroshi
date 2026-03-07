@@ -10,21 +10,21 @@
   },
   "onboarding": {
     "welcome": {
-      "title": "Your money\nunder control",
-      "subtitle": "Manage expenses, income\nand cards in one place.",
+      "title": "Your money under control",
+      "subtitle": "Manage expenses, income and cards in one place.",
       "getStarted": "Get started",
       "login": "I already have an account"
     },
     "quiz": {
       "financialFeeling": {
-        "question": "How do you feel about\nyour finances today?",
+        "question": "How do you feel about your finances today?",
         "stressed": "Stressed, I want to hide",
         "unsure": "Unsure — not much direction",
         "stable": "Stable — no fires to put out",
         "confident": "Confident — ready for my TED talk"
       },
       "spendingOn": {
-        "question": "Who do you spend\nmoney on?",
+        "question": "Who do you spend money on?",
         "myself": "On myself",
         "partner": "My partner",
         "otherAdults": "Other adults",
@@ -33,7 +33,7 @@
         "other": "Other"
       },
       "savingFor": {
-        "question": "Are you saving, or planning\nto, for any of these?",
+        "question": "Are you saving, or planning to, for any of these?",
         "emergencyFund": "Emergency fund",
         "retirement": "Retirement",
         "investments": "Investments",
@@ -43,20 +43,40 @@
         "other": "Other"
       },
       "habitEase": {
-        "question": "How easy is it for you\nto stick to new habits?",
+        "question": "How easy is it for you to stick to new habits?",
         "habitPro": "I'm a habit pro",
         "strongStart": "I start strong but fall off",
         "needReminders": "Reminders really help me",
         "whatHabits": "New habits? What are those?"
       },
       "goal": {
-        "question": "What is your main goal\nwith Monohroshi?",
+        "question": "What is your main goal with Monohroshi?",
         "control": "Keep my finances under control",
         "invest": "Save money to invest regularly",
         "habits": "Improve spending habits",
         "bigPurchase": "Plan for a big one-time purchase",
         "temporaryBudget": "Manage a temporary budget (e.g. vacation, trip, wedding)",
         "somethingElse": "Something else"
+      },
+      "whyWeAsk": {
+        "title": "Why we ask",
+        "subtitle": "Your answers stay private and help us make Monohroshi actually useful for you.",
+        "personalization": {
+          "title": "Personalized experience",
+          "description": "We tailor budgets, categories, and goals to fit your situation from day one."
+        },
+        "aiInsights": {
+          "title": "Smarter AI insights",
+          "description": "Our AI spots patterns in your finances and gives you suggestions that actually make sense for your life."
+        },
+        "recommendations": {
+          "title": "Better recommendations",
+          "description": "Savings goals, spending limits, and habits — all suggested based on what you've told us."
+        },
+        "privacy": {
+          "title": "Private & secure",
+          "description": "Your answers are stored securely and never shared with third parties."
+        }
       },
       "notifications": {
         "title": "Users who turn on reminders are 2x more consistent",
@@ -69,12 +89,30 @@
         "chartLabel": "Without Monohroshi",
         "chartAxisStart": "Month 1",
         "chartAxisEnd": "Month 6",
-        "title": "85% of users reach\ntheir goal with Monohroshi",
+        "title": "85% of users reach their goal with Monohroshi",
         "subtitle": "Whether your goal is keeping your finances under control, improving spending habits or saving up for a vacation, Monohroshi is here for you."
       }
     },
+    "auth": {
+      "signup": {
+        "title": "Welcome to Monohroshi",
+        "subtitle": "Sign in to sync your data and unlock personalized insights.",
+        "withApple": "Continue with Apple",
+        "withGoogle": "Continue with Google"
+      },
+      "signin": {
+        "title": "Welcome back",
+        "subtitle": "Sign in to continue where you left off.",
+        "withApple": "Sign in with Apple",
+        "withGoogle": "Sign in with Google"
+      },
+      "agreementPrefix": "By using Monohroshi you agree to our",
+      "agreementAnd": "and",
+      "termsOfUse": "Terms of Use",
+      "privacyPolicy": "Privacy Policy"
+    },
     "currencySelect": {
-      "title": "Choose your primary\ncurrency for reports",
+      "title": "Choose your primary currency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",
       "modalTitle": "Select currency",
       "search": "Search",

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -12,11 +12,18 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
 import Svg, { Path } from "react-native-svg";
 import { useTranslation } from "react-i18next";
+import {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { ProgressBar } from "@components/ui/ProgressBar";
 import { QuizOption } from "@components/onboarding/QuizOption";
+import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 
 // ─── Step config ─────────────────────────────────────────────────────────────
@@ -254,6 +261,45 @@ const sc = StyleSheet.create({
   } as ViewStyle,
 });
 
+// ─── Info reasons config ─────────────────────────────────────────────────────
+
+type InfoReason = {
+  titleKey:
+    | "onboarding.quiz.whyWeAsk.personalization.title"
+    | "onboarding.quiz.whyWeAsk.aiInsights.title"
+    | "onboarding.quiz.whyWeAsk.recommendations.title"
+    | "onboarding.quiz.whyWeAsk.privacy.title";
+  descriptionKey:
+    | "onboarding.quiz.whyWeAsk.personalization.description"
+    | "onboarding.quiz.whyWeAsk.aiInsights.description"
+    | "onboarding.quiz.whyWeAsk.recommendations.description"
+    | "onboarding.quiz.whyWeAsk.privacy.description";
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+};
+
+const INFO_REASONS: InfoReason[] = [
+  {
+    titleKey: "onboarding.quiz.whyWeAsk.personalization.title",
+    descriptionKey: "onboarding.quiz.whyWeAsk.personalization.description",
+    icon: "person-circle-outline",
+  },
+  {
+    titleKey: "onboarding.quiz.whyWeAsk.aiInsights.title",
+    descriptionKey: "onboarding.quiz.whyWeAsk.aiInsights.description",
+    icon: "sparkles-outline",
+  },
+  {
+    titleKey: "onboarding.quiz.whyWeAsk.recommendations.title",
+    descriptionKey: "onboarding.quiz.whyWeAsk.recommendations.description",
+    icon: "trending-up-outline",
+  },
+  {
+    titleKey: "onboarding.quiz.whyWeAsk.privacy.title",
+    descriptionKey: "onboarding.quiz.whyWeAsk.privacy.description",
+    icon: "shield-checkmark-outline",
+  },
+];
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 const QuizScreen = () => {
@@ -261,6 +307,8 @@ const QuizScreen = () => {
   const { t } = useTranslation();
   const { quizAnswers, setQuizAnswer } = useOnboardingStore();
   const [step, setStep] = useState(0);
+  const infoSheetRef = useRef<BottomSheetModal>(null);
+  const authSheetRef = useRef<BottomSheetModal>(null);
 
   const progress = (step + 1) / TOTAL_STEPS;
   const isQuizStep = step < QUIZ_STEPS.length;
@@ -277,7 +325,7 @@ const QuizScreen = () => {
 
   const handleNext = useCallback(() => {
     if (step === TOTAL_STEPS - 1) {
-      router.push("/(onboarding)/currency-select");
+      authSheetRef.current?.present();
     } else {
       setStep((s) => s + 1);
     }
@@ -287,6 +335,30 @@ const QuizScreen = () => {
     await Notifications.requestPermissionsAsync();
     handleNext();
   }, [handleNext]);
+
+  const handleOpenInfo = useCallback(() => {
+    infoSheetRef.current?.present();
+  }, []);
+
+  const handleApplePress = useCallback(() => {
+    // TODO: implement Apple sign-in
+  }, []);
+
+  const handleGooglePress = useCallback(() => {
+    // TODO: implement Google sign-in
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.7}
+      />
+    ),
+    [],
+  );
 
   const currentQuizStep = isQuizStep ? QUIZ_STEPS[step] : null;
 
@@ -305,7 +377,13 @@ const QuizScreen = () => {
             </Typography>
           </Pressable>
         ) : (
-          <View style={s.headerSpacer} />
+          <Pressable onPress={handleOpenInfo} style={s.infoButton} hitSlop={8}>
+            <Ionicons
+              name="information-circle-outline"
+              size={22}
+              color={colors.textTertiary}
+            />
+          </Pressable>
         )}
       </View>
 
@@ -358,6 +436,9 @@ const QuizScreen = () => {
                 variant="primary"
                 i18nKey="common.continue"
                 onPress={handleNext}
+                disabled={
+                  (quizAnswers[currentQuizStep.key] as string[]).length === 0
+                }
               />
             </View>
           )}
@@ -368,11 +449,13 @@ const QuizScreen = () => {
       {isNotificationsStep && (
         <View style={s.interstitial}>
           <View style={s.interstitialContent}>
-            <Typography variant="h1">{"🔔"}</Typography>
-            <Typography variant="h1">
+            <View style={s.notificationIconContainer}>
+              <Ionicons name="notifications" size={40} color={colors.accent} />
+            </View>
+            <Typography variant="h1" align="center">
               {t("onboarding.quiz.notifications.title")}
             </Typography>
-            <Typography variant="body" color="textSecondary">
+            <Typography variant="body" color="textSecondary" align="center">
               {t("onboarding.quiz.notifications.subtitle")}
             </Typography>
           </View>
@@ -416,6 +499,49 @@ const QuizScreen = () => {
           </View>
         </View>
       )}
+
+      {/* ── Auth bottom sheet ─────────────────────────────────────────── */}
+      <AuthBottomSheet
+        ref={authSheetRef}
+        mode="signup"
+        onApplePress={handleApplePress}
+        onGooglePress={handleGooglePress}
+      />
+
+      {/* ── Why we ask — info bottom sheet ────────────────────────────── */}
+      <BottomSheetModal
+        ref={infoSheetRef}
+        enableDynamicSizing
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        backgroundStyle={s.sheetBackground}
+        handleIndicatorStyle={s.sheetHandle}
+      >
+        <BottomSheetView
+          style={[s.sheetContent, { paddingBottom: bottom + 24 }]}
+        >
+          <Typography variant="h2">
+            {t("onboarding.quiz.whyWeAsk.title")}
+          </Typography>
+          <Typography variant="body" color="textSecondary">
+            {t("onboarding.quiz.whyWeAsk.subtitle")}
+          </Typography>
+          <View style={s.sheetDivider} />
+          {INFO_REASONS.map((item) => (
+            <View key={item.titleKey} style={s.reasonRow}>
+              <View style={s.reasonIconContainer}>
+                <Ionicons name={item.icon} size={20} color={colors.accent} />
+              </View>
+              <View style={s.reasonText}>
+                <Typography variant="label">{t(item.titleKey)}</Typography>
+                <Typography variant="bodySmall" color="textSecondary">
+                  {t(item.descriptionKey)}
+                </Typography>
+              </View>
+            </View>
+          ))}
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 };
@@ -443,8 +569,11 @@ const s = StyleSheet.create({
   progressBar: {
     flex: 1,
   } as ViewStyle,
-  headerSpacer: {
+  infoButton: {
     width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   } as ViewStyle,
   scroll: {
     flex: 1,
@@ -473,6 +602,48 @@ const s = StyleSheet.create({
   } as ViewStyle,
   socialProofText: {
     gap: 16,
+  } as ViewStyle,
+  notificationIconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  sheetBackground: {
+    backgroundColor: colors.backgroundElevated,
+  } as ViewStyle,
+  sheetHandle: {
+    backgroundColor: colors.border,
+    width: 36,
+  },
+  sheetContent: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    gap: 16,
+  } as ViewStyle,
+  sheetDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+  } as ViewStyle,
+  reasonRow: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "flex-start",
+  } as ViewStyle,
+  reasonIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: `${colors.accent}18`,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  } as ViewStyle,
+  reasonText: {
+    flex: 1,
+    gap: 3,
   } as ViewStyle,
 });
 

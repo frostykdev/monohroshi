@@ -1,15 +1,19 @@
+import { useCallback, useRef } from "react";
 import { StyleSheet, View, ViewStyle } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { CardIllustration } from "@components/onboarding/card-illustration";
+import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { colors } from "@constants/colors";
 
 const WelcomeScreen = () => {
   const insets = useSafeAreaInsets();
+  const authSheetRef = useRef<BottomSheetModal>(null);
 
   const handleGetStarted = () => {
     if (process.env.EXPO_OS === "ios") {
@@ -22,8 +26,16 @@ const WelcomeScreen = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
     }
-    // TODO: navigate to login screen
+    authSheetRef.current?.present();
   };
+
+  const handleApplePress = useCallback(() => {
+    // TODO: implement Apple sign-in
+  }, []);
+
+  const handleGooglePress = useCallback(() => {
+    // TODO: implement Google sign-in
+  }, []);
 
   return (
     <View
@@ -67,6 +79,13 @@ const WelcomeScreen = () => {
           onPress={handleLogin}
         />
       </Animated.View>
+
+      <AuthBottomSheet
+        ref={authSheetRef}
+        mode="signin"
+        onApplePress={handleApplePress}
+        onGooglePress={handleGooglePress}
+      />
     </View>
   );
 };
