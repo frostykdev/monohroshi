@@ -343,7 +343,7 @@ const QuizScreen = () => {
   }, []);
 
   const onSignUpSuccess = useCallback(() => {
-    router.replace("/(onboarding)/currency-select");
+    router.replace("/(onboarding)/paywall");
   }, []);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =

@@ -5,6 +5,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { env } from "@constants/env";
+import { useRevenueCat } from "@hooks/useRevenueCat";
+import { useAuthListener } from "@hooks/useAuthListener";
 
 GoogleSignin.configure({
   webClientId: env.googleWebClientId,
@@ -12,6 +14,9 @@ GoogleSignin.configure({
 });
 
 const RootLayout = () => {
+  useRevenueCat();
+  useAuthListener();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>

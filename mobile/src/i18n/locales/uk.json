@@ -111,6 +111,49 @@
       "termsOfUse": "Умовами використання",
       "privacyPolicy": "Політикою конфіденційності"
     },
+    "paywall": {
+      "skip": "Пропустити",
+      "title": "Розблокуйте Monohroshi Pro",
+      "subtitle": "Все необхідне для контролю над фінансами",
+      "features": {
+        "aiAssistant": "Фінансовий ШІ-асистент",
+        "unlimitedAccounts": "Необмежена кількість рахунків і гаманців",
+        "familySharing": "Сімейний доступ (до 5 учасників)",
+        "analytics": "Розширена аналітика та статистика",
+        "budgetPlanner": "Розумний планувальник бюджету й повторюваних витрат"
+      },
+      "socialProof": {
+        "rating": "4.8",
+        "ratingLabel": "App Store",
+        "rank": "Топ 10",
+        "rankLabel": "Фінанси",
+        "free": "Безкоштовно",
+        "freeLabel": "для старту"
+      },
+      "plans": {
+        "monthly": "Місяць",
+        "yearly": "Рік",
+        "lifetime": "Назавжди",
+        "perMonth": "/міс",
+        "oneTime": "разово",
+        "bestValue": "Найвигідніше",
+        "save": "Знижка {{percent}}%",
+        "perMonthBilled": "{{price}}/міс"
+      },
+      "disclaimer": "Скасуйте будь-коли. Без прихованих платежів.",
+      "cta": {
+        "getPro": "Отримати Monohroshi Pro",
+        "processing": "Обробка..."
+      },
+      "restorePurchases": "Відновити покупки",
+      "manageSubscription": "Керувати підпискою",
+      "loadingPlans": "Завантаження планів...",
+      "errors": {
+        "purchaseTitle": "Помилка покупки",
+        "restoreNotFound": "Попередніх покупок не знайдено.",
+        "restoreSuccess": "Ваші покупки успішно відновлено!"
+      }
+    },
     "currencySelect": {
       "title": "Оберіть основну валюту для звітів",
       "subtitle": "Якщо ви витрачаєте, заробляєте або зберігаєте гроші в різних валютах, ми показуватимемо суму у вашій основній валюті.",

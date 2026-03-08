@@ -111,6 +111,49 @@
       "termsOfUse": "Terms of Use",
       "privacyPolicy": "Privacy Policy"
     },
+    "paywall": {
+      "skip": "Skip",
+      "title": "Unlock Monohroshi Pro",
+      "subtitle": "Everything you need to master your finances",
+      "features": {
+        "aiAssistant": "AI-powered financial assistant",
+        "unlimitedAccounts": "Unlimited accounts & wallets",
+        "familySharing": "Family sharing (up to 5 members)",
+        "analytics": "Advanced analytics & insights",
+        "budgetPlanner": "Smart budget planner & recurring tracking"
+      },
+      "socialProof": {
+        "rating": "4.8",
+        "ratingLabel": "App Store",
+        "rank": "Top 10",
+        "rankLabel": "Finance",
+        "free": "Free",
+        "freeLabel": "to start"
+      },
+      "plans": {
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "lifetime": "Lifetime",
+        "perMonth": "/mo",
+        "oneTime": "one-time",
+        "bestValue": "Best Value",
+        "save": "Save {{percent}}%",
+        "perMonthBilled": "{{price}}/mo"
+      },
+      "disclaimer": "Cancel anytime. No hidden fees.",
+      "cta": {
+        "getPro": "Get Monohroshi Pro",
+        "processing": "Processing..."
+      },
+      "restorePurchases": "Restore Purchases",
+      "manageSubscription": "Manage Subscription",
+      "loadingPlans": "Loading plans...",
+      "errors": {
+        "purchaseTitle": "Purchase Failed",
+        "restoreNotFound": "No previous purchases found.",
+        "restoreSuccess": "Your purchases have been restored!"
+      }
+    },
     "currencySelect": {
       "title": "Choose your primary currency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",

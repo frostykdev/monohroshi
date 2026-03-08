@@ -18,8 +18,7 @@ const WelcomeScreen = () => {
   const authSheetRef = useRef<BottomSheetModal>(null);
 
   const onSignInSuccess = useCallback(() => {
-    // TODO: replace with main app route once available
-    router.replace("/(onboarding)/currency-select");
+    router.replace("/(onboarding)/paywall");
   }, []);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =

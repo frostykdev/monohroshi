@@ -1,6 +1,11 @@
 import { Platform } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
-import auth from "@react-native-firebase/auth";
+import {
+  getAuth,
+  signInWithCredential,
+  GoogleAuthProvider,
+  OAuthProvider,
+} from "@react-native-firebase/auth";
 import {
   GoogleSignin,
   isErrorWithCode,
@@ -20,8 +25,9 @@ export const signInWithApple = async () => {
     throw new Error("Apple Sign-In failed: no identity token received");
   }
 
-  const credential = auth.AppleAuthProvider.credential(identityToken);
-  return auth().signInWithCredential(credential);
+  const appleProvider = new OAuthProvider("apple.com");
+  const credential = appleProvider.credential({ idToken: identityToken });
+  return signInWithCredential(getAuth(), credential);
 };
 
 export const signInWithGoogle = async () => {
@@ -38,8 +44,8 @@ export const signInWithGoogle = async () => {
     throw new Error("Google Sign-In failed: no ID token received");
   }
 
-  const credential = auth.GoogleAuthProvider.credential(idToken);
-  return auth().signInWithCredential(credential);
+  const credential = GoogleAuthProvider.credential(idToken);
+  return signInWithCredential(getAuth(), credential);
 };
 
 export { isErrorWithCode, statusCodes };
