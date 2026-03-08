@@ -44,3 +44,5 @@ app-example
 /ios
 /android
 AuthKey_MVNJY9DV22.p8
+/.env.production
+/.env.development
