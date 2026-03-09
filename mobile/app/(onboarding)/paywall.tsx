@@ -22,21 +22,13 @@ import { useSubscriptionStore } from "@stores/useSubscriptionStore";
 
 type PlanKey = "monthly" | "yearly" | "lifetime";
 
-const FEATURES: { key: string; bold: string; rest: string }[] = [
-  { key: "aiAssistant", bold: "AI-powered", rest: " financial assistant" },
-  { key: "unlimitedAccounts", bold: "Unlimited", rest: " accounts & wallets" },
-  {
-    key: "familySharing",
-    bold: "Family sharing",
-    rest: " (up to 5 members)",
-  },
-  { key: "analytics", bold: "Advanced", rest: " analytics & insights" },
-  {
-    key: "budgetPlanner",
-    bold: "Smart budget",
-    rest: " planner & recurring tracking",
-  },
-];
+const FEATURE_KEYS = [
+  "aiAssistant",
+  "unlimitedAccounts",
+  "familySharing",
+  "analytics",
+  "budgetPlanner",
+] as const;
 
 const PLAN_ORDER: PlanKey[] = ["monthly", "yearly", "lifetime"];
 
@@ -253,7 +245,7 @@ const PaywallScreen = () => {
 
         {/* Features */}
         <View style={s.features}>
-          {FEATURES.map(({ key, bold, rest }) => (
+          {FEATURE_KEYS.map((key) => (
             <View key={key} style={s.featureRow}>
               <View style={s.featureCheck}>
                 <Ionicons
@@ -262,12 +254,11 @@ const PaywallScreen = () => {
                   color={colors.accent}
                 />
               </View>
-              {/* Raw Text required here for inline bold spans */}
               <Typography variant="body" style={s.featureText}>
                 <Typography variant="body" style={s.featureBold}>
-                  {bold}
-                </Typography>
-                {rest}
+                  {t(`onboarding.paywall.featuresStyled.${key}.bold`)}
+                </Typography>{" "}
+                {t(`onboarding.paywall.featuresStyled.${key}.rest`)}
               </Typography>
             </View>
           ))}

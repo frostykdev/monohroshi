@@ -122,6 +122,28 @@
         "analytics": "Advanced analytics & insights",
         "budgetPlanner": "Smart budget planner & recurring tracking"
       },
+      "featuresStyled": {
+        "aiAssistant": {
+          "bold": "AI-powered",
+          "rest": "financial assistant"
+        },
+        "unlimitedAccounts": {
+          "bold": "Unlimited",
+          "rest": "accounts & wallets"
+        },
+        "familySharing": {
+          "bold": "Family sharing",
+          "rest": "(up to 5 members)"
+        },
+        "analytics": {
+          "bold": "Advanced",
+          "rest": "analytics & insights"
+        },
+        "budgetPlanner": {
+          "bold": "Smart budget",
+          "rest": "planner & recurring tracking"
+        }
+      },
       "socialProof": {
         "rating": "4.8",
         "ratingLabel": "App Store",

@@ -122,6 +122,28 @@
         "analytics": "Розширена аналітика та статистика",
         "budgetPlanner": "Розумний планувальник бюджету й повторюваних витрат"
       },
+      "featuresStyled": {
+        "aiAssistant": {
+          "bold": "Фінансовий ШІ",
+          "rest": "асистент"
+        },
+        "unlimitedAccounts": {
+          "bold": "Необмежена кількість",
+          "rest": "рахунків і гаманців"
+        },
+        "familySharing": {
+          "bold": "Сімейний доступ",
+          "rest": "(до 5 учасників)"
+        },
+        "analytics": {
+          "bold": "Розширена",
+          "rest": "аналітика та статистика"
+        },
+        "budgetPlanner": {
+          "bold": "Розумний планувальник",
+          "rest": "бюджету й повторюваних витрат"
+        }
+      },
       "socialProof": {
         "rating": "4.8",
         "ratingLabel": "App Store",

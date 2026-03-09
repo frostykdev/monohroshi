@@ -63,7 +63,8 @@
           }
         }
       ],
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "react-native-appsflyer"
     ],
     "experiments": {
       "typedRoutes": true,
