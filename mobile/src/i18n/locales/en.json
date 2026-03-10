@@ -186,6 +186,36 @@
         "insights": "Preparing personalized insights"
       }
     },
+    "home": {
+      "setup": {
+        "title": "Set up your workspace",
+        "subtitle": "Complete a few steps to get the most out of Monohroshi.",
+        "optionalBadge": "Optional",
+        "finishButton": "Finish setup",
+        "steps": {
+          "currency": {
+            "title": "Set primary currency",
+            "subtitle": "Used for totals and reports across all accounts."
+          },
+          "account": {
+            "title": "Add your first account",
+            "subtitle": "Cash, bank card, or any wallet you use."
+          },
+          "expenseCategories": {
+            "title": "Set up expense categories",
+            "subtitle": "Organise where your money goes."
+          },
+          "incomeCategories": {
+            "title": "Set up income categories",
+            "subtitle": "Track your salary, freelance, and other income."
+          },
+          "notifications": {
+            "title": "Enable notifications",
+            "subtitle": "Get reminders to log your spending."
+          }
+        }
+      }
+    },
     "currencySelect": {
       "title": "Choose your primary currency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",

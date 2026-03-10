@@ -81,7 +81,7 @@ const PaywallScreen = () => {
   }, [packages]);
 
   const navigateNext = useCallback(() => {
-    router.replace("/(onboarding)/currency-select");
+    router.replace("/(onboarding)/creating-plan");
   }, []);
 
   useEffect(() => {

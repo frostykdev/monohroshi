@@ -17,6 +17,8 @@ interface OnboardingState {
 
   quizAnswers: OnboardingQuizAnswers;
   setQuizAnswer: (key: keyof OnboardingQuizAnswers, value: string) => void;
+
+  reset: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -46,6 +48,12 @@ export const useOnboardingStore = create<OnboardingState>()(
             (state.quizAnswers as unknown as Record<string, string>)[key] =
               value;
           }
+        }),
+
+      reset: () =>
+        set((state) => {
+          state.selectedCurrencyCode = "UAH";
+          state.quizAnswers = { spendingOn: [], savingFor: [] };
         }),
     })),
     { name: ZustandStoreNames.OnboardingStore },

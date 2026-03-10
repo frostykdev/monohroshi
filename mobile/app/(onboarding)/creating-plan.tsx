@@ -79,8 +79,8 @@ const CreatingPlanScreen = () => {
         { paddingTop: top + 24, paddingBottom: bottom + 24 },
       ]}
     >
-      <View style={s.content}>
-        {/* Icon */}
+      {/* Upper half — icon + title pinned to bottom edge, never moves */}
+      <View style={s.headerArea}>
         <Animated.View
           entering={FadeIn.duration(500)}
           style={[s.iconBadge, !done && iconAnimatedStyle]}
@@ -98,7 +98,6 @@ const CreatingPlanScreen = () => {
           )}
         </Animated.View>
 
-        {/* Title block */}
         <Animated.View
           entering={FadeInUp.delay(150).duration(500)}
           style={s.titleBlock}
@@ -117,24 +116,24 @@ const CreatingPlanScreen = () => {
             />
           )}
         </Animated.View>
+      </View>
 
-        {/* Steps */}
-        <View style={s.steps}>
-          {STEPS.slice(0, visibleSteps).map(({ key, icon }) => (
-            <Animated.View
-              key={key}
-              entering={FadeInDown.duration(400).springify()}
-              style={s.stepRow}
-            >
-              <View style={s.stepIconBadge}>
-                <Ionicons name={icon} size={16} color={colors.accent} />
-              </View>
-              <Typography variant="body">
-                {t(`onboarding.creatingPlan.steps.${key}` as never)}
-              </Typography>
-            </Animated.View>
-          ))}
-        </View>
+      {/* Lower half — steps grow downward, header unaffected */}
+      <View style={s.stepsArea}>
+        {STEPS.slice(0, visibleSteps).map(({ key, icon }) => (
+          <Animated.View
+            key={key}
+            entering={FadeInDown.duration(400).springify()}
+            style={s.stepRow}
+          >
+            <View style={s.stepIconBadge}>
+              <Ionicons name={icon} size={16} color={colors.accent} />
+            </View>
+            <Typography variant="body">
+              {t(`onboarding.creatingPlan.steps.${key}` as never)}
+            </Typography>
+          </Animated.View>
+        ))}
       </View>
     </View>
   );
@@ -146,11 +145,17 @@ const s = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 32,
   } as ViewStyle,
-  content: {
+  headerArea: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-end",
     alignItems: "center",
     gap: 32,
+    paddingBottom: 28,
+  } as ViewStyle,
+  stepsArea: {
+    flex: 1,
+    paddingTop: 28,
+    gap: 12,
   } as ViewStyle,
   iconBadge: {
     width: 88,
@@ -165,10 +170,6 @@ const s = StyleSheet.create({
   titleBlock: {
     gap: 10,
     alignItems: "center",
-  } as ViewStyle,
-  steps: {
-    width: "100%",
-    gap: 12,
   } as ViewStyle,
   stepRow: {
     flexDirection: "row",
