@@ -176,6 +176,16 @@
         "restoreSuccess": "Your purchases have been restored!"
       }
     },
+    "creatingPlan": {
+      "title": "Creating your plan...",
+      "doneTitle": "Your plan is ready!",
+      "subtitle": "Personalizing Monohroshi based on your answers.",
+      "steps": {
+        "goals": "Analyzing your financial goals",
+        "categories": "Setting up spending categories",
+        "insights": "Preparing personalized insights"
+      }
+    },
     "currencySelect": {
       "title": "Choose your primary currency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",

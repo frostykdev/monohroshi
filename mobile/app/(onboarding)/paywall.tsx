@@ -12,9 +12,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
 import { useTranslation } from "react-i18next";
 import { PurchasesPackage, PACKAGE_TYPE } from "react-native-purchases";
 import { colors } from "@constants/colors";
+import { env } from "@constants/env";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { RevenueCatService } from "@services/revenuecat";
@@ -25,7 +27,6 @@ type PlanKey = "monthly" | "yearly" | "lifetime";
 const FEATURE_KEYS = [
   "aiAssistant",
   "unlimitedAccounts",
-  "familySharing",
   "analytics",
   "budgetPlanner",
 ] as const;
@@ -111,7 +112,7 @@ const PaywallScreen = () => {
     try {
       const customerInfo = await RevenueCatService.purchasePackage(pkg);
       setCustomerInfo(customerInfo);
-      navigateNext();
+      router.replace("/(onboarding)/creating-plan");
     } catch (error: unknown) {
       const err = error as { userCancelled?: boolean; message?: string };
       if (!err.userCancelled) {
@@ -123,7 +124,7 @@ const PaywallScreen = () => {
     } finally {
       setPurchasing(false);
     }
-  }, [packages, selectedPlan, setCustomerInfo, navigateNext, t]);
+  }, [packages, selectedPlan, setCustomerInfo, t]);
 
   const handleRestore = useCallback(async () => {
     setRestoring(true);
@@ -142,12 +143,12 @@ const PaywallScreen = () => {
     }
   }, [setCustomerInfo, navigateNext, t]);
 
-  const handleCustomerCenter = useCallback(async () => {
-    try {
-      await RevenueCatService.presentCustomerCenter();
-    } catch {
-      // Customer Center not available (e.g. simulator)
-    }
+  const handleTermsPress = useCallback(() => {
+    WebBrowser.openBrowserAsync(env.termsUrl);
+  }, []);
+
+  const handlePrivacyPress = useCallback(() => {
+    WebBrowser.openBrowserAsync(env.privacyUrl);
   }, []);
 
   const pkgs = packages();
@@ -382,10 +383,21 @@ const PaywallScreen = () => {
 
           <Pressable
             style={({ pressed }) => [s.footerLink, pressed && s.pressed]}
-            onPress={handleCustomerCenter}
+            onPress={handleTermsPress}
           >
             <Typography variant="caption" color="textTertiary">
-              {t("onboarding.paywall.manageSubscription")}
+              {t("onboarding.auth.termsOfUse")}
+            </Typography>
+          </Pressable>
+
+          <View style={s.footerDot} />
+
+          <Pressable
+            style={({ pressed }) => [s.footerLink, pressed && s.pressed]}
+            onPress={handlePrivacyPress}
+          >
+            <Typography variant="caption" color="textTertiary">
+              {t("onboarding.auth.privacyPolicy")}
             </Typography>
           </Pressable>
         </View>
@@ -547,8 +559,8 @@ const s = StyleSheet.create({
   // Bottom
   bottomActions: {
     paddingHorizontal: 24,
-    paddingTop: 12,
-    gap: 12,
+    paddingTop: 8,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   } as ViewStyle,
@@ -556,12 +568,13 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    paddingBottom: 4,
+    flexWrap: "wrap",
+    gap: 4,
+    paddingBottom: 2,
   } as ViewStyle,
   footerLink: {
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
   } as ViewStyle,
   footerDot: {
     width: 3,
