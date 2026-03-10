@@ -1,8 +1,6 @@
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { CustomerInfo, PurchasesOfferings } from "react-native-purchases";
-import { ZustandStoreNames } from "@constants/zustand-store-names";
 import { ENTITLEMENT_PRO } from "@services/revenuecat";
 
 interface SubscriptionState {
@@ -13,24 +11,25 @@ interface SubscriptionState {
   setOfferings: (offerings: PurchasesOfferings) => void;
 }
 
+const initialState = {
+  customerInfo: null as CustomerInfo | null,
+  offerings: null as PurchasesOfferings | null,
+  isProUser: false,
+};
+
 export const useSubscriptionStore = create<SubscriptionState>()(
-  devtools(
-    immer((set) => ({
-      customerInfo: null,
-      offerings: null,
-      isProUser: false,
+  immer((set) => ({
+    ...initialState,
 
-      setCustomerInfo: (customerInfo) =>
-        set((state) => {
-          state.customerInfo = customerInfo;
-          state.isProUser = !!customerInfo.entitlements.active[ENTITLEMENT_PRO];
-        }),
+    setCustomerInfo: (customerInfo) =>
+      set((state) => {
+        state.customerInfo = customerInfo;
+        state.isProUser = !!customerInfo.entitlements.active[ENTITLEMENT_PRO];
+      }),
 
-      setOfferings: (offerings) =>
-        set((state) => {
-          state.offerings = offerings;
-        }),
-    })),
-    { name: ZustandStoreNames.SubscriptionStore },
-  ),
+    setOfferings: (offerings) =>
+      set((state) => {
+        state.offerings = offerings;
+      }),
+  })),
 );

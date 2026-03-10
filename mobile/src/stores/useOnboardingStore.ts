@@ -1,7 +1,5 @@
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { ZustandStoreNames } from "@constants/zustand-store-names";
 
 export interface OnboardingQuizAnswers {
   financialFeeling?: string;
@@ -21,41 +19,39 @@ interface OnboardingState {
   reset: () => void;
 }
 
+const initialState = {
+  selectedCurrencyCode: "UAH",
+  quizAnswers: {
+    spendingOn: [],
+    savingFor: [],
+  } as OnboardingQuizAnswers,
+};
+
 export const useOnboardingStore = create<OnboardingState>()(
-  devtools(
-    immer((set) => ({
-      selectedCurrencyCode: "UAH",
-      setSelectedCurrencyCode: (code) =>
-        set((state) => {
-          state.selectedCurrencyCode = code;
-        }),
+  immer((set) => ({
+    ...initialState,
 
-      quizAnswers: {
-        spendingOn: [],
-        savingFor: [],
-      },
-      setQuizAnswer: (key, value) =>
-        set((state) => {
-          const current = state.quizAnswers[key];
-          if (Array.isArray(current)) {
-            const idx = current.indexOf(value);
-            if (idx >= 0) {
-              current.splice(idx, 1);
-            } else {
-              current.push(value);
-            }
+    setSelectedCurrencyCode: (code) => set({ selectedCurrencyCode: code }),
+
+    setQuizAnswer: (key, value) =>
+      set((state) => {
+        const current = state.quizAnswers[key];
+        if (Array.isArray(current)) {
+          const idx = current.indexOf(value);
+          if (idx >= 0) {
+            current.splice(idx, 1);
           } else {
-            (state.quizAnswers as unknown as Record<string, string>)[key] =
-              value;
+            current.push(value);
           }
-        }),
+        } else {
+          (state.quizAnswers as Record<string, string>)[key] = value;
+        }
+      }),
 
-      reset: () =>
-        set((state) => {
-          state.selectedCurrencyCode = "UAH";
-          state.quizAnswers = { spendingOn: [], savingFor: [] };
-        }),
-    })),
-    { name: ZustandStoreNames.OnboardingStore },
-  ),
+    reset: () =>
+      set((state) => {
+        state.selectedCurrencyCode = initialState.selectedCurrencyCode;
+        state.quizAnswers = { spendingOn: [], savingFor: [] };
+      }),
+  })),
 );
