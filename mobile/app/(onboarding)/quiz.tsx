@@ -347,10 +347,10 @@ const QuizScreen = () => {
   }, []);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =
-    useAppleSignIn(onSignUpSuccess);
+    useAppleSignIn("signup", onSignUpSuccess);
 
   const { handleSignIn: handleGooglePress, loading: googleLoading } =
-    useGoogleSignIn(onSignUpSuccess);
+    useGoogleSignIn("signup", onSignUpSuccess);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (

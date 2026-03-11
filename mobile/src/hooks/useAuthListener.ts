@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
-import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+} from "@react-native-firebase/auth";
 import { router } from "expo-router";
 import { RevenueCatService } from "@services/revenuecat";
 import { useSubscriptionStore } from "@stores/useSubscriptionStore";
@@ -19,6 +23,15 @@ export const useAuthListener = () => {
       }
 
       if (user) {
+        try {
+          // Detect deleted/disabled Firebase users and force logout immediately.
+          await user.reload();
+        } catch {
+          await signOut(getAuth());
+          router.replace("/(onboarding)/welcome");
+          return;
+        }
+
         resetOnboarding();
         try {
           const customerInfo = await RevenueCatService.identifyUser(user.uid);

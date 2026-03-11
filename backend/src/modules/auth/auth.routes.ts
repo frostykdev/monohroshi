@@ -2,10 +2,18 @@ import { Router } from "express";
 
 import { checkAuthenticated } from "../../middlewares/check-authenticated";
 import { asyncHandler } from "../../shared/async-handler";
-import { getMeController } from "./auth.controller";
+import {
+  completeOnboardingController,
+  getMeController,
+} from "./auth.controller";
 
 const authRouter = Router();
 
 authRouter.get("/me", checkAuthenticated, asyncHandler(getMeController));
+authRouter.post(
+  "/onboarding/complete",
+  checkAuthenticated,
+  asyncHandler(completeOnboardingController),
+);
 
 export { authRouter };

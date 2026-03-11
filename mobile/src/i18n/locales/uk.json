@@ -106,6 +106,12 @@
         "withApple": "Увійти з Apple",
         "withGoogle": "Увійти з Google"
       },
+      "errors": {
+        "signInFailedTitle": "Не вдалося увійти",
+        "signInFailedSubtitle": "Щось пішло не так. Спробуйте ще раз.",
+        "accountNotFoundTitle": "Акаунт не знайдено",
+        "accountNotFoundSubtitle": "У вас ще немає акаунта. Спочатку пройдіть онбординг."
+      },
       "agreementPrefix": "Використовуючи Monohroshi, ви погоджуєтесь з нашими",
       "agreementAnd": "та",
       "termsOfUse": "Умовами використання",
@@ -192,6 +198,10 @@
         "subtitle": "Виконайте кілька кроків, щоб отримати максимум від Monohroshi.",
         "optionalBadge": "Необов'язково",
         "finishButton": "Завершити налаштування",
+        "errors": {
+          "saveFailedTitle": "Не вдалося завершити налаштування",
+          "saveFailedSubtitle": "Не вдалося зберегти дані онбордингу. Спробуйте ще раз."
+        },
         "steps": {
           "currency": {
             "title": "Основна валюта",

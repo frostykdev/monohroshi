@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import {
+  Alert,
   StyleSheet,
   View,
   ScrollView,
@@ -11,10 +12,13 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as Notifications from "expo-notifications";
+import { useMutation } from "@tanstack/react-query";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { useSetupStore } from "@stores/useSetupStore";
+import { useOnboardingStore } from "@stores/useOnboardingStore";
+import { completeOnboarding } from "@services/users-api";
 
 type StepId =
   | "currency"
@@ -65,6 +69,13 @@ const SetupScreen = () => {
   const completedSteps = useSetupStore((s) => s.completedSteps);
   const completeSetup = useSetupStore((s) => s.completeSetup);
   const markStepComplete = useSetupStore((s) => s.markStepComplete);
+  const quizAnswers = useOnboardingStore((s) => s.quizAnswers);
+  const selectedCurrencyCode = useOnboardingStore(
+    (s) => s.selectedCurrencyCode,
+  );
+  const completeOnboardingMutation = useMutation({
+    mutationFn: completeOnboarding,
+  });
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => {
@@ -73,6 +84,28 @@ const SetupScreen = () => {
       }
     });
   }, [markStepComplete]);
+
+  const handleFinishSetup = async () => {
+    try {
+      await completeOnboardingMutation.mutateAsync({
+        onboarding: {
+          quizAnswers,
+          selectedCurrencyCode,
+          setup: {
+            completedSteps,
+          },
+        },
+      });
+
+      completeSetup();
+      router.replace("/(home)");
+    } catch {
+      Alert.alert(
+        t("onboarding.home.setup.errors.saveFailedTitle"),
+        t("onboarding.home.setup.errors.saveFailedSubtitle"),
+      );
+    }
+  };
 
   return (
     <View
@@ -178,12 +211,12 @@ const SetupScreen = () => {
       <View style={s.footer}>
         <Button
           variant="primary"
-          onPress={() => {
-            completeSetup();
-            router.replace("/(home)");
-          }}
+          loading={completeOnboardingMutation.isPending}
+          onPress={handleFinishSetup}
         >
-          {t("onboarding.home.setup.finishButton")}
+          {completeOnboardingMutation.isPending
+            ? t("common.loading")
+            : t("onboarding.home.setup.finishButton")}
         </Button>
       </View>
     </View>

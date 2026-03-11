@@ -22,10 +22,10 @@ const WelcomeScreen = () => {
   }, []);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =
-    useAppleSignIn(onSignInSuccess);
+    useAppleSignIn("signin", onSignInSuccess);
 
   const { handleSignIn: handleGooglePress, loading: googleLoading } =
-    useGoogleSignIn(onSignInSuccess);
+    useGoogleSignIn("signin", onSignInSuccess);
 
   const handleGetStarted = () => {
     if (process.env.EXPO_OS === "ios") {

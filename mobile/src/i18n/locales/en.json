@@ -106,6 +106,12 @@
         "withApple": "Sign in with Apple",
         "withGoogle": "Sign in with Google"
       },
+      "errors": {
+        "signInFailedTitle": "Sign-in failed",
+        "signInFailedSubtitle": "Something went wrong. Please try again.",
+        "accountNotFoundTitle": "Account not found",
+        "accountNotFoundSubtitle": "You don't have an account yet. Please complete onboarding first."
+      },
       "agreementPrefix": "By using Monohroshi you agree to our",
       "agreementAnd": "and",
       "termsOfUse": "Terms of Use",
@@ -192,6 +198,10 @@
         "subtitle": "Complete a few steps to get the most out of Monohroshi.",
         "optionalBadge": "Optional",
         "finishButton": "Finish setup",
+        "errors": {
+          "saveFailedTitle": "Couldn't finish setup",
+          "saveFailedSubtitle": "We couldn't save your onboarding data. Please try again."
+        },
         "steps": {
           "currency": {
             "title": "Set primary currency",
