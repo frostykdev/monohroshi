@@ -226,6 +226,26 @@
         }
       }
     },
+    "accountSetup": {
+      "title": "New account",
+      "save": "Save",
+      "namePlaceholder": "Enter account name",
+      "accountType": "Account type",
+      "currency": "Currency",
+      "balance": "Balance",
+      "markAsPrimary": "Mark as primary account",
+      "selectType": "Select account type",
+      "types": {
+        "bank_account": "Bank accounts",
+        "cash": "Cash",
+        "stocks_crypto": "Stocks & Crypto",
+        "property": "Property",
+        "vehicles": "Vehicles",
+        "other_assets": "Other assets",
+        "credit": "Credit",
+        "loan": "Loan"
+      }
+    },
     "currencySelect": {
       "title": "Choose your primary currency for reports",
       "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",

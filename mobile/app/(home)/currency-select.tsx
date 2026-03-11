@@ -15,7 +15,7 @@ import {
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { Dropdown } from "@components/ui/Dropdown";
-import { CurrencyPickerModal } from "@components/onboarding/currency-picker-modal";
+import { CurrencyPickerModal } from "@components/onboarding/CurrencyPickerModal";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
 

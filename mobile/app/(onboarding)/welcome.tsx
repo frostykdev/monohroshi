@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { CardIllustration } from "@components/onboarding/card-illustration";
+import { CardIllustration } from "@components/onboarding/CardIllustration";
 import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";

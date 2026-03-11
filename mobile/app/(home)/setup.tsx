@@ -45,6 +45,7 @@ const STEPS: StepDef[] = [
     id: "account",
     icon: "card-outline",
     required: true,
+    onPress: () => router.push("/(home)/account-setup"),
   },
   {
     id: "expenseCategories",

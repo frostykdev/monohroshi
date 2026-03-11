@@ -8,11 +8,156 @@ datasource db {
 }
 
 model User {
-  id          String    @id @default(cuid())
-  firebaseUid String    @unique
-  email       String?   @unique
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique
+  email       String?  @unique
   name        String?
   onboarding  Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspaceMembers WorkspaceMember[]
+  invitations      WorkspaceInvitation[]
+  transactions     Transaction[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  currency  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      WorkspaceMember[]
+  invitations  WorkspaceInvitation[]
+  accounts     Account[]
+  categories   Category[]
+  tags         Tag[]
+  transactions Transaction[]
+}
+
+model WorkspaceMember {
+  id        String   @id @default(cuid())
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model WorkspaceInvitation {
+  id        String    @id @default(cuid())
+  email     String
+  status    String
+  role      String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invitedById String
+  invitedBy   User      @relation(fields: [invitedById], references: [id])
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  balance    Decimal  @default(0) @db.Decimal(19, 4)
+  currency   String
+  icon       String?
+  color      String?
+  isArchived Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  transactions            Transaction[] @relation("TransactionAccount")
+  destinationTransactions Transaction[] @relation("TransactionDestinationAccount")
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  icon       String?
+  color      String?
+  sortOrder  Int      @default(0)
+  isSystem   Boolean  @default(false)
+  systemCode String?
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+
+  @@unique([workspaceId, systemCode])
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  type              String
+  amount            Decimal  @db.Decimal(19, 4)
+  destinationAmount Decimal? @db.Decimal(19, 4)
+  description       String?
+  date              DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  accountId            String
+  account              Account  @relation("TransactionAccount", fields: [accountId], references: [id])
+  destinationAccountId String?
+  destinationAccount   Account? @relation("TransactionDestinationAccount", fields: [destinationAccountId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  tags TransactionTag[]
+
+  @@index([workspaceId, date])
+  @@index([accountId, date])
+  @@index([categoryId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  transactions TransactionTag[]
+
+  @@unique([workspaceId, name])
+}
+
+model TransactionTag {
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
 }

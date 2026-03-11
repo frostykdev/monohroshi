@@ -9,12 +9,23 @@ export interface OnboardingQuizAnswers {
   goal?: string;
 }
 
+export interface InitialAccount {
+  name: string;
+  type: string;
+  currency: string;
+  balance: string;
+  isPrimary: boolean;
+}
+
 interface OnboardingState {
   selectedCurrencyCode: string;
   setSelectedCurrencyCode: (code: string) => void;
 
   quizAnswers: OnboardingQuizAnswers;
   setQuizAnswer: (key: keyof OnboardingQuizAnswers, value: string) => void;
+
+  initialAccount: InitialAccount;
+  setInitialAccount: (account: InitialAccount) => void;
 
   reset: () => void;
 }
@@ -25,6 +36,13 @@ const initialState = {
     spendingOn: [],
     savingFor: [],
   } as OnboardingQuizAnswers,
+  initialAccount: {
+    name: "",
+    type: "bank_account",
+    currency: "UAH",
+    balance: "",
+    isPrimary: true,
+  } as InitialAccount,
 };
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -32,6 +50,8 @@ export const useOnboardingStore = create<OnboardingState>()(
     ...initialState,
 
     setSelectedCurrencyCode: (code) => set({ selectedCurrencyCode: code }),
+
+    setInitialAccount: (account) => set({ initialAccount: account }),
 
     setQuizAnswer: (key, value) =>
       set((state) => {
@@ -52,6 +72,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       set((state) => {
         state.selectedCurrencyCode = initialState.selectedCurrencyCode;
         state.quizAnswers = { spendingOn: [], savingFor: [] };
+        state.initialAccount = { ...initialState.initialAccount };
       }),
   })),
 );
