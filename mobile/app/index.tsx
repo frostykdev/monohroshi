@@ -3,13 +3,16 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { Redirect } from "expo-router";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { colors } from "@constants/colors";
+import { useOnboardingStore } from "@stores/useOnboardingStore";
 
 const Index = () => {
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const isOnboardingComplete = useOnboardingStore(
+    (s) => s.isOnboardingComplete,
+  );
 
   useEffect(() => {
-    // Fires immediately with cached auth state — no async delay perceived
     const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
       setAuthenticated(!!user);
       setReady(true);
@@ -23,9 +26,15 @@ const Index = () => {
     return <View style={s.splash} />;
   }
 
-  return (
-    <Redirect href={authenticated ? "/(home)" : "/(onboarding)/welcome"} />
-  );
+  if (authenticated && isOnboardingComplete) {
+    return <Redirect href="/(home)" />;
+  }
+
+  if (authenticated && !isOnboardingComplete) {
+    return <Redirect href="/(onboarding)/creating-plan" />;
+  }
+
+  return <Redirect href="/(onboarding)/welcome" />;
 };
 
 const s = StyleSheet.create({

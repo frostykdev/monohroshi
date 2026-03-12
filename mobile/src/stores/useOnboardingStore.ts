@@ -1,5 +1,14 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  CategoryItem,
+  DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_INCOME_CATEGORIES,
+} from "@constants/default-categories";
+import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
+import { ZustandStoreNames } from "@constants/zustand-store-names";
 
 export interface OnboardingQuizAnswers {
   financialFeeling?: string;
@@ -15,9 +24,14 @@ export interface InitialAccount {
   currency: string;
   balance: string;
   isPrimary: boolean;
+  icon: string;
+  color: string;
 }
 
 interface OnboardingState {
+  isOnboardingComplete: boolean;
+  setOnboardingComplete: (value: boolean) => void;
+
   selectedCurrencyCode: string;
   setSelectedCurrencyCode: (code: string) => void;
 
@@ -27,10 +41,16 @@ interface OnboardingState {
   initialAccount: InitialAccount;
   setInitialAccount: (account: InitialAccount) => void;
 
+  expenseCategories: CategoryItem[];
+  incomeCategories: CategoryItem[];
+  setExpenseCategories: (categories: CategoryItem[]) => void;
+  setIncomeCategories: (categories: CategoryItem[]) => void;
+
   reset: () => void;
 }
 
 const initialState = {
+  isOnboardingComplete: false,
   selectedCurrencyCode: "UAH",
   quizAnswers: {
     spendingOn: [],
@@ -42,37 +62,54 @@ const initialState = {
     currency: "UAH",
     balance: "",
     isPrimary: true,
+    icon: DEFAULT_ICON,
+    color: DEFAULT_ICON_COLOR,
   } as InitialAccount,
+  expenseCategories: [...DEFAULT_EXPENSE_CATEGORIES],
+  incomeCategories: [...DEFAULT_INCOME_CATEGORIES],
 };
 
 export const useOnboardingStore = create<OnboardingState>()(
-  immer((set) => ({
-    ...initialState,
+  persist(
+    immer((set) => ({
+      ...initialState,
 
-    setSelectedCurrencyCode: (code) => set({ selectedCurrencyCode: code }),
+      setOnboardingComplete: (value) => set({ isOnboardingComplete: value }),
 
-    setInitialAccount: (account) => set({ initialAccount: account }),
+      setSelectedCurrencyCode: (code) => set({ selectedCurrencyCode: code }),
 
-    setQuizAnswer: (key, value) =>
-      set((state) => {
-        const current = state.quizAnswers[key];
-        if (Array.isArray(current)) {
-          const idx = current.indexOf(value);
-          if (idx >= 0) {
-            current.splice(idx, 1);
+      setInitialAccount: (account) => set({ initialAccount: account }),
+
+      setExpenseCategories: (cats) => set({ expenseCategories: cats }),
+      setIncomeCategories: (cats) => set({ incomeCategories: cats }),
+
+      setQuizAnswer: (key, value) =>
+        set((state) => {
+          const current = state.quizAnswers[key];
+          if (Array.isArray(current)) {
+            const idx = current.indexOf(value);
+            if (idx >= 0) {
+              current.splice(idx, 1);
+            } else {
+              current.push(value);
+            }
           } else {
-            current.push(value);
+            (state.quizAnswers as Record<string, string>)[key] = value;
           }
-        } else {
-          (state.quizAnswers as Record<string, string>)[key] = value;
-        }
-      }),
+        }),
 
-    reset: () =>
-      set((state) => {
-        state.selectedCurrencyCode = initialState.selectedCurrencyCode;
-        state.quizAnswers = { spendingOn: [], savingFor: [] };
-        state.initialAccount = { ...initialState.initialAccount };
-      }),
-  })),
+      reset: () =>
+        set((state) => {
+          state.selectedCurrencyCode = initialState.selectedCurrencyCode;
+          state.quizAnswers = { spendingOn: [], savingFor: [] };
+          state.initialAccount = { ...initialState.initialAccount };
+          state.expenseCategories = [...DEFAULT_EXPENSE_CATEGORIES];
+          state.incomeCategories = [...DEFAULT_INCOME_CATEGORIES];
+        }),
+    })),
+    {
+      name: ZustandStoreNames.OnboardingStore,
+      storage: createJSONStorage(() => AsyncStorage),
+    },
+  ),
 );

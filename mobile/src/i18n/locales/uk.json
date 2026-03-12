@@ -6,7 +6,24 @@
     "delete": "Видалити",
     "back": "Назад",
     "loading": "Завантаження...",
-    "continue": "Продовжити"
+    "continue": "Продовжити",
+    "retry": "Повторити"
+  },
+  "icons": {
+    "financial": "Фінанси",
+    "leisure": "Дозвілля",
+    "education": "Освіта",
+    "health": "Здоров'я",
+    "petsAndKids": "Тварини та діти",
+    "transport": "Транспорт і подорожі",
+    "food": "Їжа та напої",
+    "digital": "Цифрове",
+    "home": "Дім",
+    "bills": "Рахунки",
+    "other": "Інше"
+  },
+  "workspace": {
+    "defaultName": "Особистий"
   },
   "onboarding": {
     "welcome": {
@@ -185,6 +202,7 @@
     "creatingPlan": {
       "title": "Створюємо ваш план...",
       "doneTitle": "Ваш план готовий!",
+      "errorTitle": "Щось пішло не так",
       "subtitle": "Персоналізуємо Monohroshi на основі ваших відповідей.",
       "steps": {
         "goals": "Аналізуємо ваші фінансові цілі",
@@ -211,13 +229,9 @@
             "title": "Додати перший рахунок",
             "subtitle": "Готівка, банківська картка або будь-який гаманець."
           },
-          "expenseCategories": {
-            "title": "Категорії витрат",
-            "subtitle": "Організуйте, куди йдуть ваші гроші."
-          },
-          "incomeCategories": {
-            "title": "Категорії доходів",
-            "subtitle": "Відстежуйте зарплату, фриланс та інші надходження."
+          "categories": {
+            "title": "Налаштувати категорії",
+            "subtitle": "Організуйте категорії витрат та доходів."
           },
           "notifications": {
             "title": "Увімкнути сповіщення",
@@ -244,7 +258,23 @@
         "other_assets": "Інші активи",
         "credit": "Кредит",
         "loan": "Позика"
+      },
+      "chooseIcon": "Обрати іконку",
+      "errors": {
+        "nameRequired": "Назва рахунку обов'язкова",
+        "nameMin": "Назва має містити щонайменше {{min}} символів"
       }
+    },
+    "categoriesSetup": {
+      "title": "Категорії",
+      "expenseTab": "Категорії витрат",
+      "incomeTab": "Категорії доходів",
+      "addTitle": "Нова категорія",
+      "addPlaceholder": "Назва категорії",
+      "addButton": "Додати",
+      "deleteConfirmTitle": "Видалити категорію",
+      "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"?",
+      "systemCategoryNote": "Системні категорії не можна видалити"
     },
     "currencySelect": {
       "title": "Оберіть основну валюту для звітів",

@@ -10,9 +10,34 @@ import {
 
 const completeOnboardingSchema = z.object({
   onboarding: z.record(z.string(), z.unknown()),
+  workspace: z.object({
+    name: z.string().min(1),
+    currency: z.string().min(1),
+  }),
+  account: z.object({
+    name: z.string(),
+    type: z.string().min(1),
+    currency: z.string().min(1),
+    balance: z.string(),
+    isPrimary: z.boolean(),
+    icon: z.string().optional(),
+    color: z.string().optional(),
+  }),
+  categories: z.array(
+    z.object({
+      name: z.string().min(1),
+      type: z.string().min(1),
+      icon: z.string().min(1),
+      isSystem: z.boolean().optional(),
+      systemCode: z.string().optional(),
+    }),
+  ),
 });
 
-export const getMeController = async (req: Request, res: Response): Promise<void> => {
+export const getMeController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   const firebaseUser = req.user;
 
   if (!firebaseUser) {
@@ -58,6 +83,9 @@ export const completeOnboardingController = async (
     email: firebaseUser.email ?? null,
     name: firebaseUser.name ?? null,
     onboarding: parsed.data.onboarding,
+    workspace: parsed.data.workspace,
+    account: parsed.data.account,
+    categories: parsed.data.categories,
   });
 
   res.status(200).json({

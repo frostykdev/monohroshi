@@ -1,19 +1,12 @@
 import { StyleSheet, View, Pressable, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getAuth, signOut } from "@react-native-firebase/auth";
-import { Redirect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
-import { useSetupStore } from "@stores/useSetupStore";
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
-  const isSetupComplete = useSetupStore((s) => s.isSetupComplete);
-
-  if (!isSetupComplete) {
-    return <Redirect href="/(home)/setup" />;
-  }
 
   const handleLogout = async () => {
     await signOut(getAuth());

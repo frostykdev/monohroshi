@@ -25,7 +25,12 @@ const RootLayout = () => {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <BottomSheetModalProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name="(modals)"
+              options={{ presentation: "fullScreenModal" }}
+            />
+          </Stack>
         </BottomSheetModalProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

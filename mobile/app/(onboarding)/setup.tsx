@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
-  Alert,
   StyleSheet,
   View,
   ScrollView,
@@ -8,75 +7,65 @@ import {
   ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
-import { useMutation } from "@tanstack/react-query";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
+import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { useSetupStore } from "@stores/useSetupStore";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
-import { completeOnboarding } from "@services/users-api";
+import { usePickerStore } from "@stores/usePickerStore";
+import { useAppleSignIn } from "@hooks/useAppleSignIn";
+import { useGoogleSignIn } from "@hooks/useGoogleSignIn";
 
-type StepId =
-  | "currency"
-  | "account"
-  | "expenseCategories"
-  | "incomeCategories"
-  | "notifications";
+type StepId = "currency" | "account" | "categories" | "notifications";
 
 type StepDef = {
   id: StepId;
   icon: React.ComponentProps<typeof Ionicons>["name"];
   required: boolean;
-  onPress?: () => void;
 };
 
 const STEPS: StepDef[] = [
-  {
-    id: "currency",
-    icon: "cash-outline",
-    required: true,
-    onPress: () => router.push("/(home)/currency-select"),
-  },
-  {
-    id: "account",
-    icon: "card-outline",
-    required: true,
-    onPress: () => router.push("/(home)/account-setup"),
-  },
-  {
-    id: "expenseCategories",
-    icon: "trending-down-outline",
-    required: true,
-  },
-  {
-    id: "incomeCategories",
-    icon: "trending-up-outline",
-    required: true,
-  },
-  {
-    id: "notifications",
-    icon: "notifications-outline",
-    required: false,
-  },
+  { id: "currency", icon: "cash-outline", required: true },
+  { id: "account", icon: "card-outline", required: true },
+  { id: "categories", icon: "pricetags-outline", required: true },
+  { id: "notifications", icon: "notifications-outline", required: false },
 ];
 
 const SetupScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const completedSteps = useSetupStore((s) => s.completedSteps);
-  const completeSetup = useSetupStore((s) => s.completeSetup);
   const markStepComplete = useSetupStore((s) => s.markStepComplete);
-  const quizAnswers = useOnboardingStore((s) => s.quizAnswers);
   const selectedCurrencyCode = useOnboardingStore(
     (s) => s.selectedCurrencyCode,
   );
-  const completeOnboardingMutation = useMutation({
-    mutationFn: completeOnboarding,
-  });
+  const setSelectedCurrencyCode = useOnboardingStore(
+    (s) => s.setSelectedCurrencyCode,
+  );
+
+  const authSheetRef = useRef<BottomSheetModal>(null);
+
+  const requiredStepIds = STEPS.filter((s) => s.required).map((s) => s.id);
+  const allRequiredDone = requiredStepIds.every((id) =>
+    completedSteps.includes(id),
+  );
+
+  const onAuthSuccess = useCallback(() => {
+    router.replace("/(onboarding)/paywall");
+  }, []);
+
+  const { handleSignIn: handleApplePress, loading: appleLoading } =
+    useAppleSignIn("signup", onAuthSuccess);
+
+  const { handleSignIn: handleGooglePress, loading: googleLoading } =
+    useGoogleSignIn("signup", onAuthSuccess);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then(({ status }) => {
@@ -86,26 +75,49 @@ const SetupScreen = () => {
     });
   }, [markStepComplete]);
 
-  const handleFinishSetup = async () => {
-    try {
-      await completeOnboardingMutation.mutateAsync({
-        onboarding: {
-          quizAnswers,
-          selectedCurrencyCode,
-          setup: {
-            completedSteps,
-          },
-        },
-      });
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.currency) {
+        setSelectedCurrencyCode(store.currency);
+        markStepComplete("currency");
+        usePickerStore.setState({ currency: null });
+      }
+    }, [setSelectedCurrencyCode, markStepComplete]),
+  );
 
-      completeSetup();
-      router.replace("/(home)");
-    } catch {
-      Alert.alert(
-        t("onboarding.home.setup.errors.saveFailedTitle"),
-        t("onboarding.home.setup.errors.saveFailedSubtitle"),
-      );
-    }
+  const handleStepPress = useCallback(
+    (id: StepId) => {
+      if (process.env.EXPO_OS === "ios") {
+        Haptics.selectionAsync();
+      }
+
+      switch (id) {
+        case "currency":
+          router.push(
+            `/(modals)/currency-picker?selected=${selectedCurrencyCode}`,
+          );
+          break;
+        case "account":
+          router.push("/(onboarding)/account-setup");
+          break;
+        case "categories":
+          router.push("/(onboarding)/categories-setup");
+          break;
+        case "notifications":
+          Notifications.requestPermissionsAsync().then(({ status }) => {
+            if (status === "granted") {
+              markStepComplete("notifications");
+            }
+          });
+          break;
+      }
+    },
+    [markStepComplete, selectedCurrencyCode],
+  );
+
+  const handleFinishSetup = () => {
+    authSheetRef.current?.present();
   };
 
   return (
@@ -115,7 +127,6 @@ const SetupScreen = () => {
         { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
       ]}
     >
-      {/* Header */}
       <View style={s.header}>
         <Typography variant="h2" i18nKey="onboarding.home.setup.title" />
         <Typography
@@ -125,7 +136,6 @@ const SetupScreen = () => {
         />
       </View>
 
-      {/* Steps */}
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
@@ -134,19 +144,16 @@ const SetupScreen = () => {
         {STEPS.map((step, index) => {
           const isCompleted = completedSteps.includes(step.id);
           const isLast = index === STEPS.length - 1;
-          const canTap = !!step.onPress && !isCompleted;
 
           return (
             <Pressable
               key={step.id}
               style={({ pressed }) => [
                 s.stepCard,
-                isCompleted && s.stepCardCompleted,
-                canTap && pressed && s.pressed,
+                pressed && s.pressed,
                 !isLast && s.stepCardSpaced,
               ]}
-              onPress={canTap ? step.onPress : undefined}
-              disabled={!canTap}
+              onPress={() => handleStepPress(step.id)}
             >
               <View
                 style={[
@@ -189,17 +196,11 @@ const SetupScreen = () => {
                     size={22}
                     color={colors.success}
                   />
-                ) : canTap ? (
+                ) : (
                   <Ionicons
                     name="chevron-forward"
                     size={18}
                     color={colors.textTertiary}
-                  />
-                ) : (
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={16}
-                    color={colors.textDisabled}
                   />
                 )}
               </View>
@@ -208,18 +209,24 @@ const SetupScreen = () => {
         })}
       </ScrollView>
 
-      {/* Footer */}
       <View style={s.footer}>
         <Button
           variant="primary"
-          loading={completeOnboardingMutation.isPending}
+          disabled={!allRequiredDone}
           onPress={handleFinishSetup}
         >
-          {completeOnboardingMutation.isPending
-            ? t("common.loading")
-            : t("onboarding.home.setup.finishButton")}
+          {t("onboarding.home.setup.finishButton")}
         </Button>
       </View>
+
+      <AuthBottomSheet
+        ref={authSheetRef}
+        mode="signup"
+        appleLoading={appleLoading}
+        googleLoading={googleLoading}
+        onApplePress={handleApplePress}
+        onGooglePress={handleGooglePress}
+      />
     </View>
   );
 };
@@ -252,9 +259,6 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     padding: 14,
     gap: 12,
-  } as ViewStyle,
-  stepCardCompleted: {
-    opacity: 0.6,
   } as ViewStyle,
   stepCardSpaced: {
     marginBottom: 16,

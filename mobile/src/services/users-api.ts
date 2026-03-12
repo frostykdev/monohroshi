@@ -25,9 +25,33 @@ export const fetchCurrentUser = async (): Promise<CurrentUser> => {
   return response.data.data.user;
 };
 
-export const completeOnboarding = async (payload: {
+export type CompleteOnboardingPayload = {
   onboarding: Record<string, unknown>;
-}): Promise<CurrentUser> => {
+  workspace: {
+    name: string;
+    currency: string;
+  };
+  account: {
+    name: string;
+    type: string;
+    currency: string;
+    balance: string;
+    isPrimary: boolean;
+    icon?: string;
+    color?: string;
+  };
+  categories: {
+    name: string;
+    type: string;
+    icon: string;
+    isSystem?: boolean;
+    systemCode?: string;
+  }[];
+};
+
+export const completeOnboarding = async (
+  payload: CompleteOnboardingPayload,
+): Promise<CurrentUser> => {
   const response = await apiClient.post<
     ApiResponse<{
       user: CurrentUser;

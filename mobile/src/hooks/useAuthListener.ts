@@ -7,24 +7,20 @@ import {
 import { router } from "expo-router";
 import { RevenueCatService } from "@services/revenuecat";
 import { useSubscriptionStore } from "@stores/useSubscriptionStore";
-import { useOnboardingStore } from "@stores/useOnboardingStore";
 
 export const useAuthListener = () => {
   const { setCustomerInfo } = useSubscriptionStore();
-  const { reset: resetOnboarding } = useOnboardingStore();
   const initialFired = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
       if (!initialFired.current) {
-        // Skip the first emission — initial routing is handled by app/index.tsx
         initialFired.current = true;
         return;
       }
 
       if (user) {
         try {
-          // Detect deleted/disabled Firebase users and force logout immediately.
           await user.reload();
         } catch {
           await signOut(getAuth());
@@ -32,7 +28,6 @@ export const useAuthListener = () => {
           return;
         }
 
-        resetOnboarding();
         try {
           const customerInfo = await RevenueCatService.identifyUser(user.uid);
           setCustomerInfo(customerInfo);
@@ -45,5 +40,5 @@ export const useAuthListener = () => {
     });
 
     return unsubscribe;
-  }, [setCustomerInfo, resetOnboarding]);
+  }, [setCustomerInfo]);
 };

@@ -6,7 +6,24 @@
     "delete": "Delete",
     "back": "Back",
     "loading": "Loading...",
-    "continue": "Continue"
+    "continue": "Continue",
+    "retry": "Retry"
+  },
+  "icons": {
+    "financial": "Financial",
+    "leisure": "Leisure",
+    "education": "Education",
+    "health": "Health",
+    "petsAndKids": "Pets & Kids",
+    "transport": "Transport & Travel",
+    "food": "Food & Drink",
+    "digital": "Digital",
+    "home": "Home",
+    "bills": "Bills",
+    "other": "Other"
+  },
+  "workspace": {
+    "defaultName": "Personal"
   },
   "onboarding": {
     "welcome": {
@@ -185,6 +202,7 @@
     "creatingPlan": {
       "title": "Creating your plan...",
       "doneTitle": "Your plan is ready!",
+      "errorTitle": "Something went wrong",
       "subtitle": "Personalizing Monohroshi based on your answers.",
       "steps": {
         "goals": "Analyzing your financial goals",
@@ -211,13 +229,9 @@
             "title": "Add your first account",
             "subtitle": "Cash, bank card, or any wallet you use."
           },
-          "expenseCategories": {
-            "title": "Set up expense categories",
-            "subtitle": "Organise where your money goes."
-          },
-          "incomeCategories": {
-            "title": "Set up income categories",
-            "subtitle": "Track your salary, freelance, and other income."
+          "categories": {
+            "title": "Set up categories",
+            "subtitle": "Organise your expense and income categories."
           },
           "notifications": {
             "title": "Enable notifications",
@@ -244,7 +258,23 @@
         "other_assets": "Other assets",
         "credit": "Credit",
         "loan": "Loan"
+      },
+      "chooseIcon": "Choose icon",
+      "errors": {
+        "nameRequired": "Account name is required",
+        "nameMin": "Name must be at least {{min}} characters"
       }
+    },
+    "categoriesSetup": {
+      "title": "Categories",
+      "expenseTab": "Expense categories",
+      "incomeTab": "Income categories",
+      "addTitle": "New category",
+      "addPlaceholder": "Category name",
+      "addButton": "Add",
+      "deleteConfirmTitle": "Delete category",
+      "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?",
+      "systemCategoryNote": "System categories cannot be deleted"
     },
     "currencySelect": {
       "title": "Choose your primary currency for reports",

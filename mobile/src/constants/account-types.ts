@@ -12,9 +12,9 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
   { type: "stocks_crypto", icon: "trending-up", color: "#AF52DE" },
   { type: "property", icon: "home", color: "#5AC8FA" },
   { type: "vehicles", icon: "car", color: "#30B0C7" },
-  { type: "other_assets", icon: "cube", color: "#8E8E93" },
   { type: "credit", icon: "card-outline", color: "#FF6B6B" },
   { type: "loan", icon: "document-text", color: "#FF9500" },
+  { type: "other_assets", icon: "cube", color: "#8E8E93" },
 ];
 
 export const getAccountTypeConfig = (type: string): AccountTypeConfig =>

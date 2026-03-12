@@ -1,48 +1,38 @@
-import { useMemo, useRef } from "react";
+import { useCallback } from "react";
 import { StyleSheet, View, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
-import { useTranslation } from "react-i18next";
+import { router, useFocusEffect } from "expo-router";
 import { colors } from "@constants/colors";
-import {
-  ALL_CURRENCIES,
-  currencyFlag,
-  getCurrencyDisplayName,
-} from "@constants/currencies";
+import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { Dropdown } from "@components/ui/Dropdown";
-import { CurrencyPickerModal } from "@components/onboarding/CurrencyPickerModal";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
+import { usePickerStore } from "@stores/usePickerStore";
 
 const CurrencySelectScreen = () => {
   const insets = useSafeAreaInsets();
-  const { i18n } = useTranslation();
-  const modalRef = useRef<BottomSheetModal>(null);
   const selectedCode = useOnboardingStore((s) => s.selectedCurrencyCode);
   const setSelectedCode = useOnboardingStore((s) => s.setSelectedCurrencyCode);
 
-  const selectedCurrency = ALL_CURRENCIES.find((c) => c.code === selectedCode);
+  const selectedCurrency = getCurrencyByCode(selectedCode);
 
-  const selectedLabel = useMemo(
-    () => getCurrencyDisplayName(selectedCode, i18n.language),
-    [selectedCode, i18n.language],
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.currency) {
+        setSelectedCode(store.currency);
+        usePickerStore.setState({ currency: null });
+      }
+    }, [setSelectedCode]),
   );
 
   const handleOpenPicker = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
     }
-    modalRef.current?.present();
-  };
-
-  const handleCurrencySelect = (code: string) => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.selectionAsync();
-    }
-    setSelectedCode(code);
-    modalRef.current?.dismiss();
+    router.push(`/(modals)/currency-picker?selected=${selectedCode}`);
   };
 
   const handleContinue = () => {
@@ -70,7 +60,7 @@ const CurrencySelectScreen = () => {
         </View>
 
         <Dropdown
-          label={selectedLabel}
+          label={selectedCurrency?.name ?? selectedCode}
           sublabel={selectedCode}
           leftIcon={
             selectedCurrency ? (
@@ -90,12 +80,6 @@ const CurrencySelectScreen = () => {
           onPress={handleContinue}
         />
       </View>
-
-      <CurrencyPickerModal
-        ref={modalRef}
-        selectedCode={selectedCode}
-        onSelect={handleCurrencySelect}
-      />
     </View>
   );
 };

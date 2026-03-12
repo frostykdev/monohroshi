@@ -12,14 +12,22 @@ import { Button } from "@components/ui/Button";
 import { colors } from "@constants/colors";
 import { useAppleSignIn } from "@hooks/useAppleSignIn";
 import { useGoogleSignIn } from "@hooks/useGoogleSignIn";
+import { useOnboardingStore } from "@stores/useOnboardingStore";
+import { useSetupStore } from "@stores/useSetupStore";
 
 const WelcomeScreen = () => {
   const insets = useSafeAreaInsets();
   const authSheetRef = useRef<BottomSheetModal>(null);
+  const setOnboardingComplete = useOnboardingStore(
+    (s) => s.setOnboardingComplete,
+  );
+  const resetOnboarding = useOnboardingStore((s) => s.reset);
+  const resetSetup = useSetupStore((s) => s.reset);
 
   const onSignInSuccess = useCallback(() => {
-    router.replace("/(onboarding)/paywall");
-  }, []);
+    setOnboardingComplete(true);
+    router.replace("/(home)");
+  }, [setOnboardingComplete]);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =
     useAppleSignIn("signin", onSignInSuccess);
@@ -31,6 +39,8 @@ const WelcomeScreen = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+    resetOnboarding();
+    resetSetup();
     router.push("/(onboarding)/quiz");
   };
 

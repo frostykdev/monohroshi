@@ -23,10 +23,7 @@ import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { ProgressBar } from "@components/ui/ProgressBar";
 import { QuizOption } from "@components/onboarding/QuizOption";
-import { AuthBottomSheet } from "@components/onboarding/AuthBottomSheet";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
-import { useAppleSignIn } from "@hooks/useAppleSignIn";
-import { useGoogleSignIn } from "@hooks/useGoogleSignIn";
 
 // ─── Step config ─────────────────────────────────────────────────────────────
 
@@ -310,7 +307,6 @@ const QuizScreen = () => {
   const { quizAnswers, setQuizAnswer } = useOnboardingStore();
   const [step, setStep] = useState(0);
   const infoSheetRef = useRef<BottomSheetModal>(null);
-  const authSheetRef = useRef<BottomSheetModal>(null);
 
   const progress = (step + 1) / TOTAL_STEPS;
   const isQuizStep = step < QUIZ_STEPS.length;
@@ -327,7 +323,7 @@ const QuizScreen = () => {
 
   const handleNext = useCallback(() => {
     if (step === TOTAL_STEPS - 1) {
-      authSheetRef.current?.present();
+      router.push("/(onboarding)/setup");
     } else {
       setStep((s) => s + 1);
     }
@@ -341,16 +337,6 @@ const QuizScreen = () => {
   const handleOpenInfo = useCallback(() => {
     infoSheetRef.current?.present();
   }, []);
-
-  const onSignUpSuccess = useCallback(() => {
-    router.replace("/(onboarding)/paywall");
-  }, []);
-
-  const { handleSignIn: handleApplePress, loading: appleLoading } =
-    useAppleSignIn("signup", onSignUpSuccess);
-
-  const { handleSignIn: handleGooglePress, loading: googleLoading } =
-    useGoogleSignIn("signup", onSignUpSuccess);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -503,16 +489,6 @@ const QuizScreen = () => {
           </View>
         </View>
       )}
-
-      {/* ── Auth bottom sheet ─────────────────────────────────────────── */}
-      <AuthBottomSheet
-        ref={authSheetRef}
-        mode="signup"
-        appleLoading={appleLoading}
-        googleLoading={googleLoading}
-        onApplePress={handleApplePress}
-        onGooglePress={handleGooglePress}
-      />
 
       {/* ── Why we ask — info bottom sheet ────────────────────────────── */}
       <BottomSheetModal

@@ -1,32 +1,32 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   TextInput,
+  TextStyle,
   View,
   ViewStyle,
-  TextStyle,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import { colors } from "@constants/colors";
-import {
-  getAccountTypeConfig,
-  getCurrencySymbol,
-} from "@constants/account-types";
+import { getCurrencySymbol } from "@constants/account-types";
+import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
-import { AccountTypePickerModal } from "@components/setup/AccountTypePickerModal";
-import { CurrencyPickerModal } from "@components/onboarding/CurrencyPickerModal";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
+import { usePickerStore } from "@stores/usePickerStore";
+
+const MIN_NAME_LENGTH = 3;
 
 const AccountSetupScreen = () => {
   const insets = useSafeAreaInsets();
@@ -35,53 +35,88 @@ const AccountSetupScreen = () => {
   const setInitialAccount = useOnboardingStore((s) => s.setInitialAccount);
   const workspaceCurrency = useOnboardingStore((s) => s.selectedCurrencyCode);
 
-  const typePickerRef = useRef<BottomSheetModal>(null);
-  const currencyPickerRef = useRef<BottomSheetModal>(null);
+  const validationSchema = Yup.object({
+    name: Yup.string()
+      .trim()
+      .required(t("onboarding.accountSetup.errors.nameRequired"))
+      .min(
+        MIN_NAME_LENGTH,
+        t("onboarding.accountSetup.errors.nameMin", { min: MIN_NAME_LENGTH }),
+      ),
+  });
 
-  const [name, setName] = useState("");
-  const [accountType, setAccountType] = useState("bank_account");
-  const [currency, setCurrency] = useState(workspaceCurrency);
-  const [balance, setBalance] = useState("");
-  const [isPrimary, setIsPrimary] = useState(true);
+  const formik = useFormik({
+    initialValues: {
+      name: "",
+      accountType: "bank_account",
+      currency: workspaceCurrency,
+      balance: "",
+      isPrimary: true,
+      icon: DEFAULT_ICON as string,
+      iconColor: DEFAULT_ICON_COLOR,
+    },
+    validationSchema,
+    validateOnChange: false,
+    validateOnBlur: false,
+    onSubmit: (values) => {
+      if (process.env.EXPO_OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      setInitialAccount({
+        name: values.name.trim(),
+        type: values.accountType,
+        currency: values.currency,
+        balance: values.balance || "0",
+        isPrimary: values.isPrimary,
+        icon: values.icon,
+        color: values.iconColor,
+      });
+      markStepComplete("account");
+      router.back();
+    },
+  });
 
-  const typeConfig = getAccountTypeConfig(accountType);
-  const currencySymbol = getCurrencySymbol(currency);
+  // Use a ref so useFocusEffect can read latest formik without stale closure
+  const formikRef = useRef(formik);
+  formikRef.current = formik;
+
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.accountType) {
+        formikRef.current.setFieldValue("accountType", store.accountType);
+        usePickerStore.setState({ accountType: null });
+      }
+      if (store.currency) {
+        formikRef.current.setFieldValue("currency", store.currency);
+        usePickerStore.setState({ currency: null });
+      }
+      if (store.icon) {
+        formikRef.current.setFieldValue("icon", store.icon);
+        formikRef.current.setFieldValue(
+          "iconColor",
+          store.iconColor ?? DEFAULT_ICON_COLOR,
+        );
+        usePickerStore.setState({ icon: null, iconColor: null });
+      }
+    }, []),
+  );
+
+  const currencySymbol = getCurrencySymbol(formik.values.currency);
+  const nameError =
+    formik.submitCount > 0 && formik.errors.name
+      ? formik.errors.name
+      : undefined;
+
   const haptic = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
     }
   };
 
-  const handleSave = () => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    setInitialAccount({
-      name: name.trim(),
-      type: accountType,
-      currency,
-      balance: balance || "0",
-      isPrimary,
-    });
-    markStepComplete("account");
-    router.back();
-  };
-
-  const handleSelectType = (type: string) => {
-    haptic();
-    setAccountType(type);
-    typePickerRef.current?.dismiss();
-  };
-
-  const handleSelectCurrency = (code: string) => {
-    haptic();
-    setCurrency(code);
-    currencyPickerRef.current?.dismiss();
-  };
-
   const handleBalanceChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.,]/g, "").replace(",", ".");
-    setBalance(cleaned);
+    formik.setFieldValue("balance", cleaned);
   };
 
   return (
@@ -91,7 +126,6 @@ const AccountSetupScreen = () => {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      {/* Header */}
       <View style={s.header}>
         <Pressable
           style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
@@ -103,7 +137,7 @@ const AccountSetupScreen = () => {
         <Typography variant="label" i18nKey="onboarding.accountSetup.title" />
         <Pressable
           style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
-          onPress={handleSave}
+          onPress={() => formik.handleSubmit()}
           hitSlop={8}
         >
           <Typography variant="label" color="textSecondary">
@@ -122,38 +156,64 @@ const AccountSetupScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Account Icon */}
-          <View style={s.iconSection}>
-            <View style={[s.iconCircle, { backgroundColor: typeConfig.color }]}>
+          <Pressable
+            style={s.iconSection}
+            onPress={() => {
+              haptic();
+              router.push(
+                `/(modals)/icon-picker?selectedIcon=${encodeURIComponent(formik.values.icon)}&selectedColor=${encodeURIComponent(formik.values.iconColor)}`,
+              );
+            }}
+          >
+            <View
+              style={[
+                s.iconCircle,
+                { backgroundColor: formik.values.iconColor },
+              ]}
+            >
               <Ionicons
-                name={typeConfig.icon}
+                name={
+                  formik.values.icon as React.ComponentProps<
+                    typeof Ionicons
+                  >["name"]
+                }
                 size={32}
                 color={colors.textOnAccent}
               />
+              <View style={s.editBadge}>
+                <Ionicons name="pencil" size={10} color={colors.textOnAccent} />
+              </View>
             </View>
-          </View>
+          </Pressable>
 
-          {/* Account Name */}
           <View style={s.nameInputContainer}>
             <TextInput
               style={s.nameInput}
               placeholder={t("onboarding.accountSetup.namePlaceholder")}
               placeholderTextColor={colors.textTertiary}
-              value={name}
-              onChangeText={setName}
+              value={formik.values.name}
+              onChangeText={(text) => {
+                formik.setFieldValue("name", text);
+                if (nameError) formik.setFieldError("name", undefined);
+              }}
               autoCorrect={false}
               returnKeyType="done"
             />
           </View>
+          {nameError && (
+            <Typography variant="caption" color="error" style={s.errorText}>
+              {nameError}
+            </Typography>
+          )}
 
-          {/* Settings Rows */}
           <View style={s.settingsGroup}>
-            {/* Account Type */}
             <Pressable
               style={({ pressed }) => [s.settingRow, pressed && s.pressed]}
               onPress={() => {
                 haptic();
-                typePickerRef.current?.present();
+                router.push(
+                  `/(modals)/account-type-picker?selected=${formik.values.accountType}`,
+                );
               }}
             >
               <Typography variant="body" color="textSecondary">
@@ -161,7 +221,9 @@ const AccountSetupScreen = () => {
               </Typography>
               <View style={s.settingValue}>
                 <Typography variant="body" color="textPrimary">
-                  {t(`onboarding.accountSetup.types.${accountType}` as never)}
+                  {t(
+                    `onboarding.accountSetup.types.${formik.values.accountType}` as never,
+                  )}
                 </Typography>
                 <Ionicons
                   name="chevron-forward"
@@ -173,12 +235,13 @@ const AccountSetupScreen = () => {
 
             <View style={s.separator} />
 
-            {/* Currency */}
             <Pressable
               style={({ pressed }) => [s.settingRow, pressed && s.pressed]}
               onPress={() => {
                 haptic();
-                currencyPickerRef.current?.present();
+                router.push(
+                  `/(modals)/currency-picker?selected=${formik.values.currency}`,
+                );
               }}
             >
               <Typography variant="body" color="textSecondary">
@@ -186,7 +249,9 @@ const AccountSetupScreen = () => {
               </Typography>
               <View style={s.settingValue}>
                 <Typography variant="body" color="textPrimary">
-                  {currency}, {currencySymbol}
+                  {currencySymbol !== formik.values.currency
+                    ? `${formik.values.currency} (${currencySymbol})`
+                    : formik.values.currency}
                 </Typography>
                 <Ionicons
                   name="chevron-forward"
@@ -198,15 +263,15 @@ const AccountSetupScreen = () => {
 
             <View style={s.separator} />
 
-            {/* Balance */}
             <View style={s.settingRow}>
               <Typography variant="body" color="textSecondary">
-                {t("onboarding.accountSetup.balance")} ({currency})
+                {t("onboarding.accountSetup.balance")} ({formik.values.currency}
+                )
               </Typography>
               <View style={s.balanceInputRow}>
                 <TextInput
                   style={s.balanceInput}
-                  value={balance}
+                  value={formik.values.balance}
                   onChangeText={handleBalanceChange}
                   placeholder={`0.00 ${currencySymbol}`}
                   placeholderTextColor={colors.textTertiary}
@@ -217,15 +282,16 @@ const AccountSetupScreen = () => {
             </View>
           </View>
 
-          {/* Primary Toggle */}
           <View style={s.toggleGroup}>
             <View style={s.settingRow}>
               <Typography variant="body" color="textPrimary">
                 {t("onboarding.accountSetup.markAsPrimary")}
               </Typography>
               <Switch
-                value={isPrimary}
-                onValueChange={setIsPrimary}
+                value={formik.values.isPrimary}
+                onValueChange={(v) => {
+                  formik.setFieldValue("isPrimary", v);
+                }}
                 trackColor={{
                   false: colors.backgroundSurface,
                   true: colors.accent,
@@ -237,17 +303,6 @@ const AccountSetupScreen = () => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <AccountTypePickerModal
-        ref={typePickerRef}
-        selectedType={accountType}
-        onSelect={handleSelectType}
-      />
-      <CurrencyPickerModal
-        ref={currencyPickerRef}
-        selectedCode={currency}
-        onSelect={handleSelectCurrency}
-      />
     </View>
   );
 };
@@ -285,6 +340,19 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  editBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.textSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.background,
+  } as ViewStyle,
   nameInputContainer: {
     marginHorizontal: 24,
     marginBottom: 24,
@@ -298,6 +366,11 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
     textAlign: "center",
+  } as TextStyle,
+  errorText: {
+    marginHorizontal: 28,
+    marginTop: -18,
+    marginBottom: 20,
   } as TextStyle,
   settingsGroup: {
     marginHorizontal: 24,
