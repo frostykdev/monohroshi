@@ -60,3 +60,7 @@ export const completeOnboarding = async (
 
   return response.data.data.user;
 };
+
+export const deleteAccount = async (): Promise<void> => {
+  await apiClient.delete("/v1/me");
+};

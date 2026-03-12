@@ -25,6 +25,16 @@
   "workspace": {
     "defaultName": "Personal"
   },
+  "home": {
+    "deleteAccount": {
+      "button": "Delete account",
+      "confirmTitle": "Delete account",
+      "confirmMessage": "This will permanently delete your account and all associated data including workspaces, accounts, categories, and transactions. This action cannot be undone.",
+      "confirmButton": "Delete",
+      "errorTitle": "Failed to delete account",
+      "errorMessage": "Something went wrong. Please try again."
+    }
+  },
   "onboarding": {
     "welcome": {
       "title": "Your money under control",
@@ -208,7 +218,9 @@
         "goals": "Analyzing your financial goals",
         "categories": "Setting up spending categories",
         "insights": "Preparing personalized insights"
-      }
+      },
+      "alreadyRegisteredTitle": "Account already exists",
+      "alreadyRegisteredSubtitle": "This account is already registered. You'll be signed in to your existing workspace."
     },
     "home": {
       "setup": {
@@ -272,6 +284,11 @@
       "addTitle": "New category",
       "addPlaceholder": "Category name",
       "addButton": "Add",
+      "generalSection": "General",
+      "errors": {
+        "nameRequired": "Category name is required",
+        "nameMin": "Name must be at least {{min}} characters"
+      },
       "deleteConfirmTitle": "Delete category",
       "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?",
       "systemCategoryNote": "System categories cannot be deleted"

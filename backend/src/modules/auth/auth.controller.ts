@@ -5,6 +5,7 @@ import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
 import {
   completeOnboardingForCurrentUser,
+  deleteCurrentUser,
   getCurrentUserByFirebaseUid,
 } from "./auth.service";
 
@@ -94,4 +95,19 @@ export const completeOnboardingController = async (
       user,
     },
   });
+};
+
+export const deleteAccountController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const firebaseUser = req.user;
+
+  if (!firebaseUser) {
+    throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  }
+
+  await deleteCurrentUser(firebaseUser.uid);
+
+  res.status(200).json({ success: true });
 };

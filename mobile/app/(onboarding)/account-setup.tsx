@@ -165,23 +165,25 @@ const AccountSetupScreen = () => {
               );
             }}
           >
-            <View
-              style={[
-                s.iconCircle,
-                { backgroundColor: formik.values.iconColor },
-              ]}
-            >
-              <Ionicons
-                name={
-                  formik.values.icon as React.ComponentProps<
-                    typeof Ionicons
-                  >["name"]
-                }
-                size={32}
-                color={colors.textOnAccent}
-              />
+            <View style={s.iconWrapper}>
+              <View
+                style={[
+                  s.iconCircle,
+                  { backgroundColor: formik.values.iconColor },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    formik.values.icon as React.ComponentProps<
+                      typeof Ionicons
+                    >["name"]
+                  }
+                  size={32}
+                  color={colors.textOnAccent}
+                />
+              </View>
               <View style={s.editBadge}>
-                <Ionicons name="pencil" size={10} color={colors.textOnAccent} />
+                <Ionicons name="pencil" size={13} color={colors.textPrimary} />
               </View>
             </View>
           </Pressable>
@@ -333,6 +335,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 24,
   } as ViewStyle,
+  iconWrapper: {
+    position: "relative",
+    width: 80,
+    height: 80,
+  } as ViewStyle,
   iconCircle: {
     width: 80,
     height: 80,
@@ -342,16 +349,16 @@ const s = StyleSheet.create({
   } as ViewStyle,
   editBadge: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.textSecondary,
+    bottom: -3,
+    right: -3,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.backgroundElevated,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   } as ViewStyle,
   nameInputContainer: {
     marginHorizontal: 24,

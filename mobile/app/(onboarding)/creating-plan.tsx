@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { Alert, Pressable, StyleSheet, View, ViewStyle } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -23,6 +23,7 @@ import {
   completeOnboarding,
   CompleteOnboardingPayload,
 } from "@services/users-api";
+import { isApiError } from "@services/api";
 
 type Step = {
   key: string;
@@ -107,8 +108,16 @@ const CreatingPlanScreen = () => {
     try {
       await completeOnboarding(payload);
       setApiDone(true);
-    } catch {
-      setError(true);
+    } catch (err) {
+      if (isApiError(err) && err.status === 409) {
+        Alert.alert(
+          t("onboarding.creatingPlan.alreadyRegisteredTitle"),
+          t("onboarding.creatingPlan.alreadyRegisteredSubtitle"),
+          [{ text: t("common.ok"), onPress: navigateHome }],
+        );
+      } else {
+        setError(true);
+      }
     }
   };
 

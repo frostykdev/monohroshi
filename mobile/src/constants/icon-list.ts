@@ -164,14 +164,14 @@ export const ICON_SECTIONS: IconSection[] = [
 ];
 
 export const DEFAULT_ICON: IoniconsName = "wallet-outline";
-export const DEFAULT_ICON_COLOR = "#8E8E93";
+export const DEFAULT_ICON_COLOR = "#3E4358";
 
 export const ICON_PRESET_COLORS = [
+  "#3E4358",
   "#34C759",
   "#AF52DE",
   "#F5A623",
   "#007AFF",
-  "#8E8E93",
   "#FF3B30",
   "#FF9500",
   "#5AC8FA",

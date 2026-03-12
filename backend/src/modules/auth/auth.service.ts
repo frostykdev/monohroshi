@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma";
+import { ApiError } from "../../shared/errors/api-error";
+import { HTTP_STATUS } from "../../shared/http-status";
 import { WORKSPACE_ROLES } from "../../shared/constants";
 import { ALL_DEFAULT_CATEGORIES } from "../../shared/default-categories";
 
@@ -36,15 +38,17 @@ export const completeOnboardingForCurrentUser = async (input: {
   console.log("[completeOnboarding] Starting transaction with payload keys:", Object.keys(input));
 
   return prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-    const user = await tx.user.upsert({
+    const existingUser = await tx.user.findUnique({
       where: { firebaseUid: input.firebaseUid },
-      create: {
+    });
+
+    if (existingUser) {
+      throw new ApiError("User is already registered", HTTP_STATUS.conflict);
+    }
+
+    const user = await tx.user.create({
+      data: {
         firebaseUid: input.firebaseUid,
-        email: input.email,
-        name: input.name,
-        onboarding: input.onboarding as never,
-      },
-      update: {
         email: input.email,
         name: input.name,
         onboarding: input.onboarding as never,
@@ -95,5 +99,32 @@ export const completeOnboardingForCurrentUser = async (input: {
     });
 
     return user;
+  });
+};
+
+export const deleteCurrentUser = async (firebaseUid: string): Promise<void> => {
+  await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+    const user = await tx.user.findUnique({ where: { firebaseUid } });
+
+    if (!user) {
+      throw new ApiError("User account not found", HTTP_STATUS.notFound);
+    }
+
+    const ownedMemberships = await tx.workspaceMember.findMany({
+      where: { userId: user.id, role: WORKSPACE_ROLES.OWNER },
+      select: { workspaceId: true },
+    });
+
+    const ownedWorkspaceIds = ownedMemberships.map((m) => m.workspaceId);
+
+    if (ownedWorkspaceIds.length > 0) {
+      await tx.workspace.deleteMany({ where: { id: { in: ownedWorkspaceIds } } });
+    }
+
+    await tx.workspaceInvitation.deleteMany({ where: { invitedById: user.id } });
+
+    await tx.transaction.deleteMany({ where: { createdById: user.id } });
+
+    await tx.user.delete({ where: { id: user.id } });
   });
 };
