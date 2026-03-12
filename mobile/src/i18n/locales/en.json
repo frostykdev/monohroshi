@@ -25,7 +25,16 @@
   "workspace": {
     "defaultName": "Personal"
   },
+  "addTransaction": {
+    "title": "Add Transaction"
+  },
   "home": {
+    "tabs": {
+      "home": "Home",
+      "accounts": "Accounts",
+      "analytics": "Analytics",
+      "settings": "Settings"
+    },
     "deleteAccount": {
       "button": "Delete account",
       "confirmTitle": "Delete account",
@@ -33,6 +42,36 @@
       "confirmButton": "Delete",
       "errorTitle": "Failed to delete account",
       "errorMessage": "Something went wrong. Please try again."
+    },
+    "settings": {
+      "upgradePro": "Upgrade to Monohroshi Pro",
+      "upgradeProSubtitle": "Understand your money. Make better decisions.",
+      "importData": "Import data",
+      "exportData": "Export data",
+      "rateApp": "Rate Monohroshi",
+      "categories": "Categories",
+      "paymentMethods": "Payment Methods",
+      "recurringTransactions": "Recurring transactions",
+      "budgets": "Budgets",
+      "showIncome": "Show income",
+      "transactionCurrency": "Transaction currency",
+      "darkMode": "Dark mode",
+      "language": "Language",
+      "languageEn": "English",
+      "languageUk": "Ukrainian",
+      "dailyReminder": "Daily reminder",
+      "dailyReminderHint": "Get a reminder every day at 20:00 to remember to track your expenses.",
+      "sendFeedback": "Send feedback",
+      "shareWithFriends": "Share with friends",
+      "whatsNext": "What's next?",
+      "faq": "FAQ",
+      "localBackup": "Local backup",
+      "localBackupHint": "Your data is stored only on this device. We recommend making regular backups to avoid losing data if you change your phone or delete the app.",
+      "resetData": "Reset data",
+      "termsOfUse": "Terms of use",
+      "privacyPolicy": "Privacy policy",
+      "version": "Version",
+      "footer": "Made with ❤ by @gonahmias"
     }
   },
   "onboarding": {

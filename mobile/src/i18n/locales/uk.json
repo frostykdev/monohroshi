@@ -25,7 +25,16 @@
   "workspace": {
     "defaultName": "Особистий"
   },
+  "addTransaction": {
+    "title": "Додати транзакцію"
+  },
   "home": {
+    "tabs": {
+      "home": "Головна",
+      "accounts": "Рахунки",
+      "analytics": "Аналітика",
+      "settings": "Налаштування"
+    },
     "deleteAccount": {
       "button": "Видалити акаунт",
       "confirmTitle": "Видалити акаунт",
@@ -33,6 +42,36 @@
       "confirmButton": "Видалити",
       "errorTitle": "Не вдалося видалити акаунт",
       "errorMessage": "Щось пішло не так. Спробуйте ще раз."
+    },
+    "settings": {
+      "upgradePro": "Перейти на Monohroshi Pro",
+      "upgradeProSubtitle": "Розумійте свої гроші. Приймайте кращі рішення.",
+      "importData": "Імпорт даних",
+      "exportData": "Експорт даних",
+      "rateApp": "Оцінити Monohroshi",
+      "categories": "Категорії",
+      "paymentMethods": "Способи оплати",
+      "recurringTransactions": "Повторювані транзакції",
+      "budgets": "Бюджети",
+      "showIncome": "Показувати доходи",
+      "transactionCurrency": "Валюта транзакцій",
+      "darkMode": "Темний режим",
+      "language": "Мова",
+      "languageEn": "Англійська",
+      "languageUk": "Українська",
+      "dailyReminder": "Щоденне нагадування",
+      "dailyReminderHint": "Отримуйте нагадування щодня о 20:00, щоб не забути записати свої витрати.",
+      "sendFeedback": "Надіслати відгук",
+      "shareWithFriends": "Поділитися з друзями",
+      "whatsNext": "Що далі?",
+      "faq": "Часті запитання",
+      "localBackup": "Локальна копія",
+      "localBackupHint": "Ваші дані зберігаються лише на цьому пристрої. Ми рекомендуємо робити регулярні резервні копії, щоб не втратити інформацію при зміні телефону або видаленні програми.",
+      "resetData": "Скинути дані",
+      "termsOfUse": "Умови використання",
+      "privacyPolicy": "Політика конфіденційності",
+      "version": "Версія",
+      "footer": "Зроблено з ❤ від @gonahmias"
     }
   },
   "onboarding": {

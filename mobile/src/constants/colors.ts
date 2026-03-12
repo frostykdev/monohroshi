@@ -24,6 +24,15 @@ export const colors = {
   error: "#FF3B30",
   warning: "#FF9500",
 
+  // Icon backgrounds (iOS system palette)
+  iconBlue: "#007AFF",
+  iconPurple: "#AF52DE",
+  iconTeal: "#32ADE6",
+  iconYellow: "#FFCC00",
+
+  // Pro banner
+  proBannerBackground: "#1B3A28",
+
   // Misc
   transparent: "transparent",
 } as const;

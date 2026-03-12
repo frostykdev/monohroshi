@@ -3,13 +3,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 
-const HomeScreen = () => {
+const AnalyticsScreen = () => {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[s.container, { paddingTop: insets.top + 16 }]}>
       <View style={s.header}>
-        <Typography variant="h2" i18nKey="home.tabs.home" />
+        <Typography variant="h2" i18nKey="home.tabs.analytics" />
       </View>
     </View>
   );
@@ -25,4 +25,4 @@ const s = StyleSheet.create({
   } as ViewStyle,
 });
 
-export default HomeScreen;
+export default AnalyticsScreen;
