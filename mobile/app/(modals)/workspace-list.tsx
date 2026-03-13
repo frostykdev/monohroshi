@@ -81,14 +81,14 @@ const WorkspaceListScreen = () => {
     >
       <View style={s.header}>
         <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
           onPress={() => router.back()}
           hitSlop={8}
         >
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </Pressable>
         <Typography variant="label" i18nKey="workspace.list.title" />
-        <View style={s.headerButton} />
+        <View style={s.placeholder} />
       </View>
 
       <ScrollView
@@ -189,12 +189,18 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    height: 52,
+    height: 56,
   } as ViewStyle,
-  headerButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    minWidth: 40,
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  placeholder: {
+    width: 40,
   } as ViewStyle,
   pressed: {
     opacity: 0.6,

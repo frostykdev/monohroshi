@@ -70,12 +70,7 @@ const CurrencyPickerScreen = () => {
   };
 
   return (
-    <View
-      style={[
-        s.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}
-    >
+    <View style={[s.container, { paddingBottom: insets.bottom }]}>
       <ScreenHeader
         title={t("onboarding.currencySelect.modalTitle")}
         left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
@@ -146,6 +141,7 @@ const s = StyleSheet.create({
   } as ViewStyle,
   searchRow: {
     paddingHorizontal: 16,
+    marginTop: 12,
     marginBottom: 8,
   } as ViewStyle,
   listContent: {

@@ -189,7 +189,7 @@ const WorkspaceDetailsScreen = () => {
     >
       <View style={s.header}>
         <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
           onPress={() => router.back()}
           hitSlop={8}
         >
@@ -197,7 +197,11 @@ const WorkspaceDetailsScreen = () => {
         </Pressable>
         <Typography variant="label" i18nKey="workspace.details.title" />
         <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
+          style={({ pressed }) => [
+            s.saveButton,
+            pressed && s.pressed,
+            (!hasChanges || saving) && s.disabledButton,
+          ]}
           onPress={() =>
             hasChanges &&
             !saving &&
@@ -221,14 +225,9 @@ const WorkspaceDetailsScreen = () => {
           disabled={!hasChanges || saving}
         >
           {saving ? (
-            <ActivityIndicator size="small" color={colors.accent} />
+            <ActivityIndicator size="small" color={colors.textPrimary} />
           ) : (
-            <Typography
-              variant="label"
-              color={hasChanges ? "accent" : "textTertiary"}
-            >
-              {t("common.save")}
-            </Typography>
+            <Typography variant="label">{t("common.save")}</Typography>
           )}
         </Pressable>
       </View>
@@ -563,15 +562,29 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    height: 52,
+    height: 56,
   } as ViewStyle,
-  headerButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    minWidth: 60,
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  saveButton: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
   } as ViewStyle,
   pressed: {
     opacity: 0.6,
+  } as ViewStyle,
+  disabledButton: {
+    opacity: 0.4,
   } as ViewStyle,
   scrollContent: {
     paddingHorizontal: 16,

@@ -6,6 +6,8 @@ import {
   createCategoryController,
   deleteCategoryController,
   getCategoriesController,
+  reorderCategoriesController,
+  updateCategoryController,
 } from "./categories.controller";
 
 const categoriesRouter = Router();
@@ -20,6 +22,18 @@ categoriesRouter.post(
   "/",
   checkAuthenticated,
   asyncHandler(createCategoryController),
+);
+
+categoriesRouter.patch(
+  "/reorder",
+  checkAuthenticated,
+  asyncHandler(reorderCategoriesController),
+);
+
+categoriesRouter.patch(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(updateCategoryController),
 );
 
 categoriesRouter.delete(

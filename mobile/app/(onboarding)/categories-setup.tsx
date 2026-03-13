@@ -1,17 +1,15 @@
-import { useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from "react-native";
+import { useRef, useState } from "react";
+import { Alert, Pressable, StyleSheet, View, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
 import { CategoryItem } from "@constants/default-categories";
 import { Typography } from "@components/ui/Typography";
@@ -19,6 +17,10 @@ import { SegmentedControl, Segment } from "@components/ui/SegmentedControl";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
+import {
+  CategoryActionsSheet,
+  CategoryActionsSheetItem,
+} from "@components/categories/CategoryActionsSheet";
 
 type Tab = "expense" | "income";
 
@@ -38,9 +40,14 @@ const CategoriesSetupScreen = () => {
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab === "income" ? "income" : "expense",
   );
+  const [selectedItem, setSelectedItem] =
+    useState<CategoryActionsSheetItem | null>(null);
+  const actionsSheetRef = useRef<BottomSheetModal>(null);
 
   const categories =
     activeTab === "expense" ? expenseCategories : incomeCategories;
+  const setCategories =
+    activeTab === "expense" ? setExpenseCategories : setIncomeCategories;
 
   const segments: Segment<Tab>[] = [
     { key: "expense", label: t("onboarding.categoriesSetup.expenseTab") },
@@ -66,7 +73,30 @@ const CategoriesSetupScreen = () => {
     router.back();
   };
 
-  const handleDelete = (item: CategoryItem) => {
+  const handleDragEnd = ({ data }: { data: CategoryItem[] }) => {
+    setCategories(data);
+  };
+
+  const handleOpenActions = (item: CategoryItem) => {
+    haptic();
+    setSelectedItem({
+      id: item.id,
+      name: item.name,
+      icon: item.icon as string,
+      type: item.type,
+      isSystem: item.isSystem,
+      localId: item.id,
+    });
+    actionsSheetRef.current?.present();
+  };
+
+  const handleEdit = (item: CategoryActionsSheetItem) => {
+    router.push(
+      `/(modals)/add-category?mode=edit-local&localId=${item.id}&initialName=${encodeURIComponent(item.name)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&tab=${activeTab}` as never,
+    );
+  };
+
+  const handleDelete = (item: CategoryActionsSheetItem) => {
     if (item.isSystem) {
       Alert.alert(t("onboarding.categoriesSetup.systemCategoryNote"));
       return;
@@ -85,38 +115,51 @@ const CategoriesSetupScreen = () => {
           onPress: () => {
             haptic();
             const filtered = categories.filter((c) => c.id !== item.id);
-            if (activeTab === "expense") {
-              setExpenseCategories(filtered);
-            } else {
-              setIncomeCategories(filtered);
-            }
+            setCategories(filtered);
           },
         },
       ],
     );
   };
 
-  const renderItem = ({ item }: { item: CategoryItem }) => (
-    <Pressable
-      style={({ pressed }) => [s.categoryRow, pressed && s.pressed]}
-      onLongPress={() => handleDelete(item)}
-    >
-      <View style={s.categoryIcon}>
-        <Ionicons name={item.icon} size={20} color={colors.textPrimary} />
-      </View>
-      <Typography variant="body" color="textPrimary" style={s.categoryName}>
-        {item.name}
-      </Typography>
-      {item.isSystem ? (
-        <Ionicons
-          name="lock-closed-outline"
-          size={16}
-          color={colors.textDisabled}
-        />
-      ) : (
-        <Ionicons name="menu" size={20} color={colors.textTertiary} />
-      )}
-    </Pressable>
+  const renderItem = ({
+    item,
+    drag,
+    isActive,
+  }: RenderItemParams<CategoryItem>) => (
+    <ScaleDecorator>
+      <Pressable
+        style={[s.categoryRow, isActive && s.dragging]}
+        onLongPress={drag}
+        delayLongPress={200}
+      >
+        <View style={s.categoryIcon}>
+          <Ionicons name={item.icon} size={20} color={colors.textPrimary} />
+        </View>
+        <Typography variant="body" color="textPrimary" style={s.categoryName}>
+          {item.name}
+        </Typography>
+        {item.isSystem ? (
+          <Ionicons
+            name="lock-closed-outline"
+            size={16}
+            color={colors.textDisabled}
+          />
+        ) : (
+          <Pressable
+            onPress={() => handleOpenActions(item)}
+            hitSlop={8}
+            style={({ pressed }) => pressed && s.pressed}
+          >
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={20}
+              color={colors.textTertiary}
+            />
+          </Pressable>
+        )}
+      </Pressable>
+    </ScaleDecorator>
   );
 
   return (
@@ -146,12 +189,26 @@ const CategoriesSetupScreen = () => {
         style={s.tabs}
       />
 
-      <FlatList
+      <DraggableFlatList
         data={categories}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        onDragEnd={handleDragEnd}
+        onDragBegin={() => {
+          if (process.env.EXPO_OS === "ios") {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }
+        }}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
+      />
+
+      <CategoryActionsSheet
+        ref={actionsSheetRef}
+        item={selectedItem}
+        showTransactions={false}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
     </View>
   );
@@ -176,6 +233,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     gap: 14,
+  } as ViewStyle,
+  dragging: {
+    opacity: 0.85,
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 12,
+    paddingHorizontal: 8,
   } as ViewStyle,
   categoryIcon: {
     width: 40,

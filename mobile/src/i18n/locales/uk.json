@@ -9,6 +9,13 @@
     "continue": "Продовжити",
     "retry": "Повторити"
   },
+  "categories": {
+    "actions": {
+      "edit": "Редагувати",
+      "showTransactions": "Показати транзакції",
+      "delete": "Видалити"
+    }
+  },
   "icons": {
     "financial": "Фінанси",
     "leisure": "Дозвілля",
@@ -369,6 +376,7 @@
       "expenseTab": "Категорії витрат",
       "incomeTab": "Категорії доходів",
       "addTitle": "Нова категорія",
+      "editTitle": "Редагувати категорію",
       "addPlaceholder": "Назва категорії",
       "addButton": "Додати",
       "generalSection": "Загальне",

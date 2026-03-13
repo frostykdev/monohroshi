@@ -9,6 +9,13 @@
     "continue": "Continue",
     "retry": "Retry"
   },
+  "categories": {
+    "actions": {
+      "edit": "Edit",
+      "showTransactions": "Show transactions",
+      "delete": "Delete"
+    }
+  },
   "icons": {
     "financial": "Financial",
     "leisure": "Leisure",
@@ -369,6 +376,7 @@
       "expenseTab": "Expense categories",
       "incomeTab": "Income categories",
       "addTitle": "New category",
+      "editTitle": "Edit category",
       "addPlaceholder": "Category name",
       "addButton": "Add",
       "generalSection": "General",

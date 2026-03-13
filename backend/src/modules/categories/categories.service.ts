@@ -77,6 +77,63 @@ export const createCategoryForUser = async (
   });
 };
 
+export const updateCategoryForUser = async (
+  firebaseUid: string,
+  categoryId: string,
+  data: { name?: string; icon?: string },
+) => {
+  const user = await getUser(firebaseUid);
+
+  const category = await prisma.category.findFirst({
+    where: {
+      id: categoryId,
+      workspace: {
+        members: { some: { userId: user.id } },
+      },
+    },
+    select: { id: true, isSystem: true },
+  });
+
+  if (!category) {
+    throw new ApiError("Category not found", HTTP_STATUS.notFound);
+  }
+
+  if (category.isSystem) {
+    throw new ApiError(
+      "System categories cannot be edited",
+      HTTP_STATUS.forbidden,
+    );
+  }
+
+  return prisma.category.update({
+    where: { id: categoryId },
+    data: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.icon !== undefined && { icon: data.icon }),
+    },
+    select: categorySelect,
+  });
+};
+
+export const reorderCategoriesForUser = async (
+  firebaseUid: string,
+  orders: { id: string; sortOrder: number }[],
+) => {
+  const user = await getUser(firebaseUid);
+
+  await prisma.$transaction(
+    orders.map(({ id, sortOrder }) =>
+      prisma.category.updateMany({
+        where: {
+          id,
+          workspace: { members: { some: { userId: user.id } } },
+        },
+        data: { sortOrder },
+      }),
+    ),
+  );
+};
+
 export const deleteCategoryForUser = async (
   firebaseUid: string,
   categoryId: string,

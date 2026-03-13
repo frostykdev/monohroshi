@@ -43,6 +43,28 @@ export const createCategory = async (
   return response.data.data.category;
 };
 
+export type UpdateCategoryPayload = {
+  name?: string;
+  icon?: string;
+};
+
+export const updateCategory = async (
+  id: string,
+  payload: UpdateCategoryPayload,
+): Promise<Category> => {
+  const response = await apiClient.patch<ApiResponse<{ category: Category }>>(
+    `/v1/categories/${id}`,
+    payload,
+  );
+  return response.data.data.category;
+};
+
+export const reorderCategories = async (
+  orders: { id: string; sortOrder: number }[],
+): Promise<void> => {
+  await apiClient.patch("/v1/categories/reorder", { orders });
+};
+
 export const deleteCategory = async (id: string): Promise<void> => {
   await apiClient.delete(`/v1/categories/${id}`);
 };

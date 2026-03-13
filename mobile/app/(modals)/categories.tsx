@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   View,
@@ -13,16 +12,26 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
 import type { Category } from "@services/categories/categories.api";
 import {
   useCategories,
   useDeleteCategory,
+  useReorderCategories,
 } from "@services/categories/categories.queries";
 import { Typography } from "@components/ui/Typography";
 import { SegmentedControl, Segment } from "@components/ui/SegmentedControl";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
+import {
+  CategoryActionsSheet,
+  CategoryActionsSheetItem,
+} from "@components/categories/CategoryActionsSheet";
 
 type Tab = "expense" | "income";
 
@@ -36,10 +45,14 @@ const CategoriesScreen = () => {
   const { data: allCategories = [], isLoading } =
     useCategories(activeWorkspaceId);
   const { mutate: deleteCategory } = useDeleteCategory(activeWorkspaceId);
+  const { mutate: reorderCategories } = useReorderCategories(activeWorkspaceId);
 
   const [activeTab, setActiveTab] = useState<Tab>(
     initialTab === "income" ? "income" : "expense",
   );
+  const [selectedItem, setSelectedItem] =
+    useState<CategoryActionsSheetItem | null>(null);
+  const actionsSheetRef = useRef<BottomSheetModal>(null);
 
   const categories = allCategories.filter((c) => c.type === activeTab);
 
@@ -52,12 +65,32 @@ const CategoriesScreen = () => {
     if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
   };
 
-  const handleDelete = (item: Category) => {
-    if (item.isSystem) {
-      Alert.alert(t("onboarding.categoriesSetup.systemCategoryNote"));
-      return;
-    }
+  const handleOpenActions = (item: Category) => {
+    haptic();
+    setSelectedItem(item);
+    actionsSheetRef.current?.present();
+  };
 
+  const handleDragEnd = ({ data }: { data: Category[] }) => {
+    const orders = data.map((item, index) => ({
+      id: item.id,
+      sortOrder: index,
+    }));
+
+    reorderCategories(orders);
+  };
+
+  const handleEdit = (item: CategoryActionsSheetItem) => {
+    router.push(
+      `/(modals)/add-category?mode=edit&categoryId=${item.id}&initialName=${encodeURIComponent(item.name)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&workspaceId=${activeWorkspaceId ?? ""}` as never,
+    );
+  };
+
+  const handleShowTransactions = (item: CategoryActionsSheetItem) => {
+    router.push(`/(home)/index?categoryId=${item.id}` as never);
+  };
+
+  const handleDelete = (item: CategoryActionsSheetItem) => {
     Alert.alert(
       t("onboarding.categoriesSetup.deleteConfirmTitle"),
       t("onboarding.categoriesSetup.deleteConfirmMessage", {
@@ -83,34 +116,47 @@ const CategoriesScreen = () => {
     );
   };
 
-  const renderItem = ({ item }: { item: Category }) => (
-    <Pressable
-      style={({ pressed }) => [s.categoryRow, pressed && s.pressed]}
-      onLongPress={() => handleDelete(item)}
-    >
-      <View style={s.categoryIcon}>
-        <Ionicons
-          name={
-            (item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
-            "pricetag-outline"
-          }
-          size={20}
-          color={colors.textPrimary}
-        />
-      </View>
-      <Typography variant="body" color="textPrimary" style={s.categoryName}>
-        {item.name}
-      </Typography>
-      {item.isSystem ? (
-        <Ionicons
-          name="lock-closed-outline"
-          size={16}
-          color={colors.textDisabled}
-        />
-      ) : (
-        <Ionicons name="menu" size={20} color={colors.textTertiary} />
-      )}
-    </Pressable>
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<Category>) => (
+    <ScaleDecorator>
+      <Pressable
+        style={[s.categoryRow, isActive && s.dragging]}
+        onLongPress={drag}
+        delayLongPress={200}
+      >
+        <View style={s.categoryIcon}>
+          <Ionicons
+            name={
+              (item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
+              "pricetag-outline"
+            }
+            size={20}
+            color={colors.textPrimary}
+          />
+        </View>
+        <Typography variant="body" color="textPrimary" style={s.categoryName}>
+          {item.name}
+        </Typography>
+        {item.isSystem ? (
+          <Ionicons
+            name="lock-closed-outline"
+            size={16}
+            color={colors.textDisabled}
+          />
+        ) : (
+          <Pressable
+            onPress={() => handleOpenActions(item)}
+            hitSlop={8}
+            style={({ pressed }) => pressed && s.pressed}
+          >
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={20}
+              color={colors.textTertiary}
+            />
+          </Pressable>
+        )}
+      </Pressable>
+    </ScaleDecorator>
   );
 
   return (
@@ -148,14 +194,29 @@ const CategoriesScreen = () => {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <FlatList
+        <DraggableFlatList
           data={categories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          onDragEnd={handleDragEnd}
+          onDragBegin={() => {
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+          }}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <CategoryActionsSheet
+        ref={actionsSheetRef}
+        item={selectedItem}
+        workspaceId={activeWorkspaceId}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onShowTransactions={handleShowTransactions}
+      />
     </View>
   );
 };
@@ -184,6 +245,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     gap: 14,
+  } as ViewStyle,
+  dragging: {
+    opacity: 0.85,
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 12,
+    paddingHorizontal: 8,
   } as ViewStyle,
   categoryIcon: {
     width: 40,

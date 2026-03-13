@@ -7,6 +7,8 @@ import {
   createCategoryForUser,
   deleteCategoryForUser,
   getCategoriesForUser,
+  reorderCategoriesForUser,
+  updateCategoryForUser,
 } from "./categories.service";
 
 const createCategorySchema = z.object({
@@ -46,6 +48,54 @@ export const createCategoryController = async (
   const category = await createCategoryForUser(req.user.uid, parsed.data);
 
   res.status(HTTP_STATUS.created).json({ success: true, data: { category } });
+};
+
+const updateCategorySchema = z.object({
+  name: z.string().trim().min(2).max(100).optional(),
+  icon: z.string().trim().optional(),
+});
+
+const reorderSchema = z.object({
+  orders: z.array(
+    z.object({ id: z.string(), sortOrder: z.number().int().min(0) }),
+  ),
+});
+
+export const updateCategoryController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) {
+    throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  }
+
+  const parsed = updateCategorySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw new ApiError("Invalid request body", HTTP_STATUS.badRequest);
+  }
+
+  const { id } = req.params;
+  const category = await updateCategoryForUser(req.user.uid, id, parsed.data);
+
+  res.status(HTTP_STATUS.ok).json({ success: true, data: { category } });
+};
+
+export const reorderCategoriesController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) {
+    throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  }
+
+  const parsed = reorderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw new ApiError("Invalid request body", HTTP_STATUS.badRequest);
+  }
+
+  await reorderCategoriesForUser(req.user.uid, parsed.data.orders);
+
+  res.status(HTTP_STATUS.ok).json({ success: true });
 };
 
 export const deleteCategoryController = async (

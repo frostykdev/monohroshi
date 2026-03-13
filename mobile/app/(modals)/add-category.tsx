@@ -21,22 +21,53 @@ import { colors } from "@constants/colors";
 import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
-import { useCreateCategory } from "@services/categories/categories.queries";
+import { useOnboardingStore } from "@stores/useOnboardingStore";
+import {
+  useCreateCategory,
+  useUpdateCategory,
+} from "@services/categories/categories.queries";
 
 const MIN_NAME_LENGTH = 2;
 
 const AddCategoryScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { tab, workspaceId } = useLocalSearchParams<{
+  const {
+    tab,
+    workspaceId,
+    mode,
+    categoryId,
+    initialName,
+    initialIcon,
+    localId,
+  } = useLocalSearchParams<{
     tab?: string;
     workspaceId?: string;
+    mode?: "edit" | "edit-local";
+    categoryId?: string;
+    initialName?: string;
+    initialIcon?: string;
+    localId?: string;
   }>();
 
+  const isEditBackend = mode === "edit" && !!categoryId;
+  const isEditLocal = mode === "edit-local" && !!localId;
   const isIncome = tab === "income";
-  const { mutate: createCategory, isPending: saving } = useCreateCategory(
+
+  const { mutate: createCategory, isPending: creating } = useCreateCategory(
     workspaceId || null,
   );
+  const { mutate: updateCategory, isPending: updating } = useUpdateCategory(
+    workspaceId || null,
+  );
+  const saving = creating || updating;
+
+  const expenseCategories = useOnboardingStore((s) => s.expenseCategories);
+  const incomeCategories = useOnboardingStore((s) => s.incomeCategories);
+  const setExpenseCategories = useOnboardingStore(
+    (s) => s.setExpenseCategories,
+  );
+  const setIncomeCategories = useOnboardingStore((s) => s.setIncomeCategories);
 
   const validationSchema = Yup.object({
     name: Yup.string()
@@ -52,8 +83,8 @@ const AddCategoryScreen = () => {
 
   const formik = useFormik({
     initialValues: {
-      name: "",
-      icon: DEFAULT_ICON as string,
+      name: initialName ?? "",
+      icon: (initialIcon ?? DEFAULT_ICON) as string,
     },
     validationSchema,
     validateOnChange: false,
@@ -63,9 +94,35 @@ const AddCategoryScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
+      const trimmedName = values.name.trim();
+
+      if (isEditBackend) {
+        updateCategory(
+          { id: categoryId, name: trimmedName, icon: values.icon },
+          { onSuccess: () => router.back() },
+        );
+        return;
+      }
+
+      if (isEditLocal) {
+        const list = isIncome ? incomeCategories : expenseCategories;
+        const updated = list.map((c) =>
+          c.id === localId
+            ? { ...c, name: trimmedName, icon: values.icon as never }
+            : c,
+        );
+        if (isIncome) {
+          setIncomeCategories(updated);
+        } else {
+          setExpenseCategories(updated);
+        }
+        router.back();
+        return;
+      }
+
       createCategory(
         {
-          name: values.name.trim(),
+          name: trimmedName,
           type: isIncome ? "income" : "expense",
           icon: values.icon,
           workspaceId: workspaceId || undefined,
@@ -97,6 +154,11 @@ const AddCategoryScreen = () => {
       ? formik.errors.name
       : undefined;
 
+  const titleKey =
+    isEditBackend || isEditLocal
+      ? "onboarding.categoriesSetup.editTitle"
+      : "onboarding.categoriesSetup.addTitle";
+
   return (
     <View
       style={[
@@ -106,25 +168,26 @@ const AddCategoryScreen = () => {
     >
       <View style={s.header}>
         <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
           onPress={() => router.back()}
           hitSlop={8}
         >
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </Pressable>
-        <Typography
-          variant="label"
-          i18nKey="onboarding.categoriesSetup.addTitle"
-        />
+        <Typography variant="label" i18nKey={titleKey} />
         <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
+          style={({ pressed }) => [
+            s.saveButton,
+            pressed && s.pressed,
+            saving && s.disabledButton,
+          ]}
           onPress={() => !saving && formik.handleSubmit()}
           disabled={saving}
           hitSlop={8}
         >
           <Typography
             variant="label"
-            color={saving ? "textTertiary" : "textSecondary"}
+            color={saving ? "textTertiary" : "textPrimary"}
           >
             {t("onboarding.accountSetup.save")}
           </Typography>
@@ -188,7 +251,7 @@ const AddCategoryScreen = () => {
                 if (nameError) formik.setFieldError("name", undefined);
               }}
               autoCorrect={false}
-              autoFocus
+              autoFocus={!isEditBackend && !isEditLocal}
               returnKeyType="done"
               onSubmitEditing={() => formik.handleSubmit()}
             />
@@ -217,14 +280,29 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    height: 52,
+    height: 56,
   } as ViewStyle,
-  headerButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  saveButton: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
   } as ViewStyle,
   pressed: {
     opacity: 0.6,
+  } as ViewStyle,
+  disabledButton: {
+    opacity: 0.4,
   } as ViewStyle,
   scrollContent: {
     paddingBottom: 40,
