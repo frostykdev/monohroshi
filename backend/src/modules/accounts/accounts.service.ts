@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
+import { TRANSACTION_TYPES } from "../../shared/constants";
 
 const accountSelect = {
   id: true,
@@ -132,18 +133,54 @@ export const updateAccountForUser = async (
   const user = await getUser(firebaseUid);
   await verifyAccountAccess(user.id, accountId);
 
+  const updateData = {
+    ...(data.name !== undefined && { name: data.name }),
+    ...(data.type !== undefined && { type: data.type }),
+    ...(data.currency !== undefined && { currency: data.currency }),
+    ...(data.balance !== undefined && { balance: data.balance }),
+    ...(data.icon !== undefined && { icon: data.icon }),
+    ...(data.color !== undefined && { color: data.color }),
+    ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
+    ...(data.isArchived !== undefined && { isArchived: data.isArchived }),
+  };
+
+  if (data.balance !== undefined) {
+    const current = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: { balance: true, workspaceId: true },
+    });
+
+    if (current) {
+      const oldBalance = parseFloat(current.balance.toString());
+      const newBalance = parseFloat(data.balance);
+      const delta = newBalance - oldBalance;
+
+      if (Math.abs(delta) > 0.00001) {
+        return prisma.$transaction(async (tx) => {
+          await tx.transaction.create({
+            data: {
+              type: TRANSACTION_TYPES.BALANCE_CORRECTION,
+              amount: String(Math.abs(delta)),
+              date: new Date(),
+              accountId,
+              createdById: user.id,
+              workspaceId: current.workspaceId,
+            },
+          });
+
+          return tx.account.update({
+            where: { id: accountId },
+            data: updateData,
+            select: accountSelect,
+          });
+        });
+      }
+    }
+  }
+
   return prisma.account.update({
     where: { id: accountId },
-    data: {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.type !== undefined && { type: data.type }),
-      ...(data.currency !== undefined && { currency: data.currency }),
-      ...(data.balance !== undefined && { balance: data.balance }),
-      ...(data.icon !== undefined && { icon: data.icon }),
-      ...(data.color !== undefined && { color: data.color }),
-      ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
-      ...(data.isArchived !== undefined && { isArchived: data.isArchived }),
-    },
+    data: updateData,
     select: accountSelect,
   });
 };
