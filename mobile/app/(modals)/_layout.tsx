@@ -13,7 +13,8 @@ const ModalsLayout = () => {
           name="currency-picker"
           options={{ presentation: "modal" }}
         />
-        {/* <Stack.Screen name="add-category" options={{ presentation: "modal" }} /> */}
+        <Stack.Screen name="add-category" options={{ presentation: "modal" }} />
+        <Stack.Screen name="add-account" options={{ presentation: "modal" }} />
       </Stack>
     </BottomSheetModalProvider>
   );

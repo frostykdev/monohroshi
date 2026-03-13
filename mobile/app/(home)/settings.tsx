@@ -270,11 +270,10 @@ const SettingsScreen = () => {
           onPress={() => router.push("/(modals)/categories" as never)}
         />
         <Row
-          icon="card-outline"
+          icon="wallet-outline"
           iconBg={colors.iconPurple}
-          labelKey="home.settings.paymentMethods"
-          value="5"
-          onPress={handleComingSoon}
+          labelKey="home.settings.accounts"
+          onPress={() => router.push("/(modals)/accounts" as never)}
         />
         <Row
           icon="repeat-outline"

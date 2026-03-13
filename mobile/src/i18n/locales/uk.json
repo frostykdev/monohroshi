@@ -9,6 +9,22 @@
     "continue": "Продовжити",
     "retry": "Повторити"
   },
+  "accounts": {
+    "title": "Рахунки",
+    "add": { "title": "Новий рахунок" },
+    "empty": "Рахунків ще немає. Додайте перший рахунок.",
+    "currentBalance": "Поточний баланс",
+    "transactionHistory": "Історія транзакцій",
+    "searchTransactions": "Пошук транзакцій...",
+    "noTransactions": "Транзакцій поки немає",
+    "deleteAccount": "Видалити рахунок",
+    "deleteConfirmTitle": "Видалити рахунок",
+    "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"? Цю дію неможливо скасувати.",
+    "errors": {
+      "deleteTitle": "Не вдалося видалити",
+      "deleteMessage": "Щось пішло не так. Спробуйте ще раз."
+    }
+  },
   "categories": {
     "actions": {
       "edit": "Редагувати",
@@ -105,7 +121,7 @@
       "exportData": "Експорт даних",
       "rateApp": "Оцінити Monohroshi",
       "categories": "Категорії",
-      "paymentMethods": "Способи оплати",
+      "accounts": "Рахунки",
       "recurringTransactions": "Повторювані транзакції",
       "budgets": "Бюджети",
       "showIncome": "Показувати доходи",

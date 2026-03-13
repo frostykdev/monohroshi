@@ -9,6 +9,22 @@
     "continue": "Continue",
     "retry": "Retry"
   },
+  "accounts": {
+    "title": "Accounts",
+    "add": { "title": "New Account" },
+    "empty": "No accounts yet. Add your first account.",
+    "currentBalance": "Current balance",
+    "transactionHistory": "Transaction history",
+    "searchTransactions": "Search transactions...",
+    "noTransactions": "No transactions yet",
+    "deleteAccount": "Delete account",
+    "deleteConfirmTitle": "Delete Account",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "errors": {
+      "deleteTitle": "Couldn't delete",
+      "deleteMessage": "Something went wrong. Please try again."
+    }
+  },
   "categories": {
     "actions": {
       "edit": "Edit",
@@ -105,7 +121,7 @@
       "exportData": "Export data",
       "rateApp": "Rate Monohroshi",
       "categories": "Categories",
-      "paymentMethods": "Payment Methods",
+      "accounts": "Accounts",
       "recurringTransactions": "Recurring transactions",
       "budgets": "Budgets",
       "showIncome": "Show income",
