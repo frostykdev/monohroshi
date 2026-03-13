@@ -168,7 +168,9 @@ const CategoriesScreen = () => {
     >
       <ScreenHeader
         title={t("onboarding.categoriesSetup.title")}
-        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        left={
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        }
         onLeftPress={() => router.back()}
         right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
         onRightPress={() => {

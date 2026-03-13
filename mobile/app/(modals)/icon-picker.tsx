@@ -55,7 +55,7 @@ const IconPickerScreen = () => {
   };
 
   return (
-    <View style={[s.container, { paddingTop: insets.top }]}>
+    <View style={[s.container, { paddingTop: 10 }]}>
       <ScreenHeader
         title={t("onboarding.accountSetup.chooseIcon")}
         left={<Ionicons name="close" size={24} color={colors.textPrimary} />}

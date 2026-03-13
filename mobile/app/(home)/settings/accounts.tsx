@@ -53,7 +53,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
       style={({ pressed }) => [s.accountRow, pressed && s.pressed]}
       onPress={() => {
         haptic();
-        router.push(`/(modals)/account-details?id=${account.id}` as never);
+        router.push(`/settings/account-details?id=${account.id}` as never);
       }}
     >
       <View style={[s.accountIcon, { backgroundColor: iconColor }]}>
@@ -157,7 +157,6 @@ const AccountsScreen = () => {
     setCollapsed((prev) => ({ ...prev, [type]: !prev[type] }));
   };
 
-  // Group accounts by type, preserving ACCOUNT_TYPES order
   const grouped = allTypes
     .map((type) => ({
       type,
@@ -174,7 +173,9 @@ const AccountsScreen = () => {
     >
       <ScreenHeader
         title={t("accounts.title")}
-        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        left={
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        }
         onLeftPress={() => router.back()}
         right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
         onRightPress={() => {

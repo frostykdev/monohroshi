@@ -29,7 +29,10 @@ type Section = SectionListData<Currency, { title: string }>;
 const CurrencyPickerScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { selected } = useLocalSearchParams<{ selected?: string }>();
+  const { selected, fromModal } = useLocalSearchParams<{
+    selected?: string;
+    fromModal?: string;
+  }>();
   const [search, setSearch] = useState("");
   const setCurrency = usePickerStore((s) => s.setCurrency);
 
@@ -70,7 +73,15 @@ const CurrencyPickerScreen = () => {
   };
 
   return (
-    <View style={[s.container, { paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        s.container,
+        {
+          paddingBottom: insets.bottom,
+          paddingTop: fromModal === "1" ? 0 : insets.top,
+        },
+      ]}
+    >
       <ScreenHeader
         title={t("onboarding.currencySelect.modalTitle")}
         left={<Ionicons name="close" size={24} color={colors.textPrimary} />}

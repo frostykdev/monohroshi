@@ -26,9 +26,11 @@ const updateAccountSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   type: z.string().trim().optional(),
   currency: z.string().trim().optional(),
+  balance: z.string().optional(),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   isPrimary: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
 });
 
 export const getAccountsController = async (

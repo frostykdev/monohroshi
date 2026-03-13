@@ -59,9 +59,11 @@ export type UpdateAccountPayload = {
   name?: string;
   type?: string;
   currency?: string;
+  balance?: string;
   icon?: string | null;
   color?: string | null;
   isPrimary?: boolean;
+  isArchived?: boolean;
 };
 
 export const fetchAccounts = async (

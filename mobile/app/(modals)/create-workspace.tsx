@@ -93,7 +93,9 @@ const CreateWorkspaceScreen = () => {
   const initial = formik.values.name.trim().charAt(0).toUpperCase() || "+";
 
   return (
-    <View style={[s.container, { paddingBottom: insets.bottom }]}>
+    <View
+      style={[s.container, { paddingBottom: insets.bottom, paddingTop: 10 }]}
+    >
       <View style={s.header}>
         <Pressable
           style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
@@ -159,7 +161,7 @@ const CreateWorkspaceScreen = () => {
               style={({ pressed }) => [s.inputRow, pressed && s.pressed]}
               onPress={() =>
                 router.push(
-                  `/(modals)/currency-picker?selected=${formik.values.currency}` as never,
+                  `/(modals)/currency-picker?selected=${formik.values.currency}&fromModal=1` as never,
                 )
               }
             >

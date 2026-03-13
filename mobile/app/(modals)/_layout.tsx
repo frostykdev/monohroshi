@@ -15,6 +15,7 @@ const ModalsLayout = () => {
         />
         <Stack.Screen name="add-category" options={{ presentation: "modal" }} />
         <Stack.Screen name="add-account" options={{ presentation: "modal" }} />
+        <Stack.Screen name="edit-account" options={{ presentation: "modal" }} />
       </Stack>
     </BottomSheetModalProvider>
   );

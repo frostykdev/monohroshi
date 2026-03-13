@@ -21,6 +21,7 @@ import * as Yup from "yup";
 import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
 import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
+import { BalanceInput } from "@components/ui/BalanceInput";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
@@ -112,11 +113,6 @@ const AccountSetupScreen = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
     }
-  };
-
-  const handleBalanceChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.,]/g, "").replace(",", ".");
-    formik.setFieldValue("balance", cleaned);
   };
 
   return (
@@ -265,23 +261,11 @@ const AccountSetupScreen = () => {
 
             <View style={s.separator} />
 
-            <View style={s.settingRow}>
-              <Typography variant="body" color="textSecondary">
-                {t("onboarding.accountSetup.balance")} ({formik.values.currency}
-                )
-              </Typography>
-              <View style={s.balanceInputRow}>
-                <TextInput
-                  style={s.balanceInput}
-                  value={formik.values.balance}
-                  onChangeText={handleBalanceChange}
-                  placeholder={`0.00 ${currencySymbol}`}
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                />
-              </View>
-            </View>
+            <BalanceInput
+              value={formik.values.balance}
+              onChange={(v) => formik.setFieldValue("balance", v)}
+              currency={formik.values.currency}
+            />
           </View>
 
           <View style={s.toggleGroup}>
@@ -402,16 +386,6 @@ const s = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
   } as ViewStyle,
-  balanceInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  } as ViewStyle,
-  balanceInput: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    textAlign: "right",
-    minWidth: 80,
-  } as TextStyle,
   toggleGroup: {
     marginHorizontal: 24,
     marginTop: 16,
