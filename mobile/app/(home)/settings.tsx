@@ -13,11 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getAuth, signOut } from "@react-native-firebase/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
 import type { ParseKeys } from "i18next";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
+import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { deleteAccount } from "@services/users-api";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -124,9 +126,7 @@ const SettingsScreen = () => {
   );
   const resetSetup = useSetupStore((s) => s.reset);
 
-  const user = getAuth().currentUser;
-  const displayName = user?.displayName ?? "User";
-  const initial = displayName.charAt(0).toUpperCase();
+  const workspaceName = useWorkspaceStore((s) => s.name);
 
   const languageLabel =
     i18n.language === "uk"
@@ -183,20 +183,27 @@ const SettingsScreen = () => {
         style={s.pageTitle}
       />
 
-      {/* Profile */}
+      {/* Workspace */}
       <Section>
         <Pressable
           style={({ pressed }) => [s.row, pressed && s.rowPressed]}
-          onPress={handleComingSoon}
+          onPress={() => router.push("/(modals)/workspace-list" as never)}
         >
-          <View style={s.avatar}>
-            <Typography variant="h3" color="textOnAccent">
-              {initial}
-            </Typography>
+          <View style={[s.iconWrap, { backgroundColor: colors.iconBlue }]}>
+            <Ionicons
+              name="business-outline"
+              size={18}
+              color={colors.textPrimary}
+            />
           </View>
-          <Typography variant="label" style={s.rowLabel}>
-            {displayName}
-          </Typography>
+          <View style={s.workspaceLabelWrap}>
+            <Typography variant="label">{workspaceName}</Typography>
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              i18nKey="workspace.details.title"
+            />
+          </View>
           <Ionicons
             name="chevron-forward"
             size={16}
@@ -435,13 +442,9 @@ const s = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 8,
   } as TextStyle,
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.iconBlue,
-    alignItems: "center",
-    justifyContent: "center",
+  workspaceLabelWrap: {
+    flex: 1,
+    gap: 2,
   } as ViewStyle,
   proBanner: {
     flexDirection: "row",

@@ -23,7 +23,47 @@
     "other": "Other"
   },
   "workspace": {
-    "defaultName": "Personal"
+    "defaultName": "Personal",
+    "list": {
+      "title": "Workspaces"
+    },
+    "details": {
+      "title": "Workspace",
+      "generalSection": "GENERAL",
+      "nameLabel": "Name",
+      "namePlaceholder": "Workspace name",
+      "membersSection": "MEMBERS",
+      "inviteSection": "INVITE PEOPLE",
+      "emailPlaceholder": "Email address",
+      "sendInvite": "Send invite",
+      "inviteSent": "Invite sent!",
+      "ownerBadge": "Owner",
+      "memberBadge": "Member",
+      "pendingBadge": "Pending",
+      "cancelInviteConfirmTitle": "Cancel invite",
+      "cancelInviteConfirmMessage": "Remove the pending invite for {{email}}?",
+      "cancelInviteConfirmButton": "Remove",
+      "createNew": "Create new workspace",
+      "memberCount_one": "{{count}} member",
+      "memberCount_other": "{{count}} members",
+      "errors": {
+        "saveTitle": "Couldn't save",
+        "saveMessage": "Something went wrong. Please try again.",
+        "inviteTitle": "Couldn't send invite",
+        "inviteMessage": "Something went wrong. Please try again."
+      }
+    },
+    "create": {
+      "title": "New Workspace",
+      "namePlaceholder": "Workspace name",
+      "createButton": "Create",
+      "errors": {
+        "nameRequired": "Workspace name is required",
+        "nameMin": "Name must be at least {{min}} characters",
+        "createTitle": "Couldn't create workspace",
+        "createMessage": "Something went wrong. Please try again."
+      }
+    }
   },
   "addTransaction": {
     "title": "Add Transaction"

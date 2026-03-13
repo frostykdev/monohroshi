@@ -23,7 +23,47 @@
     "other": "Інше"
   },
   "workspace": {
-    "defaultName": "Особистий"
+    "defaultName": "Особистий",
+    "list": {
+      "title": "Робочі простори"
+    },
+    "details": {
+      "title": "Робочий простір",
+      "generalSection": "ЗАГАЛЬНЕ",
+      "nameLabel": "Назва",
+      "namePlaceholder": "Назва робочого простору",
+      "membersSection": "УЧАСНИКИ",
+      "inviteSection": "ЗАПРОСИТИ ЛЮДЕЙ",
+      "emailPlaceholder": "Електронна пошта",
+      "sendInvite": "Надіслати запрошення",
+      "inviteSent": "Запрошення надіслано!",
+      "ownerBadge": "Власник",
+      "memberBadge": "Учасник",
+      "pendingBadge": "Очікує",
+      "cancelInviteConfirmTitle": "Скасувати запрошення",
+      "cancelInviteConfirmMessage": "Видалити запрошення для {{email}}?",
+      "cancelInviteConfirmButton": "Видалити",
+      "createNew": "Створити новий робочий простір",
+      "memberCount_one": "{{count}} учасник",
+      "memberCount_other": "{{count}} учасники",
+      "errors": {
+        "saveTitle": "Не вдалося зберегти",
+        "saveMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "inviteTitle": "Не вдалося надіслати запрошення",
+        "inviteMessage": "Щось пішло не так. Спробуйте ще раз."
+      }
+    },
+    "create": {
+      "title": "Новий робочий простір",
+      "namePlaceholder": "Назва робочого простору",
+      "createButton": "Створити",
+      "errors": {
+        "nameRequired": "Назва робочого простору обов'язкова",
+        "nameMin": "Назва повинна містити щонайменше {{min}} символи",
+        "createTitle": "Не вдалося створити робочий простір",
+        "createMessage": "Щось пішло не так. Спробуйте ще раз."
+      }
+    }
   },
   "addTransaction": {
     "title": "Додати транзакцію"

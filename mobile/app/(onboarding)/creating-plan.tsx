@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { Alert, StyleSheet, View, ViewStyle } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -12,10 +12,11 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
+import { Button } from "@components/ui/Button";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
@@ -49,6 +50,7 @@ const CreatingPlanScreen = () => {
 
   const navigated = useRef(false);
   const pulse = useSharedValue(1);
+  const navigation = useNavigation();
 
   const {
     quizAnswers,
@@ -119,6 +121,20 @@ const CreatingPlanScreen = () => {
         setError(true);
       }
     }
+  };
+
+  const handleRetry = () => {
+    navigated.current = false;
+    fireApiCall();
+  };
+
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/(onboarding)/welcome");
   };
 
   useEffect(() => {
@@ -207,18 +223,22 @@ const CreatingPlanScreen = () => {
 
         {error && (
           <Animated.View entering={FadeIn.duration(300)}>
-            <Pressable
-              style={({ pressed }) => [s.retryButton, pressed && s.pressed]}
-              onPress={() => {
-                navigated.current = false;
-                fireApiCall();
-              }}
-            >
-              <Ionicons name="refresh" size={18} color={colors.textOnAccent} />
-              <Typography variant="button" color="textOnAccent">
-                {t("common.retry")}
-              </Typography>
-            </Pressable>
+            <View style={s.errorActions}>
+              <Button
+                variant="primary"
+                size="sm"
+                style={s.actionButton}
+                onPress={handleRetry}
+                i18nKey="common.retry"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                style={s.actionButton}
+                onPress={handleGoBack}
+                i18nKey="common.back"
+              />
+            </View>
           </Animated.View>
         )}
       </View>
@@ -295,19 +315,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
-  retryButton: {
+  errorActions: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderCurve: "continuous",
+    gap: 10,
   } as ViewStyle,
-  pressed: {
-    opacity: 0.7,
+  actionButton: {
+    minWidth: 120,
   } as ViewStyle,
 });
 
