@@ -3,6 +3,7 @@
     "ok": "OK",
     "cancel": "Cancel",
     "save": "Save",
+    "edit": "Edit",
     "delete": "Delete",
     "back": "Back",
     "loading": "Loading...",
@@ -12,17 +13,27 @@
   "accounts": {
     "title": "Accounts",
     "add": { "title": "New Account" },
+    "edit": {
+      "title": "Edit Account"
+    },
     "empty": "No accounts yet. Add your first account.",
     "currentBalance": "Current balance",
     "transactionHistory": "Transaction history",
     "searchTransactions": "Search transactions...",
     "noTransactions": "No transactions yet",
+    "archiveAccount": "Archive account",
+    "archiveConfirmTitle": "Archive Account",
+    "archiveConfirmMessage": "\"{{name}}\" will be hidden from your accounts list.",
     "deleteAccount": "Delete account",
     "deleteConfirmTitle": "Delete Account",
     "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
     "errors": {
       "deleteTitle": "Couldn't delete",
-      "deleteMessage": "Something went wrong. Please try again."
+      "deleteMessage": "Something went wrong. Please try again.",
+      "archiveTitle": "Couldn't archive",
+      "archiveMessage": "Something went wrong. Please try again.",
+      "saveTitle": "Couldn't save",
+      "saveMessage": "Something went wrong. Please try again."
     }
   },
   "categories": {

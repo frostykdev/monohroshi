@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,9 +23,7 @@ import { Typography } from "@components/ui/Typography";
 import {
   useAccount,
   useAccountTransactions,
-  useDeleteAccount,
 } from "@services/accounts/accounts.queries";
-import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import type { AccountTransaction } from "@services/accounts/accounts.api";
 
 const haptic = () => {
@@ -159,12 +156,9 @@ const AccountDetailsScreen = () => {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const activeWorkspaceId = useWorkspaceStore((s) => s.id);
   const { data: account, isLoading } = useAccount(id);
   const { data: transactions = [], isLoading: txLoading } =
     useAccountTransactions(id);
-  const { mutate: removeAccount, isPending: deleting } =
-    useDeleteAccount(activeWorkspaceId);
 
   const [txSearch, setTxSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -188,30 +182,6 @@ const AccountDetailsScreen = () => {
   }, [transactions, txSearch]);
 
   const grouped = groupByDate(filteredTx);
-
-  const handleDelete = () => {
-    if (!id) return;
-    Alert.alert(
-      t("accounts.deleteConfirmTitle"),
-      t("accounts.deleteConfirmMessage", { name: account?.name ?? "" }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.delete"),
-          style: "destructive",
-          onPress: () =>
-            removeAccount(id, {
-              onSuccess: () => router.back(),
-              onError: () =>
-                Alert.alert(
-                  t("accounts.errors.deleteTitle"),
-                  t("accounts.errors.deleteMessage"),
-                ),
-            }),
-        },
-      ],
-    );
-  };
 
   if (isLoading || !account) {
     return (
@@ -246,7 +216,7 @@ const AccountDetailsScreen = () => {
             }}
             hitSlop={8}
           >
-            <Typography variant="label">{t("common.edit" as never)}</Typography>
+            <Typography variant="label">{t("common.edit")}</Typography>
           </Pressable>
         </View>
 
@@ -339,21 +309,6 @@ const AccountDetailsScreen = () => {
             </View>
           ))
         )}
-
-        <Pressable
-          style={({ pressed }) => [
-            s.deleteButton,
-            pressed && s.pressed,
-            deleting && s.pressed,
-          ]}
-          onPress={handleDelete}
-          disabled={deleting}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.error} />
-          <Typography variant="body" color="error">
-            {t("accounts.deleteAccount")}
-          </Typography>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -456,14 +411,6 @@ const s = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginLeft: 66,
-  } as ViewStyle,
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    marginTop: 8,
   } as ViewStyle,
 });
 

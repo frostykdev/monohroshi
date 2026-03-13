@@ -39,12 +39,8 @@ const WorkspaceListScreen = () => {
   useEffect(() => {
     if (data) {
       setWorkspaces(data);
-      if (data.length === 1) {
-        setWorkspace(data[0].id, data[0].name);
-        router.replace("/settings/workspace-details" as never);
-      }
     }
-  }, [data, setWorkspaces, setWorkspace]);
+  }, [data, setWorkspaces]);
 
   const workspaces = data ?? cachedWorkspaces;
 

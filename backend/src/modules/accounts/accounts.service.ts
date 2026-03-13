@@ -122,9 +122,11 @@ export const updateAccountForUser = async (
     name?: string;
     type?: string;
     currency?: string;
+    balance?: string;
     icon?: string;
     color?: string;
     isPrimary?: boolean;
+    isArchived?: boolean;
   },
 ) => {
   const user = await getUser(firebaseUid);
@@ -136,9 +138,11 @@ export const updateAccountForUser = async (
       ...(data.name !== undefined && { name: data.name }),
       ...(data.type !== undefined && { type: data.type }),
       ...(data.currency !== undefined && { currency: data.currency }),
+      ...(data.balance !== undefined && { balance: data.balance }),
       ...(data.icon !== undefined && { icon: data.icon }),
       ...(data.color !== undefined && { color: data.color }),
       ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
+      ...(data.isArchived !== undefined && { isArchived: data.isArchived }),
     },
     select: accountSelect,
   });
@@ -150,10 +154,7 @@ export const deleteAccountForUser = async (
 ) => {
   const user = await getUser(firebaseUid);
   await verifyAccountAccess(user.id, accountId);
-  await prisma.account.update({
-    where: { id: accountId },
-    data: { isArchived: true },
-  });
+  await prisma.account.delete({ where: { id: accountId } });
 };
 
 export const getTransactionsForAccount = async (

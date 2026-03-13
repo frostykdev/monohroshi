@@ -30,7 +30,7 @@ import {
   useUpdateWorkspace,
   useWorkspace,
 } from "@services/workspaces/workspaces.queries";
-import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
+import { getCurrencySymbol } from "@constants/account-types";
 import type {
   WorkspaceInvitation,
   WorkspaceMember,
@@ -302,7 +302,9 @@ const WorkspaceDetailsScreen = () => {
                 style={s.currencyValue}
                 numberOfLines={1}
               >
-                {`${currencyFlag(currency)} ${getCurrencyByCode(currency)?.name ?? currency}`}
+                {getCurrencySymbol(currency) !== currency
+                  ? `${currency} (${getCurrencySymbol(currency)})`
+                  : currency}
               </Typography>
               <Ionicons
                 name="chevron-forward"
@@ -422,22 +424,6 @@ const WorkspaceDetailsScreen = () => {
           />
 
           <View style={s.divider} />
-
-          {workspaceCount <= 1 && (
-            <Pressable
-              style={({ pressed }) => [s.createButton, pressed && s.pressed]}
-              onPress={() => router.push("/(modals)/create-workspace" as never)}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={colors.accent}
-              />
-              <Typography variant="body" color="accent">
-                {t("workspace.details.createNew")}
-              </Typography>
-            </Pressable>
-          )}
 
           {isOwner && workspaceCount > 1 && (
             <Pressable
@@ -701,13 +687,6 @@ const s = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginBottom: 20,
-  } as ViewStyle,
-  createButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
   } as ViewStyle,
   deleteButton: {
     flexDirection: "row",

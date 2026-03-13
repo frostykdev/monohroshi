@@ -1,5 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -27,48 +28,59 @@ import { DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import { useCreateAccount } from "@services/accounts/accounts.queries";
+import {
+  useAccount,
+  useDeleteAccount,
+  useUpdateAccount,
+} from "@services/accounts/accounts.queries";
 
-const MIN_NAME_LENGTH = 1;
+const haptic = () => {
+  if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
+};
 
-const AddAccountScreen = () => {
+const EditAccountScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { workspaceId: paramWsId } = useLocalSearchParams<{
-    workspaceId?: string;
-  }>();
-  const activeWorkspaceId = useWorkspaceStore((s) => s.id);
-  const workspaceId = paramWsId ?? activeWorkspaceId;
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { mutate: createAccount, isPending: saving } =
-    useCreateAccount(workspaceId);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const { data: account } = useAccount(id);
+  const { mutate: updateAccount, isPending: saving } =
+    useUpdateAccount(activeWorkspaceId);
+  const { mutate: deleteAccount, isPending: deleting } =
+    useDeleteAccount(activeWorkspaceId);
+
+  const cfg = getAccountTypeConfig(account?.type ?? "bank_account");
 
   const validationSchema = Yup.object({
     name: Yup.string()
       .trim()
       .required(t("onboarding.accountSetup.errors.nameRequired"))
-      .min(MIN_NAME_LENGTH, t("onboarding.accountSetup.errors.nameRequired")),
+      .min(1, t("onboarding.accountSetup.errors.nameRequired")),
   });
 
   const formik = useFormik({
     initialValues: {
-      name: "",
-      accountType: "bank_account",
-      currency: "USD",
-      balance: "",
-      isPrimary: false,
-      icon: getAccountTypeConfig("bank_account").icon as string,
-      iconColor: getAccountTypeConfig("bank_account").color,
+      name: account?.name ?? "",
+      accountType: account?.type ?? "bank_account",
+      currency: account?.currency ?? "USD",
+      balance: account?.balance ?? "0",
+      isPrimary: account?.isPrimary ?? false,
+      icon: account?.icon ?? cfg.icon,
+      iconColor: account?.color ?? cfg.color,
     },
+    enableReinitialize: true,
     validationSchema,
     validateOnChange: false,
     validateOnBlur: false,
     onSubmit: (values) => {
+      if (!id) return;
       if (process.env.EXPO_OS === "ios") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      createAccount(
+      updateAccount(
         {
+          id,
           name: values.name.trim(),
           type: values.accountType,
           currency: values.currency,
@@ -76,9 +88,15 @@ const AddAccountScreen = () => {
           isPrimary: values.isPrimary,
           icon: values.icon,
           color: values.iconColor,
-          workspaceId: workspaceId ?? undefined,
         },
-        { onSuccess: () => router.back() },
+        {
+          onSuccess: () => router.back(),
+          onError: () =>
+            Alert.alert(
+              t("accounts.errors.saveTitle"),
+              t("accounts.errors.saveMessage"),
+            ),
+        },
       );
     },
   });
@@ -90,11 +108,10 @@ const AddAccountScreen = () => {
     useCallback(() => {
       const store = usePickerStore.getState();
       if (store.accountType) {
-        const cfg = getAccountTypeConfig(store.accountType);
+        const typeCfg = getAccountTypeConfig(store.accountType);
         formikRef.current.setFieldValue("accountType", store.accountType);
-        // Update icon/color to match type if user hasn't customised
-        formikRef.current.setFieldValue("icon", cfg.icon);
-        formikRef.current.setFieldValue("iconColor", cfg.color);
+        formikRef.current.setFieldValue("icon", typeCfg.icon);
+        formikRef.current.setFieldValue("iconColor", typeCfg.color);
         usePickerStore.setState({ accountType: null });
       }
       if (store.currency) {
@@ -112,15 +129,81 @@ const AddAccountScreen = () => {
     }, []),
   );
 
-  const haptic = () => {
-    if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
-  };
+  // Sync once account data loads (before user touches anything)
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (account && !initialized.current) {
+      initialized.current = true;
+      formik.resetForm({
+        values: {
+          name: account.name,
+          accountType: account.type,
+          currency: account.currency,
+          balance: account.balance,
+          isPrimary: account.isPrimary,
+          icon: account.icon ?? getAccountTypeConfig(account.type).icon,
+          iconColor: account.color ?? getAccountTypeConfig(account.type).color,
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
 
   const currencySymbol = getCurrencySymbol(formik.values.currency);
   const nameError =
     formik.submitCount > 0 && formik.errors.name
       ? formik.errors.name
       : undefined;
+
+  const handleArchive = () => {
+    if (!id) return;
+    Alert.alert(
+      t("accounts.archiveConfirmTitle"),
+      t("accounts.archiveConfirmMessage", { name: account?.name ?? "" }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("accounts.archiveAccount"),
+          onPress: () =>
+            updateAccount(
+              { id, isArchived: true },
+              {
+                onSuccess: () => router.back(),
+                onError: () =>
+                  Alert.alert(
+                    t("accounts.errors.archiveTitle"),
+                    t("accounts.errors.archiveMessage"),
+                  ),
+              },
+            ),
+        },
+      ],
+    );
+  };
+
+  const handleDelete = () => {
+    if (!id) return;
+    Alert.alert(
+      t("accounts.deleteConfirmTitle"),
+      t("accounts.deleteConfirmMessage", { name: account?.name ?? "" }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () =>
+            deleteAccount(id, {
+              onSuccess: () => router.navigate("/accounts" as never),
+              onError: () =>
+                Alert.alert(
+                  t("accounts.errors.deleteTitle"),
+                  t("accounts.errors.deleteMessage"),
+                ),
+            }),
+        },
+      ],
+    );
+  };
 
   return (
     <View
@@ -137,7 +220,7 @@ const AddAccountScreen = () => {
         >
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </Pressable>
-        <Typography variant="label" i18nKey="accounts.add.title" />
+        <Typography variant="label" i18nKey="accounts.edit.title" />
         <Pressable
           style={({ pressed }) => [
             s.saveButton,
@@ -173,7 +256,7 @@ const AddAccountScreen = () => {
             onPress={() => {
               haptic();
               router.push(
-                `/(modals)/icon-picker?selectedIcon=${encodeURIComponent(formik.values.icon)}&selectedColor=${encodeURIComponent(formik.values.iconColor)}`,
+                `/(modals)/icon-picker?selectedIcon=${encodeURIComponent(formik.values.icon as string)}&selectedColor=${encodeURIComponent(formik.values.iconColor)}`,
               );
             }}
           >
@@ -212,7 +295,6 @@ const AddAccountScreen = () => {
                 if (nameError) formik.setFieldError("name", undefined);
               }}
               autoCorrect={false}
-              autoFocus
               returnKeyType="done"
             />
           </View>
@@ -309,7 +391,9 @@ const AddAccountScreen = () => {
               </Typography>
               <Switch
                 value={formik.values.isPrimary}
-                onValueChange={(v) => formik.setFieldValue("isPrimary", v)}
+                onValueChange={(v) => {
+                  formik.setFieldValue("isPrimary", v);
+                }}
                 trackColor={{
                   false: colors.backgroundSurface,
                   true: colors.accent,
@@ -317,6 +401,40 @@ const AddAccountScreen = () => {
                 ios_backgroundColor={colors.backgroundSurface}
               />
             </View>
+          </View>
+
+          {/* Destructive actions */}
+          <View style={s.actionsGroup}>
+            <Pressable
+              style={({ pressed }) => [s.actionRow, pressed && s.pressed]}
+              onPress={handleArchive}
+            >
+              <Ionicons
+                name="archive-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Typography variant="body" color="textSecondary">
+                {t("accounts.archiveAccount")}
+              </Typography>
+            </Pressable>
+
+            <View style={s.separator} />
+
+            <Pressable
+              style={({ pressed }) => [
+                s.actionRow,
+                pressed && s.pressed,
+                deleting && s.pressed,
+              ]}
+              onPress={handleDelete}
+              disabled={deleting}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
+              <Typography variant="body" color="error">
+                {t("accounts.deleteAccount")}
+              </Typography>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -398,10 +516,34 @@ const s = StyleSheet.create({
     borderCurve: "continuous",
     overflow: "hidden",
   } as ViewStyle,
+  toggleGroup: {
+    marginHorizontal: 24,
+    marginTop: 12,
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    overflow: "hidden",
+  } as ViewStyle,
+  actionsGroup: {
+    marginHorizontal: 24,
+    marginTop: 12,
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    overflow: "hidden",
+  } as ViewStyle,
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 52,
+  } as ViewStyle,
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     minHeight: 52,
@@ -422,14 +564,6 @@ const s = StyleSheet.create({
     textAlign: "right",
     minWidth: 100,
   } as TextStyle,
-  toggleGroup: {
-    marginHorizontal: 24,
-    marginTop: 12,
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    overflow: "hidden",
-  } as ViewStyle,
 });
 
-export default AddAccountScreen;
+export default EditAccountScreen;
