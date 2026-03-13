@@ -120,7 +120,7 @@ const WorkspaceDetailsScreen = () => {
             doDeleteWorkspace(idToDelete, {
               onSuccess: () => {
                 removeWorkspace(idToDelete);
-                router.dismissAll();
+                router.back();
               },
               onError: (err) => {
                 const isLastWorkspace =
@@ -189,11 +189,11 @@ const WorkspaceDetailsScreen = () => {
     >
       <View style={s.header}>
         <Pressable
-          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.backButton, pressed && s.pressed]}
           onPress={() => router.back()}
           hitSlop={8}
         >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Typography variant="label" i18nKey="workspace.details.title" />
         <Pressable
@@ -564,7 +564,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
   } as ViewStyle,
-  closeButton: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

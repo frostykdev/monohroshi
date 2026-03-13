@@ -189,7 +189,7 @@ const SettingsScreen = () => {
       <Section>
         <Pressable
           style={({ pressed }) => [s.row, pressed && s.rowPressed]}
-          onPress={() => router.push("/(modals)/workspace-list" as never)}
+          onPress={() => router.push("/settings/workspace-list" as never)}
         >
           <View style={[s.iconWrap, { backgroundColor: colors.iconBlue }]}>
             <Ionicons
@@ -267,13 +267,13 @@ const SettingsScreen = () => {
           iconBg={colors.warning}
           labelKey="home.settings.categories"
           value={String(categoriesCount)}
-          onPress={() => router.push("/(modals)/categories" as never)}
+          onPress={() => router.push("/settings/categories" as never)}
         />
         <Row
           icon="wallet-outline"
           iconBg={colors.iconPurple}
           labelKey="home.settings.accounts"
-          onPress={() => router.push("/(modals)/accounts" as never)}
+          onPress={() => router.push("/settings/accounts" as never)}
         />
         <Row
           icon="repeat-outline"

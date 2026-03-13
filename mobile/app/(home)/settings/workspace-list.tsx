@@ -39,17 +39,15 @@ const WorkspaceListScreen = () => {
   useEffect(() => {
     if (data) {
       setWorkspaces(data);
-      // If only one workspace, skip the list and go straight to details
       if (data.length === 1) {
         setWorkspace(data[0].id, data[0].name);
-        router.replace("/(modals)/workspace-details" as never);
+        router.replace("/settings/workspace-details" as never);
       }
     }
   }, [data, setWorkspaces, setWorkspace]);
 
   const workspaces = data ?? cachedWorkspaces;
 
-  // While loading and we have nothing cached yet, show a spinner
   if (isLoading && workspaces.length === 0) {
     return (
       <View
@@ -65,7 +63,7 @@ const WorkspaceListScreen = () => {
   }
 
   const openDetails = (workspaceId: string) => {
-    router.push(`/(modals)/workspace-details?id=${workspaceId}` as never);
+    router.push(`/settings/workspace-details?id=${workspaceId}` as never);
   };
 
   const selectActive = (workspace: WorkspaceSummary) => {
@@ -81,11 +79,11 @@ const WorkspaceListScreen = () => {
     >
       <View style={s.header}>
         <Pressable
-          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.backButton, pressed && s.pressed]}
           onPress={() => router.back()}
           hitSlop={8}
         >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Typography variant="label" i18nKey="workspace.list.title" />
         <View style={s.placeholder} />
@@ -191,7 +189,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
   } as ViewStyle,
-  closeButton: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,

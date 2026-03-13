@@ -225,7 +225,6 @@ const AccountDetailsScreen = () => {
 
   return (
     <View style={[s.container, { paddingBottom: insets.bottom }]}>
-      {/* Coloured header */}
       <View style={[s.headerArea, { paddingTop: insets.top + 8 }]}>
         <View style={s.headerButtons}>
           <Pressable
@@ -269,7 +268,6 @@ const AccountDetailsScreen = () => {
         </View>
       </View>
 
-      {/* Transaction history label + search toggle */}
       <View style={s.historySection}>
         <View style={s.historyHeader}>
           <Typography variant="label">
