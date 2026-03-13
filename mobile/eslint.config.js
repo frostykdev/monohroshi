@@ -7,6 +7,17 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ["dist/*", ".expo", "node_modules"],
+    settings: {
+      "import/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          project: "./tsconfig.json",
+        },
+        node: true,
+      },
+    },
+  },
+  {
+    ignores: ["dist/*", ".expo", "node_modules", "../.cursor"],
   },
 ]);

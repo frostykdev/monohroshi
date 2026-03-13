@@ -1,0 +1,417 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Скасувати",
+    "save": "Зберегти",
+    "delete": "Видалити",
+    "back": "Назад",
+    "loading": "Завантаження...",
+    "continue": "Продовжити",
+    "retry": "Повторити"
+  },
+  "accounts": {
+    "title": "Рахунки",
+    "add": { "title": "Новий рахунок" },
+    "empty": "Рахунків ще немає. Додайте перший рахунок.",
+    "currentBalance": "Поточний баланс",
+    "transactionHistory": "Історія транзакцій",
+    "searchTransactions": "Пошук транзакцій...",
+    "noTransactions": "Транзакцій поки немає",
+    "deleteAccount": "Видалити рахунок",
+    "deleteConfirmTitle": "Видалити рахунок",
+    "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"? Цю дію неможливо скасувати.",
+    "errors": {
+      "deleteTitle": "Не вдалося видалити",
+      "deleteMessage": "Щось пішло не так. Спробуйте ще раз."
+    }
+  },
+  "categories": {
+    "actions": {
+      "edit": "Редагувати",
+      "showTransactions": "Показати транзакції",
+      "delete": "Видалити"
+    }
+  },
+  "icons": {
+    "financial": "Фінанси",
+    "leisure": "Дозвілля",
+    "education": "Освіта",
+    "health": "Здоров'я",
+    "petsAndKids": "Тварини та діти",
+    "transport": "Транспорт і подорожі",
+    "food": "Їжа та напої",
+    "digital": "Цифрове",
+    "home": "Дім",
+    "bills": "Рахунки",
+    "other": "Інше"
+  },
+  "workspace": {
+    "defaultName": "Особистий",
+    "list": {
+      "title": "Робочі простори"
+    },
+    "details": {
+      "title": "Робочий простір",
+      "generalSection": "ЗАГАЛЬНЕ",
+      "nameLabel": "Назва",
+      "namePlaceholder": "Назва робочого простору",
+      "currencyLabel": "Валюта",
+      "membersSection": "УЧАСНИКИ",
+      "inviteSection": "ЗАПРОСИТИ ЛЮДЕЙ",
+      "emailPlaceholder": "Електронна пошта",
+      "sendInvite": "Надіслати запрошення",
+      "inviteSent": "Запрошення надіслано!",
+      "ownerBadge": "Власник",
+      "memberBadge": "Учасник",
+      "pendingBadge": "Очікує",
+      "cancelInviteConfirmTitle": "Скасувати запрошення",
+      "cancelInviteConfirmMessage": "Видалити запрошення для {{email}}?",
+      "cancelInviteConfirmButton": "Видалити",
+      "createNew": "Створити новий робочий простір",
+      "deleteWorkspace": "Видалити робочий простір",
+      "deleteConfirmTitle": "Видалити робочий простір",
+      "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"? Цю дію не можна скасувати.",
+      "deleteConfirmButton": "Видалити",
+      "memberCount_one": "{{count}} учасник",
+      "memberCount_other": "{{count}} учасники",
+      "errors": {
+        "saveTitle": "Не вдалося зберегти",
+        "saveMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "inviteTitle": "Не вдалося надіслати запрошення",
+        "inviteMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "deleteTitle": "Не вдалося видалити",
+        "deleteMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "deleteLastMessage": "Не можна видалити єдиний робочий простір."
+      }
+    },
+    "create": {
+      "title": "Новий робочий простір",
+      "namePlaceholder": "Назва робочого простору",
+      "createButton": "Створити",
+      "errors": {
+        "nameRequired": "Назва робочого простору обов'язкова",
+        "nameMin": "Назва повинна містити щонайменше {{min}} символи",
+        "createTitle": "Не вдалося створити робочий простір",
+        "createMessage": "Щось пішло не так. Спробуйте ще раз."
+      }
+    }
+  },
+  "addTransaction": {
+    "title": "Додати транзакцію"
+  },
+  "home": {
+    "tabs": {
+      "home": "Головна",
+      "accounts": "Рахунки",
+      "analytics": "Аналітика",
+      "settings": "Налаштування"
+    },
+    "deleteAccount": {
+      "button": "Видалити акаунт",
+      "confirmTitle": "Видалити акаунт",
+      "confirmMessage": "Це назавжди видалить ваш акаунт і всі пов'язані дані, включно з просторами, рахунками, категоріями та транзакціями. Цю дію неможливо скасувати.",
+      "confirmButton": "Видалити",
+      "errorTitle": "Не вдалося видалити акаунт",
+      "errorMessage": "Щось пішло не так. Спробуйте ще раз."
+    },
+    "settings": {
+      "upgradePro": "Перейти на Monohroshi Pro",
+      "upgradeProSubtitle": "Розумійте свої гроші. Приймайте кращі рішення.",
+      "importData": "Імпорт даних",
+      "exportData": "Експорт даних",
+      "rateApp": "Оцінити Monohroshi",
+      "categories": "Категорії",
+      "accounts": "Рахунки",
+      "recurringTransactions": "Повторювані транзакції",
+      "budgets": "Бюджети",
+      "showIncome": "Показувати доходи",
+      "transactionCurrency": "Валюта транзакцій",
+      "darkMode": "Темний режим",
+      "language": "Мова",
+      "languageEn": "Англійська",
+      "languageUk": "Українська",
+      "dailyReminder": "Щоденне нагадування",
+      "dailyReminderHint": "Отримуйте нагадування щодня о 20:00, щоб не забути записати свої витрати.",
+      "sendFeedback": "Надіслати відгук",
+      "shareWithFriends": "Поділитися з друзями",
+      "whatsNext": "Що далі?",
+      "faq": "Часті запитання",
+      "localBackup": "Локальна копія",
+      "localBackupHint": "Ваші дані зберігаються лише на цьому пристрої. Ми рекомендуємо робити регулярні резервні копії, щоб не втратити інформацію при зміні телефону або видаленні програми.",
+      "resetData": "Скинути дані",
+      "termsOfUse": "Умови використання",
+      "privacyPolicy": "Політика конфіденційності",
+      "version": "Версія",
+      "footer": "Зроблено з ❤ від @gonahmias"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Ваші гроші під контролем",
+      "subtitle": "Управляйте витратами, доходами та картками в одному місці.",
+      "getStarted": "Розпочати",
+      "login": "Вже маю акаунт"
+    },
+    "quiz": {
+      "financialFeeling": {
+        "question": "Як ви ставитесь до своїх фінансів сьогодні?",
+        "stressed": "Стрес, хочу сховатися",
+        "unsure": "Невпевнений — мало напрямку",
+        "stable": "Стабільно — без пожеж",
+        "confident": "Впевнений — готовий до TED-виступу"
+      },
+      "spendingOn": {
+        "question": "На кого ви витрачаєте гроші?",
+        "myself": "На себе",
+        "partner": "На партнера",
+        "otherAdults": "На інших дорослих",
+        "kids": "На дітей",
+        "pets": "На тварин",
+        "other": "Інше"
+      },
+      "savingFor": {
+        "question": "Ви заощаджуєте або плануєте на щось із цього?",
+        "emergencyFund": "Резервний фонд",
+        "retirement": "Пенсія",
+        "investments": "Інвестиції",
+        "newHome": "Нове житло",
+        "newCar": "Нове авто",
+        "vacation": "Відпустка",
+        "other": "Інше"
+      },
+      "habitEase": {
+        "question": "Наскільки легко вам дотримуватися нових звичок?",
+        "habitPro": "Я профі у звичках",
+        "strongStart": "Починаю сильно, але зупиняюся",
+        "needReminders": "Нагадування дуже допомагають",
+        "whatHabits": "Нові звички? Що це таке?"
+      },
+      "goal": {
+        "question": "Яка ваша головна мета в Monohroshi?",
+        "control": "Тримати фінанси під контролем",
+        "invest": "Заощаджувати та інвестувати регулярно",
+        "habits": "Покращити витратні звички",
+        "bigPurchase": "Планувати велику одноразову покупку",
+        "temporaryBudget": "Керувати тимчасовим бюджетом (відпустка, весілля тощо)",
+        "somethingElse": "Щось інше"
+      },
+      "whyWeAsk": {
+        "title": "Навіщо ми питаємо",
+        "subtitle": "Ваші відповіді залишаються приватними та допомагають зробити Monohroshi справді корисним для вас.",
+        "personalization": {
+          "title": "Персоналізований досвід",
+          "description": "Ми налаштовуємо бюджети, категорії та цілі під вашу ситуацію з першого дня."
+        },
+        "aiInsights": {
+          "title": "Розумніші AI-підказки",
+          "description": "Наш AI знаходить патерни у ваших фінансах і надає поради, які мають сенс саме для вас."
+        },
+        "recommendations": {
+          "title": "Кращі рекомендації",
+          "description": "Цілі заощадження, ліміти витрат та звички — все підібрано на основі того, що ви нам розповіли."
+        },
+        "privacy": {
+          "title": "Приватність і безпека",
+          "description": "Ваші відповіді зберігаються надійно і ніколи не передаються третім особам."
+        }
+      },
+      "notifications": {
+        "title": "Користувачі, які вмикають нагадування, вдвічі більш послідовні",
+        "subtitle": "Monohroshi допомагає вам формувати фінансові звички, нагадуючи перевіряти прогрес та залишатися в курсі — лише кілька секунд на тиждень.",
+        "enable": "Увімкнути сповіщення",
+        "skip": "Пропустити"
+      },
+      "socialProof": {
+        "chartTitle": "Зростання заощаджень",
+        "chartLabel": "Без Monohroshi",
+        "chartAxisStart": "Місяць 1",
+        "chartAxisEnd": "Місяць 6",
+        "title": "85% користувачів досягають своєї мети з Monohroshi",
+        "subtitle": "Чи то контроль фінансів, покращення звичок витрачання, чи заощадження на відпустку — Monohroshi тут для вас."
+      }
+    },
+    "auth": {
+      "signup": {
+        "title": "Ласкаво просимо до Monohroshi",
+        "subtitle": "Увійдіть, щоб синхронізувати дані та отримати персоналізовані поради.",
+        "withApple": "Продовжити з Apple",
+        "withGoogle": "Продовжити з Google"
+      },
+      "signin": {
+        "title": "З поверненням",
+        "subtitle": "Увійдіть, щоб продовжити з того місця, де зупинилися.",
+        "withApple": "Увійти з Apple",
+        "withGoogle": "Увійти з Google"
+      },
+      "errors": {
+        "signInFailedTitle": "Не вдалося увійти",
+        "signInFailedSubtitle": "Щось пішло не так. Спробуйте ще раз.",
+        "accountNotFoundTitle": "Акаунт не знайдено",
+        "accountNotFoundSubtitle": "У вас ще немає акаунта. Спочатку пройдіть онбординг."
+      },
+      "agreementPrefix": "Використовуючи Monohroshi, ви погоджуєтесь з нашими",
+      "agreementAnd": "та",
+      "termsOfUse": "Умовами використання",
+      "privacyPolicy": "Політикою конфіденційності"
+    },
+    "paywall": {
+      "skip": "Пропустити",
+      "title": "Розблокуйте Monohroshi Pro",
+      "subtitle": "Все необхідне для контролю над фінансами",
+      "features": {
+        "aiAssistant": "Фінансовий ШІ-асистент",
+        "unlimitedAccounts": "Необмежена кількість рахунків і гаманців",
+        "familySharing": "Сімейний доступ (до 5 учасників)",
+        "analytics": "Розширена аналітика та статистика",
+        "budgetPlanner": "Розумний планувальник бюджету й повторюваних витрат"
+      },
+      "featuresStyled": {
+        "aiAssistant": {
+          "bold": "Фінансовий ШІ",
+          "rest": "асистент"
+        },
+        "unlimitedAccounts": {
+          "bold": "Необмежена кількість",
+          "rest": "рахунків і гаманців"
+        },
+        "familySharing": {
+          "bold": "Сімейний доступ",
+          "rest": "(до 5 учасників)"
+        },
+        "analytics": {
+          "bold": "Розширена",
+          "rest": "аналітика та статистика"
+        },
+        "budgetPlanner": {
+          "bold": "Розумний планувальник",
+          "rest": "бюджету й повторюваних витрат"
+        }
+      },
+      "socialProof": {
+        "rating": "4.8",
+        "ratingLabel": "App Store",
+        "rank": "Топ 10",
+        "rankLabel": "Фінанси",
+        "free": "Безкоштовно",
+        "freeLabel": "для старту"
+      },
+      "plans": {
+        "monthly": "Місяць",
+        "yearly": "Рік",
+        "lifetime": "Назавжди",
+        "perMonth": "/міс",
+        "oneTime": "разово",
+        "bestValue": "Найвигідніше",
+        "save": "Знижка {{percent}}%",
+        "perMonthBilled": "{{price}}/міс"
+      },
+      "disclaimer": "Скасуйте будь-коли. Без прихованих платежів.",
+      "cta": {
+        "getPro": "Отримати Monohroshi Pro",
+        "processing": "Обробка..."
+      },
+      "restorePurchases": "Відновити покупки",
+      "manageSubscription": "Керувати підпискою",
+      "loadingPlans": "Завантаження планів...",
+      "errors": {
+        "purchaseTitle": "Помилка покупки",
+        "restoreNotFound": "Попередніх покупок не знайдено.",
+        "restoreSuccess": "Ваші покупки успішно відновлено!"
+      }
+    },
+    "creatingPlan": {
+      "title": "Створюємо ваш план...",
+      "doneTitle": "Ваш план готовий!",
+      "errorTitle": "Щось пішло не так",
+      "subtitle": "Персоналізуємо Monohroshi на основі ваших відповідей.",
+      "steps": {
+        "goals": "Аналізуємо ваші фінансові цілі",
+        "categories": "Налаштовуємо категорії витрат",
+        "insights": "Готуємо персоналізовані підказки"
+      },
+      "alreadyRegisteredTitle": "Акаунт вже існує",
+      "alreadyRegisteredSubtitle": "Цей акаунт вже зареєстрований. Ви будете переміщені до свого існуючого простору."
+    },
+    "home": {
+      "setup": {
+        "title": "Налаштуйте свій простір",
+        "subtitle": "Виконайте кілька кроків, щоб отримати максимум від Monohroshi.",
+        "optionalBadge": "Необов'язково",
+        "finishButton": "Завершити налаштування",
+        "errors": {
+          "saveFailedTitle": "Не вдалося завершити налаштування",
+          "saveFailedSubtitle": "Не вдалося зберегти дані онбордингу. Спробуйте ще раз."
+        },
+        "steps": {
+          "currency": {
+            "title": "Основна валюта",
+            "subtitle": "Використовується для підсумків і звітів по всіх рахунках."
+          },
+          "account": {
+            "title": "Додати перший рахунок",
+            "subtitle": "Готівка, банківська картка або будь-який гаманець."
+          },
+          "categories": {
+            "title": "Налаштувати категорії",
+            "subtitle": "Організуйте категорії витрат та доходів."
+          },
+          "notifications": {
+            "title": "Увімкнути сповіщення",
+            "subtitle": "Отримуйте нагадування записувати витрати."
+          }
+        }
+      }
+    },
+    "accountSetup": {
+      "title": "Новий рахунок",
+      "save": "Зберегти",
+      "namePlaceholder": "Введіть назву рахунку",
+      "accountType": "Тип рахунку",
+      "currency": "Валюта",
+      "balance": "Баланс",
+      "markAsPrimary": "Позначити як основний рахунок",
+      "selectType": "Оберіть тип рахунку",
+      "types": {
+        "bank_account": "Банківські рахунки",
+        "cash": "Готівка",
+        "stocks_crypto": "Акції та криптовалюта",
+        "property": "Нерухомість",
+        "vehicles": "Транспорт",
+        "other_assets": "Інші активи",
+        "credit": "Кредит",
+        "loan": "Позика"
+      },
+      "chooseIcon": "Обрати іконку",
+      "errors": {
+        "nameRequired": "Назва рахунку обов'язкова",
+        "nameMin": "Назва має містити щонайменше {{min}} символів"
+      }
+    },
+    "categoriesSetup": {
+      "title": "Категорії",
+      "expenseTab": "Категорії витрат",
+      "incomeTab": "Категорії доходів",
+      "addTitle": "Нова категорія",
+      "editTitle": "Редагувати категорію",
+      "addPlaceholder": "Назва категорії",
+      "addButton": "Додати",
+      "generalSection": "Загальне",
+      "errors": {
+        "nameRequired": "Назва категорії обов'язкова",
+        "nameMin": "Назва має містити щонайменше {{min}} символи",
+        "deleteFailed": "Не вдалося видалити категорію. Спробуйте ще раз."
+      },
+      "deleteConfirmTitle": "Видалити категорію",
+      "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"?",
+      "systemCategoryNote": "Системні категорії не можна видалити"
+    },
+    "currencySelect": {
+      "title": "Оберіть основну валюту для звітів",
+      "subtitle": "Якщо ви витрачаєте, заробляєте або зберігаєте гроші в різних валютах, ми показуватимемо суму у вашій основній валюті.",
+      "modalTitle": "Виберіть валюту",
+      "search": "Пошук",
+      "suggested": "Пропоновані",
+      "allCurrencies": "Всі валюти"
+    }
+  }
+}

@@ -1,0 +1,270 @@
+---
+description: UI conventions for the mobile Expo app — styling, colors, i18n, and component reuse
+globs: mobile/**/*.tsx
+alwaysApply: false
+---
+
+# Mobile UI Conventions
+
+## 1. Always Use Path Aliases for Imports
+
+Never use relative paths that traverse directories (`../`, `../../`). Use the configured aliases from `tsconfig.json`:
+
+| Alias           | Resolves to         |
+| --------------- | ------------------- |
+| `@components/*` | `src/components/*`  |
+| `@constants/*`  | `src/constants/*`   |
+| `@stores/*`     | `src/stores/*`      |
+| `@i18n`         | `src/i18n/index.ts` |
+| `@i18n/*`       | `src/i18n/*`        |
+
+```tsx
+// ❌ BAD
+import { Button } from "../../src/components/ui/Button";
+
+// ✅ GOOD
+import { Button } from "@components/ui/Button";
+```
+
+Same-folder imports (e.g. sibling files) may use `./` relative paths.
+
+## 2. No Inline Styles — Always Use `StyleSheet.create`
+
+```tsx
+// ❌ BAD
+<View style={{ flex: 1, padding: 16 }}>
+
+// ✅ GOOD
+const s = StyleSheet.create({ container: { flex: 1, padding: 16 } });
+<View style={s.container}>
+```
+
+Dynamic styles (e.g. from `pressed` state) are the only exception — keep them minimal.
+
+## 3. Colors Come From `colors` Constant
+
+All colors must come from `mobile/src/constants/colors.ts`. Never use raw hex or rgba strings.
+
+```tsx
+// ❌ BAD
+style={{ color: "#FFFFFF", backgroundColor: "#1B1F2E" }}
+
+// ✅ GOOD
+import { colors } from "@constants/colors";
+style={{ color: colors.textPrimary, backgroundColor: colors.background }}
+```
+
+When adding new colors, add them to `colors.ts` first.
+
+## 4. Never Put `t` in Hook Dependency Arrays
+
+`t` from `useTranslation()` is a stable reference — it does not need to be in deps. If a hook must react to a language change, use `i18n.language` instead.
+
+```tsx
+const { t, i18n } = useTranslation();
+
+// ❌ BAD
+const sections = useMemo(() => buildSections(t), [t]);
+
+// ✅ GOOD
+const sections = useMemo(() => buildSections(t), [i18n.language]);
+```
+
+## 5. All User-Visible Text Must Use i18n
+
+Add keys to both `mobile/src/i18n/locales/en.json` and `uk.json`.
+
+```tsx
+// ❌ BAD
+<Text>Розпочати</Text>
+
+// ✅ GOOD
+<Typography variant="button" i18nKey="onboarding.welcome.getStarted" />
+```
+
+## 6. Use `Typography` for All Text
+
+Located at `mobile/src/components/ui/Typography.tsx`.
+
+- `i18nKey` — for translated strings
+- `color` — token from `AppColor` (defaults to `textPrimary`)
+- `children` — for dynamic/non-translatable content
+- Never use raw `<Text>` from `react-native` for user-visible content
+
+### Variants
+
+| Variant       | Use for                         |
+| ------------- | ------------------------------- |
+| `h1`          | Screen titles                   |
+| `h2`          | Section headings                |
+| `h3`          | Sub-headings                    |
+| `body`        | Default body text               |
+| `bodySmall`   | Secondary / supporting text     |
+| `label`       | Form labels                     |
+| `caption`     | Metadata, timestamps, hints     |
+| `button`      | Primary button labels           |
+| `buttonSmall` | Secondary / ghost button labels |
+
+```tsx
+<Typography variant="h1" i18nKey="onboarding.welcome.title" />
+<Typography variant="body" color="textSecondary" i18nKey="onboarding.welcome.subtitle" />
+<Typography variant="caption">{transaction.date}</Typography>
+```
+
+## 7. Use `Button` for All Tappable Actions
+
+Located at `mobile/src/components/ui/Button.tsx`.
+
+- `variant` — controls appearance
+- `size` — `md` (default, 58pt) or `sm` (44pt)
+- `i18nKey` — label text (translated)
+- `disabled` / `loading` — for state management
+- Never build custom `Pressable` + `Text` combos for standard actions
+
+### Variants
+
+| Variant     | Use for                             |
+| ----------- | ----------------------------------- |
+| `primary`   | Main CTA — accent background        |
+| `secondary` | Secondary action — elevated bg      |
+| `ghost`     | Subtle action — no background       |
+| `outline`   | Bordered action — transparent bg    |
+| `danger`    | Destructive action — red background |
+
+```tsx
+<Button variant="primary" i18nKey="onboarding.welcome.getStarted" onPress={handleStart} />
+<Button variant="ghost" size="sm" i18nKey="onboarding.welcome.login" onPress={handleLogin} />
+<Button variant="danger" i18nKey="common.delete" onPress={handleDelete} disabled={loading} />
+```
+
+## 8. Reuse Existing UI Components
+
+Before building a new component or screen, check `mobile/src/components/ui/` for existing primitives:
+
+- **`Typography`** — all text
+- **`Button`** — all tappable actions
+- **`Dropdown`** — selector rows that open a picker
+- **`SearchBar`** — search input with search + clear icons
+- **`SegmentedControl`** — pill-shaped tab switcher
+
+Compose screens from these building blocks. Only create a new component if no existing one fits.
+
+### `SearchBar` usage
+
+```tsx
+import { SearchBar } from "@components/ui/SearchBar";
+
+// Standard usage
+<SearchBar
+  value={query}
+  onChangeText={setQuery}
+  placeholder={t("common.search")}
+/>;
+
+// Inside a bottom sheet — pass BottomSheetTextInput so focus works correctly
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+
+<SearchBar
+  value={query}
+  onChangeText={setQuery}
+  placeholder={t("common.search")}
+  InputComponent={BottomSheetTextInput}
+  onCancel={() => setQuery("")} // shows "Cancel" button while typing
+/>;
+```
+
+### `SegmentedControl` usage
+
+```tsx
+import { SegmentedControl, Segment } from "@components/ui/SegmentedControl";
+
+type Tab = "expense" | "income";
+
+const segments: Segment<Tab>[] = [
+  { key: "expense", label: "Expenses" },
+  { key: "income", label: "Income" },
+];
+
+<SegmentedControl
+  segments={segments}
+  activeKey={activeTab}
+  onPress={setActiveTab}
+  style={{ marginHorizontal: 24 }} // optional outer margin
+/>;
+```
+
+- `segments` — array of `{ key, label }` objects
+- `activeKey` — the currently selected key
+- `onPress` — called with the selected key
+- Generic `<T extends string>` — keys are type-safe when you provide a union type
+
+## 9. Always Use `@expo/vector-icons` for Icons
+
+Never use emoji or custom SVG components for icons. Always import from `@expo/vector-icons`.
+
+```tsx
+// ❌ BAD
+<Typography variant="body">🔍</Typography>
+<Text>✓</Text>
+
+// ✅ GOOD
+import { Ionicons } from "@expo/vector-icons";
+
+<Ionicons name="search" size={18} color={colors.textTertiary} />
+<Ionicons name="checkmark" size={18} color={colors.accent} />
+```
+
+Prefer `Ionicons` as the default icon set. Use `size` and `color` directly on the icon — never wrap in `Typography`.
+
+## 10. Form Validation With Formik + Yup
+
+Use `formik` for form state management and `yup` for validation schemas. All validation error messages must use i18n keys.
+
+### Setup pattern
+
+```tsx
+import { useFormik } from "formik";
+import * as Yup from "yup";
+
+const validationSchema = Yup.object({
+  name: Yup.string()
+    .trim()
+    .required(t("scope.errors.nameRequired"))
+    .min(3, t("scope.errors.nameMin", { min: 3 })),
+});
+
+const formik = useFormik({
+  initialValues: { name: "" },
+  validationSchema,
+  validateOnChange: false,
+  validateOnBlur: false,
+  onSubmit: (values) => { /* save logic */ },
+});
+```
+
+### Key conventions
+
+- **`validateOnChange: false`** and **`validateOnBlur: false`** — only validate on submit so errors don't appear while the user is still typing.
+- **Show errors after first submit** — use `formik.submitCount > 0 && formik.errors.field` to derive the error string.
+- **Clear error on type** — when the user starts editing a field with an error, clear it immediately:
+  ```tsx
+  onChangeText={(text) => {
+    formik.setFieldValue("name", text);
+    if (nameError) formik.setFieldError("name", undefined);
+  }}
+  ```
+- **Error UI** — show error text below the input using `<Typography variant="caption" color="error">`. Keep the input's default styling unchanged — no red borders or background tints.
+- **Error messages** — always use translated strings from i18n, never hardcode English text in the schema.
+
+### Error display
+
+```tsx
+<View style={s.nameInputContainer}>
+  <TextInput ... />
+</View>
+{nameError && (
+  <Typography variant="caption" color="error" style={s.errorText}>
+    {nameError}
+  </Typography>
+)}
+```

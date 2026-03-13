@@ -1,0 +1,417 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "back": "Back",
+    "loading": "Loading...",
+    "continue": "Continue",
+    "retry": "Retry"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "add": { "title": "New Account" },
+    "empty": "No accounts yet. Add your first account.",
+    "currentBalance": "Current balance",
+    "transactionHistory": "Transaction history",
+    "searchTransactions": "Search transactions...",
+    "noTransactions": "No transactions yet",
+    "deleteAccount": "Delete account",
+    "deleteConfirmTitle": "Delete Account",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "errors": {
+      "deleteTitle": "Couldn't delete",
+      "deleteMessage": "Something went wrong. Please try again."
+    }
+  },
+  "categories": {
+    "actions": {
+      "edit": "Edit",
+      "showTransactions": "Show transactions",
+      "delete": "Delete"
+    }
+  },
+  "icons": {
+    "financial": "Financial",
+    "leisure": "Leisure",
+    "education": "Education",
+    "health": "Health",
+    "petsAndKids": "Pets & Kids",
+    "transport": "Transport & Travel",
+    "food": "Food & Drink",
+    "digital": "Digital",
+    "home": "Home",
+    "bills": "Bills",
+    "other": "Other"
+  },
+  "workspace": {
+    "defaultName": "Personal",
+    "list": {
+      "title": "Workspaces"
+    },
+    "details": {
+      "title": "Workspace",
+      "generalSection": "GENERAL",
+      "nameLabel": "Name",
+      "namePlaceholder": "Workspace name",
+      "currencyLabel": "Currency",
+      "membersSection": "MEMBERS",
+      "inviteSection": "INVITE PEOPLE",
+      "emailPlaceholder": "Email address",
+      "sendInvite": "Send invite",
+      "inviteSent": "Invite sent!",
+      "ownerBadge": "Owner",
+      "memberBadge": "Member",
+      "pendingBadge": "Pending",
+      "cancelInviteConfirmTitle": "Cancel invite",
+      "cancelInviteConfirmMessage": "Remove the pending invite for {{email}}?",
+      "cancelInviteConfirmButton": "Remove",
+      "createNew": "Create new workspace",
+      "deleteWorkspace": "Delete workspace",
+      "deleteConfirmTitle": "Delete Workspace",
+      "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "deleteConfirmButton": "Delete",
+      "memberCount_one": "{{count}} member",
+      "memberCount_other": "{{count}} members",
+      "errors": {
+        "saveTitle": "Couldn't save",
+        "saveMessage": "Something went wrong. Please try again.",
+        "inviteTitle": "Couldn't send invite",
+        "inviteMessage": "Something went wrong. Please try again.",
+        "deleteTitle": "Couldn't delete",
+        "deleteMessage": "Something went wrong. Please try again.",
+        "deleteLastMessage": "You cannot delete your only workspace."
+      }
+    },
+    "create": {
+      "title": "New Workspace",
+      "namePlaceholder": "Workspace name",
+      "createButton": "Create",
+      "errors": {
+        "nameRequired": "Workspace name is required",
+        "nameMin": "Name must be at least {{min}} characters",
+        "createTitle": "Couldn't create workspace",
+        "createMessage": "Something went wrong. Please try again."
+      }
+    }
+  },
+  "addTransaction": {
+    "title": "Add Transaction"
+  },
+  "home": {
+    "tabs": {
+      "home": "Home",
+      "accounts": "Accounts",
+      "analytics": "Analytics",
+      "settings": "Settings"
+    },
+    "deleteAccount": {
+      "button": "Delete account",
+      "confirmTitle": "Delete account",
+      "confirmMessage": "This will permanently delete your account and all associated data including workspaces, accounts, categories, and transactions. This action cannot be undone.",
+      "confirmButton": "Delete",
+      "errorTitle": "Failed to delete account",
+      "errorMessage": "Something went wrong. Please try again."
+    },
+    "settings": {
+      "upgradePro": "Upgrade to Monohroshi Pro",
+      "upgradeProSubtitle": "Understand your money. Make better decisions.",
+      "importData": "Import data",
+      "exportData": "Export data",
+      "rateApp": "Rate Monohroshi",
+      "categories": "Categories",
+      "accounts": "Accounts",
+      "recurringTransactions": "Recurring transactions",
+      "budgets": "Budgets",
+      "showIncome": "Show income",
+      "transactionCurrency": "Transaction currency",
+      "darkMode": "Dark mode",
+      "language": "Language",
+      "languageEn": "English",
+      "languageUk": "Ukrainian",
+      "dailyReminder": "Daily reminder",
+      "dailyReminderHint": "Get a reminder every day at 20:00 to remember to track your expenses.",
+      "sendFeedback": "Send feedback",
+      "shareWithFriends": "Share with friends",
+      "whatsNext": "What's next?",
+      "faq": "FAQ",
+      "localBackup": "Local backup",
+      "localBackupHint": "Your data is stored only on this device. We recommend making regular backups to avoid losing data if you change your phone or delete the app.",
+      "resetData": "Reset data",
+      "termsOfUse": "Terms of use",
+      "privacyPolicy": "Privacy policy",
+      "version": "Version",
+      "footer": "Made with ❤ by @gonahmias"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Your money under control",
+      "subtitle": "Manage expenses, income and cards in one place.",
+      "getStarted": "Get started",
+      "login": "I already have an account"
+    },
+    "quiz": {
+      "financialFeeling": {
+        "question": "How do you feel about your finances today?",
+        "stressed": "Stressed, I want to hide",
+        "unsure": "Unsure — not much direction",
+        "stable": "Stable — no fires to put out",
+        "confident": "Confident — ready for my TED talk"
+      },
+      "spendingOn": {
+        "question": "Who do you spend money on?",
+        "myself": "On myself",
+        "partner": "My partner",
+        "otherAdults": "Other adults",
+        "kids": "Kids",
+        "pets": "Pets",
+        "other": "Other"
+      },
+      "savingFor": {
+        "question": "Are you saving, or planning to, for any of these?",
+        "emergencyFund": "Emergency fund",
+        "retirement": "Retirement",
+        "investments": "Investments",
+        "newHome": "New home",
+        "newCar": "New car",
+        "vacation": "Vacation",
+        "other": "Other"
+      },
+      "habitEase": {
+        "question": "How easy is it for you to stick to new habits?",
+        "habitPro": "I'm a habit pro",
+        "strongStart": "I start strong but fall off",
+        "needReminders": "Reminders really help me",
+        "whatHabits": "New habits? What are those?"
+      },
+      "goal": {
+        "question": "What is your main goal with Monohroshi?",
+        "control": "Keep my finances under control",
+        "invest": "Save money to invest regularly",
+        "habits": "Improve spending habits",
+        "bigPurchase": "Plan for a big one-time purchase",
+        "temporaryBudget": "Manage a temporary budget (e.g. vacation, trip, wedding)",
+        "somethingElse": "Something else"
+      },
+      "whyWeAsk": {
+        "title": "Why we ask",
+        "subtitle": "Your answers stay private and help us make Monohroshi actually useful for you.",
+        "personalization": {
+          "title": "Personalized experience",
+          "description": "We tailor budgets, categories, and goals to fit your situation from day one."
+        },
+        "aiInsights": {
+          "title": "Smarter AI insights",
+          "description": "Our AI spots patterns in your finances and gives you suggestions that actually make sense for your life."
+        },
+        "recommendations": {
+          "title": "Better recommendations",
+          "description": "Savings goals, spending limits, and habits — all suggested based on what you've told us."
+        },
+        "privacy": {
+          "title": "Private & secure",
+          "description": "Your answers are stored securely and never shared with third parties."
+        }
+      },
+      "notifications": {
+        "title": "Users who turn on reminders are 2x more consistent",
+        "subtitle": "Monohroshi helps you build strong financial habits by reminding you to check in, track progress, and stay on track — just a few seconds a week.",
+        "enable": "Enable Notifications",
+        "skip": "Skip"
+      },
+      "socialProof": {
+        "chartTitle": "Savings Growth",
+        "chartLabel": "Without Monohroshi",
+        "chartAxisStart": "Month 1",
+        "chartAxisEnd": "Month 6",
+        "title": "85% of users reach their goal with Monohroshi",
+        "subtitle": "Whether your goal is keeping your finances under control, improving spending habits or saving up for a vacation, Monohroshi is here for you."
+      }
+    },
+    "auth": {
+      "signup": {
+        "title": "Welcome to Monohroshi",
+        "subtitle": "Sign in to sync your data and unlock personalized insights.",
+        "withApple": "Continue with Apple",
+        "withGoogle": "Continue with Google"
+      },
+      "signin": {
+        "title": "Welcome back",
+        "subtitle": "Sign in to continue where you left off.",
+        "withApple": "Sign in with Apple",
+        "withGoogle": "Sign in with Google"
+      },
+      "errors": {
+        "signInFailedTitle": "Sign-in failed",
+        "signInFailedSubtitle": "Something went wrong. Please try again.",
+        "accountNotFoundTitle": "Account not found",
+        "accountNotFoundSubtitle": "You don't have an account yet. Please complete onboarding first."
+      },
+      "agreementPrefix": "By using Monohroshi you agree to our",
+      "agreementAnd": "and",
+      "termsOfUse": "Terms of Use",
+      "privacyPolicy": "Privacy Policy"
+    },
+    "paywall": {
+      "skip": "Skip",
+      "title": "Unlock Monohroshi Pro",
+      "subtitle": "Everything you need to master your finances",
+      "features": {
+        "aiAssistant": "AI-powered financial assistant",
+        "unlimitedAccounts": "Unlimited accounts & wallets",
+        "familySharing": "Family sharing (up to 5 members)",
+        "analytics": "Advanced analytics & insights",
+        "budgetPlanner": "Smart budget planner & recurring tracking"
+      },
+      "featuresStyled": {
+        "aiAssistant": {
+          "bold": "AI-powered",
+          "rest": "financial assistant"
+        },
+        "unlimitedAccounts": {
+          "bold": "Unlimited",
+          "rest": "accounts & wallets"
+        },
+        "familySharing": {
+          "bold": "Family sharing",
+          "rest": "(up to 5 members)"
+        },
+        "analytics": {
+          "bold": "Advanced",
+          "rest": "analytics & insights"
+        },
+        "budgetPlanner": {
+          "bold": "Smart budget",
+          "rest": "planner & recurring tracking"
+        }
+      },
+      "socialProof": {
+        "rating": "4.8",
+        "ratingLabel": "App Store",
+        "rank": "Top 10",
+        "rankLabel": "Finance",
+        "free": "Free",
+        "freeLabel": "to start"
+      },
+      "plans": {
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "lifetime": "Lifetime",
+        "perMonth": "/mo",
+        "oneTime": "one-time",
+        "bestValue": "Best Value",
+        "save": "Save {{percent}}%",
+        "perMonthBilled": "{{price}}/mo"
+      },
+      "disclaimer": "Cancel anytime. No hidden fees.",
+      "cta": {
+        "getPro": "Get Monohroshi Pro",
+        "processing": "Processing..."
+      },
+      "restorePurchases": "Restore Purchases",
+      "manageSubscription": "Manage Subscription",
+      "loadingPlans": "Loading plans...",
+      "errors": {
+        "purchaseTitle": "Purchase Failed",
+        "restoreNotFound": "No previous purchases found.",
+        "restoreSuccess": "Your purchases have been restored!"
+      }
+    },
+    "creatingPlan": {
+      "title": "Creating your plan...",
+      "doneTitle": "Your plan is ready!",
+      "errorTitle": "Something went wrong",
+      "subtitle": "Personalizing Monohroshi based on your answers.",
+      "steps": {
+        "goals": "Analyzing your financial goals",
+        "categories": "Setting up spending categories",
+        "insights": "Preparing personalized insights"
+      },
+      "alreadyRegisteredTitle": "Account already exists",
+      "alreadyRegisteredSubtitle": "This account is already registered. You'll be signed in to your existing workspace."
+    },
+    "home": {
+      "setup": {
+        "title": "Set up your workspace",
+        "subtitle": "Complete a few steps to get the most out of Monohroshi.",
+        "optionalBadge": "Optional",
+        "finishButton": "Finish setup",
+        "errors": {
+          "saveFailedTitle": "Couldn't finish setup",
+          "saveFailedSubtitle": "We couldn't save your onboarding data. Please try again."
+        },
+        "steps": {
+          "currency": {
+            "title": "Set primary currency",
+            "subtitle": "Used for totals and reports across all accounts."
+          },
+          "account": {
+            "title": "Add your first account",
+            "subtitle": "Cash, bank card, or any wallet you use."
+          },
+          "categories": {
+            "title": "Set up categories",
+            "subtitle": "Organise your expense and income categories."
+          },
+          "notifications": {
+            "title": "Enable notifications",
+            "subtitle": "Get reminders to log your spending."
+          }
+        }
+      }
+    },
+    "accountSetup": {
+      "title": "New account",
+      "save": "Save",
+      "namePlaceholder": "Enter account name",
+      "accountType": "Account type",
+      "currency": "Currency",
+      "balance": "Balance",
+      "markAsPrimary": "Mark as primary account",
+      "selectType": "Select account type",
+      "types": {
+        "bank_account": "Bank accounts",
+        "cash": "Cash",
+        "stocks_crypto": "Stocks & Crypto",
+        "property": "Property",
+        "vehicles": "Vehicles",
+        "other_assets": "Other assets",
+        "credit": "Credit",
+        "loan": "Loan"
+      },
+      "chooseIcon": "Choose icon",
+      "errors": {
+        "nameRequired": "Account name is required",
+        "nameMin": "Name must be at least {{min}} characters"
+      }
+    },
+    "categoriesSetup": {
+      "title": "Categories",
+      "expenseTab": "Expense categories",
+      "incomeTab": "Income categories",
+      "addTitle": "New category",
+      "editTitle": "Edit category",
+      "addPlaceholder": "Category name",
+      "addButton": "Add",
+      "generalSection": "General",
+      "errors": {
+        "nameRequired": "Category name is required",
+        "nameMin": "Name must be at least {{min}} characters",
+        "deleteFailed": "Failed to delete category. Please try again."
+      },
+      "deleteConfirmTitle": "Delete category",
+      "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?",
+      "systemCategoryNote": "System categories cannot be deleted"
+    },
+    "currencySelect": {
+      "title": "Choose your primary currency for reports",
+      "subtitle": "If you spend, earn or save money in different currencies, we will show the amount in your primary currency.",
+      "modalTitle": "Select currency",
+      "search": "Search",
+      "suggested": "Suggested",
+      "allCurrencies": "All currencies"
+    }
+  }
+}

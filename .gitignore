@@ -1,2 +1,4 @@
 /.idea
 /node_modules
+/.cursor/skills/expo-cicd-workflows/scripts/node_modules
+/.cursor/skills/expo-cicd-workflows/scripts/.cache

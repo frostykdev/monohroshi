@@ -3,7 +3,11 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "lint": "npm --prefix mobile run lint"
+    "lint": "npm --prefix mobile run lint",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:typecheck": "npm --prefix backend run typecheck",
+    "backend:prisma:generate": "npm --prefix backend run prisma:generate"
   },
   "devDependencies": {
     "husky": "^9.1.7"

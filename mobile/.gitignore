@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+ios/
 
 # Expo
 .expo/
@@ -32,6 +33,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +43,7 @@ app-example
 # generated native folders
 /ios
 /android
+AuthKey_MVNJY9DV22.p8
+SubscriptionKey_AZ69RY98S9.p8
+/.env.production
+/.env.development
