@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
 import { INVITATION_STATUSES, WORKSPACE_ROLES } from "../../shared/constants";
+import { ALL_DEFAULT_CATEGORIES } from "../../shared/default-categories";
 
 const workspaceWithMembers = {
   id: true,
@@ -295,6 +296,18 @@ export const createWorkspaceForUser = async (
       },
     });
 
+    await tx.category.createMany({
+      data: ALL_DEFAULT_CATEGORIES.map((cat, index) => ({
+        name: cat.name,
+        type: cat.type,
+        icon: cat.icon,
+        isSystem: cat.isSystem ?? false,
+        systemCode: cat.systemCode ?? null,
+        sortOrder: index,
+        workspaceId: newWorkspace.id,
+      })),
+    });
+
     return tx.workspace.findUniqueOrThrow({
       where: { id: newWorkspace.id },
       select: workspaceWithMembers,
@@ -302,6 +315,41 @@ export const createWorkspaceForUser = async (
   });
 
   return formatWorkspace(workspace as RawWorkspace);
+};
+
+export const deleteWorkspace = async (
+  firebaseUid: string,
+  workspaceId: string,
+) => {
+  const user = await prisma.user.findUnique({ where: { firebaseUid } });
+
+  if (!user) {
+    throw new ApiError("User not found", HTTP_STATUS.notFound);
+  }
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id, workspaceId, role: WORKSPACE_ROLES.OWNER },
+  });
+
+  if (!membership) {
+    throw new ApiError(
+      "Only the workspace owner can delete it",
+      HTTP_STATUS.forbidden,
+    );
+  }
+
+  const otherWorkspacesCount = await prisma.workspaceMember.count({
+    where: { userId: user.id, workspaceId: { not: workspaceId } },
+  });
+
+  if (otherWorkspacesCount === 0) {
+    throw new ApiError(
+      "Cannot delete your only workspace",
+      HTTP_STATUS.badRequest,
+    );
+  }
+
+  await prisma.workspace.delete({ where: { id: workspaceId } });
 };
 
 export const cancelInvitation = async (

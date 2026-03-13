@@ -97,6 +97,10 @@ export type CreateWorkspacePayload = {
   currency: string;
 };
 
+export const deleteWorkspace = async (id: string): Promise<void> => {
+  await apiClient.delete(`/v1/workspaces/${id}`);
+};
+
 export const createWorkspace = async (
   payload: CreateWorkspacePayload,
 ): Promise<Workspace> => {

@@ -14,6 +14,7 @@ interface WorkspaceState {
   setWorkspace: (id: string, name: string) => void;
   setName: (name: string) => void;
   setWorkspaces: (workspaces: WorkspaceSummary[]) => void;
+  removeWorkspace: (id: string) => void;
   reset: () => void;
 }
 
@@ -49,6 +50,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           } else if (workspaces.length > 0) {
             state.id = workspaces[0].id;
             state.name = workspaces[0].name;
+          }
+        }),
+
+      removeWorkspace: (id) =>
+        set((state) => {
+          const remaining = state.workspaces.filter((w) => w.id !== id);
+          state.workspaces = remaining;
+          if (state.id === id) {
+            state.id = remaining[0]?.id ?? null;
+            state.name = remaining[0]?.name ?? "Personal";
           }
         }),
 

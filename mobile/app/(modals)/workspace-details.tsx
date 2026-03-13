@@ -23,7 +23,9 @@ import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { usePickerStore } from "@stores/usePickerStore";
 import {
+  useAllWorkspaces,
   useCancelWorkspaceInvitation,
+  useDeleteWorkspace,
   useInviteWorkspaceMember,
   useUpdateWorkspace,
   useWorkspace,
@@ -45,6 +47,7 @@ const WorkspaceDetailsScreen = () => {
   const storedName = useWorkspaceStore((s) => s.name);
   const activeId = useWorkspaceStore((s) => s.id);
   const setWorkspace = useWorkspaceStore((s) => s.setWorkspace);
+  const removeWorkspace = useWorkspaceStore((s) => s.removeWorkspace);
 
   const [name, setName] = useState(storedName);
   const [currency, setCurrency] = useState("USD");
@@ -68,6 +71,8 @@ const WorkspaceDetailsScreen = () => {
   const userEmail = user?.email ?? null;
 
   const { data: workspace } = useWorkspace(workspaceId);
+  const { data: allWorkspaces = [] } = useAllWorkspaces();
+  const workspaceCount = allWorkspaces.length;
 
   useEffect(() => {
     if (workspace) {
@@ -89,6 +94,49 @@ const WorkspaceDetailsScreen = () => {
   const { mutate: sendInvite, isPending: inviteSending } =
     useInviteWorkspaceMember();
   const { mutate: cancelInvite } = useCancelWorkspaceInvitation();
+  const { mutate: doDeleteWorkspace, isPending: deleting } =
+    useDeleteWorkspace();
+
+  const currentUserEmail = user?.email ?? null;
+  const isOwner = workspace?.members.some(
+    (m) => m.email === currentUserEmail && m.role === "owner",
+  );
+
+  const handleDeleteWorkspace = () => {
+    const idToDelete = workspaceId ?? workspace?.id;
+    if (!idToDelete) return;
+
+    Alert.alert(
+      t("workspace.details.deleteConfirmTitle"),
+      t("workspace.details.deleteConfirmMessage", {
+        name: workspace?.name ?? "",
+      }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("workspace.details.deleteConfirmButton"),
+          style: "destructive",
+          onPress: () =>
+            doDeleteWorkspace(idToDelete, {
+              onSuccess: () => {
+                removeWorkspace(idToDelete);
+                router.dismissAll();
+              },
+              onError: (err) => {
+                const isLastWorkspace =
+                  (err as { status?: number })?.status === 400;
+                Alert.alert(
+                  t("workspace.details.errors.deleteTitle"),
+                  isLastWorkspace
+                    ? t("workspace.details.errors.deleteLastMessage")
+                    : t("workspace.details.errors.deleteMessage"),
+                );
+              },
+            }),
+        },
+      ],
+    );
+  };
 
   const handleCancelInvite = (invite: WorkspaceInvitation) => {
     Alert.alert(
@@ -376,19 +424,38 @@ const WorkspaceDetailsScreen = () => {
 
           <View style={s.divider} />
 
-          <Pressable
-            style={({ pressed }) => [s.createButton, pressed && s.pressed]}
-            onPress={() => router.push("/(modals)/create-workspace" as never)}
-          >
-            <Ionicons
-              name="add-circle-outline"
-              size={20}
-              color={colors.accent}
-            />
-            <Typography variant="body" color="accent">
-              {t("workspace.details.createNew")}
-            </Typography>
-          </Pressable>
+          {workspaceCount <= 1 && (
+            <Pressable
+              style={({ pressed }) => [s.createButton, pressed && s.pressed]}
+              onPress={() => router.push("/(modals)/create-workspace" as never)}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={colors.accent}
+              />
+              <Typography variant="body" color="accent">
+                {t("workspace.details.createNew")}
+              </Typography>
+            </Pressable>
+          )}
+
+          {isOwner && workspaceCount > 1 && (
+            <Pressable
+              style={({ pressed }) => [
+                s.deleteButton,
+                pressed && s.pressed,
+                deleting && s.pressed,
+              ]}
+              onPress={handleDeleteWorkspace}
+              disabled={deleting}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.error} />
+              <Typography variant="body" color="error">
+                {t("workspace.details.deleteWorkspace")}
+              </Typography>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -628,6 +695,14 @@ const s = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
+  } as ViewStyle,
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    marginTop: 4,
   } as ViewStyle,
 });
 

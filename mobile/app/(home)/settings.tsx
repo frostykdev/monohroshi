@@ -21,6 +21,7 @@ import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useDeleteAccount } from "@services/users/users.queries";
+import { useCategories } from "@services/categories/categories.queries";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -125,6 +126,9 @@ const SettingsScreen = () => {
   const resetSetup = useSetupStore((s) => s.reset);
 
   const workspaceName = useWorkspaceStore((s) => s.name);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const { data: categories } = useCategories(activeWorkspaceId);
+  const categoriesCount = categories?.length ?? 0;
   const { mutateAsync: deleteAccountMutation, isPending: deleting } =
     useDeleteAccount();
 
@@ -235,12 +239,12 @@ const SettingsScreen = () => {
 
       {/* Data */}
       <Section>
-        <Row
+        {/* <Row
           icon="document-text-outline"
           iconBg={colors.success}
           labelKey="home.settings.importData"
           onPress={handleComingSoon}
-        />
+        /> */}
         <Row
           icon="share-outline"
           iconBg={colors.iconBlue}
@@ -262,8 +266,8 @@ const SettingsScreen = () => {
           icon="pricetag-outline"
           iconBg={colors.warning}
           labelKey="home.settings.categories"
-          value="15"
-          onPress={handleComingSoon}
+          value={String(categoriesCount)}
+          onPress={() => router.push("/(modals)/categories" as never)}
         />
         <Row
           icon="card-outline"

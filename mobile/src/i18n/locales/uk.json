@@ -45,13 +45,20 @@
       "cancelInviteConfirmMessage": "Видалити запрошення для {{email}}?",
       "cancelInviteConfirmButton": "Видалити",
       "createNew": "Створити новий робочий простір",
+      "deleteWorkspace": "Видалити робочий простір",
+      "deleteConfirmTitle": "Видалити робочий простір",
+      "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"? Цю дію не можна скасувати.",
+      "deleteConfirmButton": "Видалити",
       "memberCount_one": "{{count}} учасник",
       "memberCount_other": "{{count}} учасники",
       "errors": {
         "saveTitle": "Не вдалося зберегти",
         "saveMessage": "Щось пішло не так. Спробуйте ще раз.",
         "inviteTitle": "Не вдалося надіслати запрошення",
-        "inviteMessage": "Щось пішло не так. Спробуйте ще раз."
+        "inviteMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "deleteTitle": "Не вдалося видалити",
+        "deleteMessage": "Щось пішло не так. Спробуйте ще раз.",
+        "deleteLastMessage": "Не можна видалити єдиний робочий простір."
       }
     },
     "create": {
@@ -367,7 +374,8 @@
       "generalSection": "Загальне",
       "errors": {
         "nameRequired": "Назва категорії обов'язкова",
-        "nameMin": "Назва має містити щонайменше {{min}} символи"
+        "nameMin": "Назва має містити щонайменше {{min}} символи",
+        "deleteFailed": "Не вдалося видалити категорію. Спробуйте ще раз."
       },
       "deleteConfirmTitle": "Видалити категорію",
       "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"?",

@@ -45,13 +45,20 @@
       "cancelInviteConfirmMessage": "Remove the pending invite for {{email}}?",
       "cancelInviteConfirmButton": "Remove",
       "createNew": "Create new workspace",
+      "deleteWorkspace": "Delete workspace",
+      "deleteConfirmTitle": "Delete Workspace",
+      "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "deleteConfirmButton": "Delete",
       "memberCount_one": "{{count}} member",
       "memberCount_other": "{{count}} members",
       "errors": {
         "saveTitle": "Couldn't save",
         "saveMessage": "Something went wrong. Please try again.",
         "inviteTitle": "Couldn't send invite",
-        "inviteMessage": "Something went wrong. Please try again."
+        "inviteMessage": "Something went wrong. Please try again.",
+        "deleteTitle": "Couldn't delete",
+        "deleteMessage": "Something went wrong. Please try again.",
+        "deleteLastMessage": "You cannot delete your only workspace."
       }
     },
     "create": {
@@ -367,7 +374,8 @@
       "generalSection": "General",
       "errors": {
         "nameRequired": "Category name is required",
-        "nameMin": "Name must be at least {{min}} characters"
+        "nameMin": "Name must be at least {{min}} characters",
+        "deleteFailed": "Failed to delete category. Please try again."
       },
       "deleteConfirmTitle": "Delete category",
       "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?",

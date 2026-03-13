@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cancelWorkspaceInvitation,
   createWorkspace,
+  deleteWorkspace,
   fetchAllWorkspaces,
   fetchCurrentWorkspace,
   fetchWorkspaceById,
@@ -68,6 +69,17 @@ export const useCancelWorkspaceInvitation = () => {
     mutationFn: (inviteId: string) => cancelWorkspaceInvitation(inviteId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workspace"] });
+    },
+  });
+};
+
+export const useDeleteWorkspace = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteWorkspace(id),
+    onSuccess: (_, id) => {
+      qc.removeQueries({ queryKey: WORKSPACE_KEYS.byId(id) });
+      qc.invalidateQueries({ queryKey: WORKSPACE_KEYS.all() });
     },
   });
 };

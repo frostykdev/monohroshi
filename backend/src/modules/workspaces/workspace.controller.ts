@@ -6,6 +6,7 @@ import { HTTP_STATUS } from "../../shared/http-status";
 import {
   cancelInvitation,
   createWorkspaceForUser,
+  deleteWorkspace,
   getAllWorkspacesForUser,
   getCurrentWorkspaceForUser,
   getWorkspaceByIdForUser,
@@ -146,6 +147,20 @@ export const updateWorkspaceByIdController = async (
   });
 
   res.status(HTTP_STATUS.ok).json({ success: true, data: { workspace } });
+};
+
+export const deleteWorkspaceController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) {
+    throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  }
+
+  const { id } = req.params;
+  await deleteWorkspace(req.user.uid, id);
+
+  res.status(HTTP_STATUS.ok).json({ success: true });
 };
 
 export const createWorkspaceController = async (

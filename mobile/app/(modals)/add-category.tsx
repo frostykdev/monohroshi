@@ -18,27 +18,25 @@ import * as Haptics from "expo-haptics";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { colors } from "@constants/colors";
-import { CategoryItem, createCategoryId } from "@constants/default-categories";
 import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
-import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { usePickerStore } from "@stores/usePickerStore";
+import { useCreateCategory } from "@services/categories/categories.queries";
 
 const MIN_NAME_LENGTH = 2;
 
 const AddCategoryScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { tab } = useLocalSearchParams<{ tab?: string }>();
-
-  const expenseCategories = useOnboardingStore((s) => s.expenseCategories);
-  const incomeCategories = useOnboardingStore((s) => s.incomeCategories);
-  const setExpenseCategories = useOnboardingStore(
-    (s) => s.setExpenseCategories,
-  );
-  const setIncomeCategories = useOnboardingStore((s) => s.setIncomeCategories);
+  const { tab, workspaceId } = useLocalSearchParams<{
+    tab?: string;
+    workspaceId?: string;
+  }>();
 
   const isIncome = tab === "income";
+  const { mutate: createCategory, isPending: saving } = useCreateCategory(
+    workspaceId || null,
+  );
 
   const validationSchema = Yup.object({
     name: Yup.string()
@@ -65,20 +63,15 @@ const AddCategoryScreen = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      const newCategory: CategoryItem = {
-        id: createCategoryId(),
-        name: values.name.trim(),
-        icon: values.icon as React.ComponentProps<typeof Ionicons>["name"],
-        type: isIncome ? "income" : "expense",
-      };
-
-      if (isIncome) {
-        setIncomeCategories([...incomeCategories, newCategory]);
-      } else {
-        setExpenseCategories([...expenseCategories, newCategory]);
-      }
-
-      router.back();
+      createCategory(
+        {
+          name: values.name.trim(),
+          type: isIncome ? "income" : "expense",
+          icon: values.icon,
+          workspaceId: workspaceId || undefined,
+        },
+        { onSuccess: () => router.back() },
+      );
     },
   });
 
@@ -125,10 +118,14 @@ const AddCategoryScreen = () => {
         />
         <Pressable
           style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
-          onPress={() => formik.handleSubmit()}
+          onPress={() => !saving && formik.handleSubmit()}
+          disabled={saving}
           hitSlop={8}
         >
-          <Typography variant="label" color="textSecondary">
+          <Typography
+            variant="label"
+            color={saving ? "textTertiary" : "textSecondary"}
+          >
             {t("onboarding.accountSetup.save")}
           </Typography>
         </Pressable>

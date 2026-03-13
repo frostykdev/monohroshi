@@ -5,6 +5,7 @@ import { asyncHandler } from "../../shared/async-handler";
 import {
   cancelInvitationController,
   createWorkspaceController,
+  deleteWorkspaceController,
   getAllWorkspacesController,
   getCurrentWorkspaceController,
   getWorkspaceByIdController,
@@ -55,6 +56,12 @@ workspaceRouter.patch(
   "/:id",
   checkAuthenticated,
   asyncHandler(updateWorkspaceByIdController),
+);
+
+workspaceRouter.delete(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(deleteWorkspaceController),
 );
 
 workspaceRouter.post(
