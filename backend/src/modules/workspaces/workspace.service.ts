@@ -77,7 +77,7 @@ export const getCurrentWorkspaceForUser = async (firebaseUid: string) => {
 
 export const updateCurrentWorkspace = async (
   firebaseUid: string,
-  name: string,
+  data: { name?: string; currency?: string },
 ) => {
   const user = await prisma.user.findUnique({ where: { firebaseUid } });
 
@@ -102,7 +102,7 @@ export const updateCurrentWorkspace = async (
 
   const workspace = await prisma.workspace.update({
     where: { id: membership.workspaceId },
-    data: { name },
+    data,
     select: workspaceWithMembers,
   });
 
@@ -227,9 +227,45 @@ export const getWorkspaceByIdForUser = async (
   return formatWorkspace(workspace as RawWorkspace);
 };
 
+export const updateWorkspaceById = async (
+  firebaseUid: string,
+  workspaceId: string,
+  data: { name?: string; currency?: string },
+) => {
+  const user = await prisma.user.findUnique({ where: { firebaseUid } });
+
+  if (!user) {
+    throw new ApiError("User not found", HTTP_STATUS.notFound);
+  }
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: {
+      userId: user.id,
+      workspaceId,
+      role: { in: [WORKSPACE_ROLES.OWNER, WORKSPACE_ROLES.ADMIN] },
+    },
+  });
+
+  if (!membership) {
+    throw new ApiError(
+      "No workspace found or insufficient permissions",
+      HTTP_STATUS.forbidden,
+    );
+  }
+
+  const workspace = await prisma.workspace.update({
+    where: { id: workspaceId },
+    data,
+    select: workspaceWithMembers,
+  });
+
+  return formatWorkspace(workspace as RawWorkspace);
+};
+
 export const createWorkspaceForUser = async (
   firebaseUid: string,
   name: string,
+  currency?: string,
 ) => {
   const user = await prisma.user.findUnique({ where: { firebaseUid } });
 
@@ -243,11 +279,12 @@ export const createWorkspaceForUser = async (
     select: { workspace: { select: { currency: true } } },
   });
 
-  const currency = firstMembership?.workspace.currency ?? "USD";
+  const resolvedCurrency =
+    currency ?? firstMembership?.workspace.currency ?? "USD";
 
   const workspace = await prisma.$transaction(async (tx) => {
     const newWorkspace = await tx.workspace.create({
-      data: { name, currency },
+      data: { name, currency: resolvedCurrency },
     });
 
     await tx.workspaceMember.create({

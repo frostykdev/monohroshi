@@ -10,6 +10,7 @@ import {
   getWorkspaceByIdController,
   inviteToCurrentWorkspaceController,
   updateCurrentWorkspaceController,
+  updateWorkspaceByIdController,
 } from "./workspace.controller";
 
 const workspaceRouter = Router();
@@ -48,6 +49,12 @@ workspaceRouter.get(
   "/:id",
   checkAuthenticated,
   asyncHandler(getWorkspaceByIdController),
+);
+
+workspaceRouter.patch(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(updateWorkspaceByIdController),
 );
 
 workspaceRouter.post(

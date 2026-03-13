@@ -1,20 +1,17 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "@tanstack/react-query";
 import { getAuth, signOut } from "@react-native-firebase/auth";
 import { isErrorWithCode, signInWithGoogle, statusCodes } from "@services/auth";
-import { fetchCurrentUser } from "@services/users-api";
 import { isApiError } from "@services/api";
+import { useCheckCurrentUser } from "@services/users/users.queries";
 
 type AuthMode = "signin" | "signup";
 
 export const useGoogleSignIn = (mode: AuthMode, onSuccess: () => void) => {
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
-  const checkCurrentUserMutation = useMutation({
-    mutationFn: fetchCurrentUser,
-  });
+  const checkCurrentUserMutation = useCheckCurrentUser();
 
   const handleSignIn = useCallback(async () => {
     setLoading(true);

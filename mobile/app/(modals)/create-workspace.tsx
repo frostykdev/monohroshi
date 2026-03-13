@@ -10,25 +10,26 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import { createWorkspace } from "@services/workspace-api";
+import { usePickerStore } from "@stores/usePickerStore";
+import { useCreateWorkspace } from "@services/workspaces/workspaces.queries";
+import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
 
 const MIN_NAME_LENGTH = 2;
 
 const CreateWorkspaceScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const qc = useQueryClient();
   const setWorkspace = useWorkspaceStore((s) => s.setWorkspace);
 
   const validationSchema = Yup.object({
@@ -41,28 +42,46 @@ const CreateWorkspaceScreen = () => {
       ),
   });
 
-  const { mutate: doCreate, isPending: creating } = useMutation({
-    mutationFn: (name: string) => createWorkspace(name),
-    onSuccess: (data) => {
-      setWorkspace(data.id, data.name);
-      qc.setQueryData(["workspace", "current"], data);
-      router.dismiss(2);
-    },
-    onError: () => {
-      Alert.alert(
-        t("workspace.create.errors.createTitle"),
-        t("workspace.create.errors.createMessage"),
-      );
-    },
-  });
+  const pickedCurrency = usePickerStore((s) => s.currency);
+  const clearPicker = usePickerStore((s) => s.clearAll);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (pickedCurrency) {
+        formik.setFieldValue("currency", pickedCurrency);
+        clearPicker();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pickedCurrency, clearPicker]),
+  );
+
+  const { mutate: doCreate, isPending: creating } = useCreateWorkspace();
+
+  const handleCreate = (name: string, currency: string) => {
+    doCreate(
+      { name, currency },
+      {
+        onSuccess: (data) => {
+          setWorkspace(data.id, data.name);
+          router.dismiss(2);
+        },
+        onError: () => {
+          Alert.alert(
+            t("workspace.create.errors.createTitle"),
+            t("workspace.create.errors.createMessage"),
+          );
+        },
+      },
+    );
+  };
 
   const formik = useFormik({
-    initialValues: { name: "" },
+    initialValues: { name: "", currency: "USD" },
     validationSchema,
     validateOnChange: false,
     validateOnBlur: false,
     onSubmit: (values) => {
-      doCreate(values.name.trim());
+      handleCreate(values.name.trim(), values.currency);
     },
   });
 
@@ -74,12 +93,7 @@ const CreateWorkspaceScreen = () => {
   const initial = formik.values.name.trim().charAt(0).toUpperCase() || "+";
 
   return (
-    <View
-      style={[
-        s.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}
-    >
+    <View style={[s.container, { paddingBottom: insets.bottom }]}>
       <View style={s.header}>
         <Pressable
           style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
@@ -117,13 +131,14 @@ const CreateWorkspaceScreen = () => {
             i18nKey="workspace.details.generalSection"
           />
           <View style={s.card}>
-            <View style={s.inputRow}>
+            <View style={[s.inputRow, s.inputRowDivider]}>
               <Typography
                 variant="body"
                 color="textSecondary"
                 style={s.inputLabel}
                 i18nKey="workspace.details.nameLabel"
               />
+              <View style={s.inputSeparator} />
               <TextInput
                 style={s.textInput}
                 value={formik.values.name}
@@ -140,6 +155,34 @@ const CreateWorkspaceScreen = () => {
                 onSubmitEditing={() => formik.handleSubmit()}
               />
             </View>
+            <Pressable
+              style={({ pressed }) => [s.inputRow, pressed && s.pressed]}
+              onPress={() =>
+                router.push(
+                  `/(modals)/currency-picker?selected=${formik.values.currency}` as never,
+                )
+              }
+            >
+              <Typography
+                variant="body"
+                color="textSecondary"
+                style={s.inputLabel}
+                i18nKey="workspace.details.currencyLabel"
+              />
+              <View style={s.inputSeparator} />
+              <Typography
+                variant="body"
+                style={s.currencyValue}
+                numberOfLines={1}
+              >
+                {`${currencyFlag(formik.values.currency)} ${getCurrencyByCode(formik.values.currency)?.name ?? formik.values.currency}`}
+              </Typography>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.textTertiary}
+              />
+            </Pressable>
           </View>
 
           {nameError && (
@@ -222,8 +265,20 @@ const s = StyleSheet.create({
     gap: 10,
     minHeight: 50,
   } as ViewStyle,
+  inputRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  } as ViewStyle,
   inputLabel: {
-    width: 60,
+    width: 80,
+  } as TextStyle,
+  inputSeparator: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    backgroundColor: colors.border,
+  } as ViewStyle,
+  currencyValue: {
+    flex: 1,
   } as TextStyle,
   textInput: {
     flex: 1,

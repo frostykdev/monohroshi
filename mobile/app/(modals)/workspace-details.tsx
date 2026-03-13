@@ -11,26 +11,28 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { useEffect, useState } from "react";
-import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { getAuth } from "@react-native-firebase/auth";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
+import { usePickerStore } from "@stores/usePickerStore";
 import {
-  cancelWorkspaceInvitation,
-  fetchCurrentWorkspace,
-  fetchWorkspaceById,
-  inviteWorkspaceMember,
-  updateWorkspaceName,
-  type WorkspaceInvitation,
-  type WorkspaceMember,
-} from "@services/workspace-api";
+  useCancelWorkspaceInvitation,
+  useInviteWorkspaceMember,
+  useUpdateWorkspace,
+  useWorkspace,
+} from "@services/workspaces/workspaces.queries";
+import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
+import type {
+  WorkspaceInvitation,
+  WorkspaceMember,
+} from "@services/workspaces/workspaces.api";
 
 const MIN_NAME_LENGTH = 2;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,7 +40,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WorkspaceDetailsScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const qc = useQueryClient();
   const { id: workspaceId } = useLocalSearchParams<{ id?: string }>();
 
   const storedName = useWorkspaceStore((s) => s.name);
@@ -46,80 +47,48 @@ const WorkspaceDetailsScreen = () => {
   const setWorkspace = useWorkspaceStore((s) => s.setWorkspace);
 
   const [name, setName] = useState(storedName);
+  const [currency, setCurrency] = useState("USD");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteSent, setInviteSent] = useState(false);
+
+  const pickedCurrency = usePickerStore((s) => s.currency);
+  const clearPicker = usePickerStore((s) => s.clearAll);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (pickedCurrency) {
+        setCurrency(pickedCurrency);
+        clearPicker();
+      }
+    }, [pickedCurrency, clearPicker]),
+  );
 
   const user = getAuth().currentUser;
   const userDisplayName = user?.displayName ?? user?.email ?? "You";
   const userEmail = user?.email ?? null;
 
-  const queryKey = workspaceId
-    ? ["workspace", workspaceId]
-    : ["workspace", "current"];
-
-  const { data: workspace } = useQuery({
-    queryKey,
-    queryFn: () =>
-      workspaceId ? fetchWorkspaceById(workspaceId) : fetchCurrentWorkspace(),
-  });
+  const { data: workspace } = useWorkspace(workspaceId);
 
   useEffect(() => {
     if (workspace) {
-      // Only update active workspace name if this is the active workspace
       if (!workspaceId || workspaceId === activeId) {
         setWorkspace(workspace.id, workspace.name);
       }
       setName(workspace.name);
+      setCurrency(workspace.currency);
     }
   }, [workspace, workspaceId, activeId, setWorkspace]);
 
+  const trimmedName = name.trim();
+  const nameIsValid = trimmedName.length >= MIN_NAME_LENGTH;
   const hasChanges =
-    name.trim().length >= MIN_NAME_LENGTH && name.trim() !== workspace?.name;
+    nameIsValid &&
+    (trimmedName !== workspace?.name || currency !== workspace?.currency);
 
-  const { mutate: saveName, isPending: saving } = useMutation({
-    mutationFn: () => updateWorkspaceName(name.trim()),
-    onSuccess: (data) => {
-      if (!workspaceId || workspaceId === activeId) {
-        setWorkspace(data.id, data.name);
-      }
-      qc.setQueryData(queryKey, data);
-      qc.invalidateQueries({ queryKey: ["workspaces"] });
-    },
-    onError: () => {
-      Alert.alert(
-        t("workspace.details.errors.saveTitle"),
-        t("workspace.details.errors.saveMessage"),
-      );
-    },
-  });
-
-  const { mutate: sendInvite, isPending: inviteSending } = useMutation({
-    mutationFn: () => inviteWorkspaceMember(inviteEmail.trim()),
-    onSuccess: () => {
-      setInviteSent(true);
-      setInviteEmail("");
-      setTimeout(() => setInviteSent(false), 3000);
-    },
-    onError: () => {
-      Alert.alert(
-        t("workspace.details.errors.inviteTitle"),
-        t("workspace.details.errors.inviteMessage"),
-      );
-    },
-  });
-
-  const { mutate: cancelInvite } = useMutation({
-    mutationFn: (inviteId: string) => cancelWorkspaceInvitation(inviteId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey });
-    },
-    onError: () => {
-      Alert.alert(
-        t("workspace.details.errors.saveTitle"),
-        t("workspace.details.errors.saveMessage"),
-      );
-    },
-  });
+  const { mutate: saveWorkspace, isPending: saving } = useUpdateWorkspace();
+  const { mutate: sendInvite, isPending: inviteSending } =
+    useInviteWorkspaceMember();
+  const { mutate: cancelInvite } = useCancelWorkspaceInvitation();
 
   const handleCancelInvite = (invite: WorkspaceInvitation) => {
     Alert.alert(
@@ -132,7 +101,14 @@ const WorkspaceDetailsScreen = () => {
         {
           text: t("workspace.details.cancelInviteConfirmButton"),
           style: "destructive",
-          onPress: () => cancelInvite(invite.id),
+          onPress: () =>
+            cancelInvite(invite.id, {
+              onError: () =>
+                Alert.alert(
+                  t("workspace.details.errors.saveTitle"),
+                  t("workspace.details.errors.saveMessage"),
+                ),
+            }),
         },
       ],
     );
@@ -174,7 +150,25 @@ const WorkspaceDetailsScreen = () => {
         <Typography variant="label" i18nKey="workspace.details.title" />
         <Pressable
           style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
-          onPress={() => hasChanges && !saving && saveName()}
+          onPress={() =>
+            hasChanges &&
+            !saving &&
+            saveWorkspace(
+              { workspaceId, name: trimmedName, currency },
+              {
+                onSuccess: (data) => {
+                  if (!workspaceId || workspaceId === activeId) {
+                    setWorkspace(data.id, data.name);
+                  }
+                },
+                onError: () =>
+                  Alert.alert(
+                    t("workspace.details.errors.saveTitle"),
+                    t("workspace.details.errors.saveMessage"),
+                  ),
+              },
+            )
+          }
           hitSlop={8}
           disabled={!hasChanges || saving}
         >
@@ -222,13 +216,14 @@ const WorkspaceDetailsScreen = () => {
             i18nKey="workspace.details.generalSection"
           />
           <View style={s.card}>
-            <View style={s.inputRow}>
+            <View style={[s.inputRow, s.inputRowDivider]}>
               <Typography
                 variant="body"
                 color="textSecondary"
                 style={s.inputLabel}
                 i18nKey="workspace.details.nameLabel"
               />
+              <View style={s.inputSeparator} />
               <TextInput
                 style={s.textInput}
                 value={name}
@@ -240,6 +235,34 @@ const WorkspaceDetailsScreen = () => {
                 maxLength={50}
               />
             </View>
+            <Pressable
+              style={({ pressed }) => [s.inputRow, pressed && s.pressed]}
+              onPress={() =>
+                router.push(
+                  `/(modals)/currency-picker?selected=${currency}` as never,
+                )
+              }
+            >
+              <Typography
+                variant="body"
+                color="textSecondary"
+                style={s.inputLabel}
+                i18nKey="workspace.details.currencyLabel"
+              />
+              <View style={s.inputSeparator} />
+              <Typography
+                variant="body"
+                style={s.currencyValue}
+                numberOfLines={1}
+              >
+                {`${currencyFlag(currency)} ${getCurrencyByCode(currency)?.name ?? currency}`}
+              </Typography>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.textTertiary}
+              />
+            </Pressable>
           </View>
 
           <Typography
@@ -299,7 +322,19 @@ const WorkspaceDetailsScreen = () => {
                 autoCorrect={false}
                 returnKeyType="send"
                 onSubmitEditing={() => {
-                  if (isValidEmail && !inviteSending) sendInvite();
+                  if (isValidEmail && !inviteSending)
+                    sendInvite(inviteEmail.trim(), {
+                      onSuccess: () => {
+                        setInviteSent(true);
+                        setInviteEmail("");
+                        setTimeout(() => setInviteSent(false), 3000);
+                      },
+                      onError: () =>
+                        Alert.alert(
+                          t("workspace.details.errors.inviteTitle"),
+                          t("workspace.details.errors.inviteMessage"),
+                        ),
+                    });
                 }}
               />
               {inviteSent && (
@@ -318,7 +353,20 @@ const WorkspaceDetailsScreen = () => {
             style={s.inviteButton}
             loading={inviteSending}
             disabled={!isValidEmail || inviteSending || inviteSent}
-            onPress={() => sendInvite()}
+            onPress={() =>
+              sendInvite(inviteEmail.trim(), {
+                onSuccess: () => {
+                  setInviteSent(true);
+                  setInviteEmail("");
+                  setTimeout(() => setInviteSent(false), 3000);
+                },
+                onError: () =>
+                  Alert.alert(
+                    t("workspace.details.errors.inviteTitle"),
+                    t("workspace.details.errors.inviteMessage"),
+                  ),
+              })
+            }
             i18nKey={
               inviteSent
                 ? "workspace.details.inviteSent"
@@ -440,6 +488,9 @@ const s = StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
+  currencyValue: {
+    flex: 1,
+  } as TextStyle,
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -498,9 +549,18 @@ const s = StyleSheet.create({
     gap: 10,
     minHeight: 50,
   } as ViewStyle,
+  inputRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  } as ViewStyle,
   inputLabel: {
-    width: 60,
+    width: 80,
   } as TextStyle,
+  inputSeparator: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    backgroundColor: colors.border,
+  } as ViewStyle,
   textInput: {
     flex: 1,
     fontSize: 16,

@@ -20,11 +20,9 @@ import { Button } from "@components/ui/Button";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
-import {
-  completeOnboarding,
-  CompleteOnboardingPayload,
-} from "@services/users-api";
 import { isApiError } from "@services/api";
+import { useCompleteOnboarding } from "@services/users/users.queries";
+import type { CompleteOnboardingPayload } from "@services/users/users.api";
 
 type Step = {
   key: string;
@@ -50,6 +48,7 @@ const CreatingPlanScreen = () => {
 
   const navigated = useRef(false);
   const pulse = useSharedValue(1);
+  const { mutate: completeOnboarding } = useCompleteOnboarding();
   const navigation = useNavigation();
 
   const {
@@ -74,7 +73,7 @@ const CreatingPlanScreen = () => {
     setTimeout(() => router.replace("/(home)"), 600);
   };
 
-  const fireApiCall = async () => {
+  const fireApiCall = () => {
     setError(false);
 
     const allCategories = [...expenseCategories, ...incomeCategories].map(
@@ -87,10 +86,7 @@ const CreatingPlanScreen = () => {
     );
 
     const payload: CompleteOnboardingPayload = {
-      onboarding: {
-        quizAnswers,
-        selectedCurrencyCode,
-      },
+      onboarding: { quizAnswers, selectedCurrencyCode },
       workspace: {
         name: t("workspace.defaultName"),
         currency: selectedCurrencyCode,
@@ -107,20 +103,20 @@ const CreatingPlanScreen = () => {
       categories: allCategories,
     };
 
-    try {
-      await completeOnboarding(payload);
-      setApiDone(true);
-    } catch (err) {
-      if (isApiError(err) && err.status === 409) {
-        Alert.alert(
-          t("onboarding.creatingPlan.alreadyRegisteredTitle"),
-          t("onboarding.creatingPlan.alreadyRegisteredSubtitle"),
-          [{ text: t("common.ok"), onPress: navigateHome }],
-        );
-      } else {
-        setError(true);
-      }
-    }
+    completeOnboarding(payload, {
+      onSuccess: () => setApiDone(true),
+      onError: (err) => {
+        if (isApiError(err) && err.status === 409) {
+          Alert.alert(
+            t("onboarding.creatingPlan.alreadyRegisteredTitle"),
+            t("onboarding.creatingPlan.alreadyRegisteredSubtitle"),
+            [{ text: t("common.ok"), onPress: navigateHome }],
+          );
+        } else {
+          setError(true);
+        }
+      },
+    });
   };
 
   const handleRetry = () => {

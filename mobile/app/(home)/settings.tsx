@@ -20,7 +20,7 @@ import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import { deleteAccount } from "@services/users-api";
+import { useDeleteAccount } from "@services/users/users.queries";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -118,8 +118,6 @@ const SettingsScreen = () => {
   const [showIncome, setShowIncome] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const setOnboardingComplete = useOnboardingStore(
     (s) => s.setOnboardingComplete,
@@ -127,6 +125,8 @@ const SettingsScreen = () => {
   const resetSetup = useSetupStore((s) => s.reset);
 
   const workspaceName = useWorkspaceStore((s) => s.name);
+  const { mutateAsync: deleteAccountMutation, isPending: deleting } =
+    useDeleteAccount();
 
   const languageLabel =
     i18n.language === "uk"
@@ -149,15 +149,13 @@ const SettingsScreen = () => {
   };
 
   const confirmDeleteAccount = async () => {
-    setDeleting(true);
     try {
-      await deleteAccount();
+      await deleteAccountMutation();
       setOnboardingComplete(false);
       resetOnboarding();
       resetSetup();
       await signOut(getAuth());
     } catch {
-      setDeleting(false);
       Alert.alert(
         t("home.deleteAccount.errorTitle"),
         t("home.deleteAccount.errorMessage"),

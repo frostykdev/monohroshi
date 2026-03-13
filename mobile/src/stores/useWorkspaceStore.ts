@@ -3,7 +3,7 @@ import { immer } from "zustand/middleware/immer";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ZustandStoreNames } from "@constants/zustand-store-names";
-import type { WorkspaceSummary } from "@services/workspace-api";
+import type { WorkspaceSummary } from "@services/workspaces/workspaces.api";
 
 interface WorkspaceState {
   // Active workspace (shown in settings row, used as default)

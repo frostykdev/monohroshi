@@ -56,10 +56,28 @@ export const fetchWorkspaceById = async (id: string): Promise<Workspace> => {
   return response.data.data.workspace;
 };
 
-export const updateWorkspaceName = async (name: string): Promise<Workspace> => {
+export type UpdateWorkspacePayload = {
+  name?: string;
+  currency?: string;
+};
+
+export const updateWorkspace = async (
+  payload: UpdateWorkspacePayload,
+): Promise<Workspace> => {
   const response = await apiClient.patch<ApiResponse<{ workspace: Workspace }>>(
     "/v1/workspaces/current",
-    { name },
+    payload,
+  );
+  return response.data.data.workspace;
+};
+
+export const updateWorkspaceById = async (
+  id: string,
+  payload: UpdateWorkspacePayload,
+): Promise<Workspace> => {
+  const response = await apiClient.patch<ApiResponse<{ workspace: Workspace }>>(
+    `/v1/workspaces/${id}`,
+    payload,
   );
   return response.data.data.workspace;
 };
@@ -74,10 +92,17 @@ export const cancelWorkspaceInvitation = async (
   await apiClient.delete(`/v1/workspaces/current/invites/${inviteId}`);
 };
 
-export const createWorkspace = async (name: string): Promise<Workspace> => {
+export type CreateWorkspacePayload = {
+  name: string;
+  currency: string;
+};
+
+export const createWorkspace = async (
+  payload: CreateWorkspacePayload,
+): Promise<Workspace> => {
   const response = await apiClient.post<ApiResponse<{ workspace: Workspace }>>(
     "/v1/workspaces",
-    { name },
+    payload,
   );
   return response.data.data.workspace;
 };

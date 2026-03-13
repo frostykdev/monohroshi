@@ -11,10 +11,12 @@ import {
   getWorkspaceByIdForUser,
   inviteToCurrentWorkspace,
   updateCurrentWorkspace,
+  updateWorkspaceById,
 } from "./workspace.service";
 
 const updateWorkspaceSchema = z.object({
-  name: z.string().trim().min(2).max(100),
+  name: z.string().trim().min(2).max(100).optional(),
+  currency: z.string().trim().min(2).max(10).optional(),
 });
 
 const inviteMemberSchema = z.object({
@@ -23,6 +25,7 @@ const inviteMemberSchema = z.object({
 
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(2).max(100),
+  currency: z.string().trim().min(2).max(10).optional(),
 });
 
 export const getCurrentWorkspaceController = async (
@@ -52,10 +55,10 @@ export const updateCurrentWorkspaceController = async (
     throw new ApiError("Invalid request body", HTTP_STATUS.badRequest);
   }
 
-  const workspace = await updateCurrentWorkspace(
-    req.user.uid,
-    parsed.data.name,
-  );
+  const workspace = await updateCurrentWorkspace(req.user.uid, {
+    name: parsed.data.name,
+    currency: parsed.data.currency,
+  });
 
   res.status(HTTP_STATUS.ok).json({ success: true, data: { workspace } });
 };
@@ -122,6 +125,29 @@ export const cancelInvitationController = async (
   res.status(HTTP_STATUS.ok).json({ success: true });
 };
 
+export const updateWorkspaceByIdController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) {
+    throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  }
+
+  const { id } = req.params;
+  const parsed = updateWorkspaceSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    throw new ApiError("Invalid request body", HTTP_STATUS.badRequest);
+  }
+
+  const workspace = await updateWorkspaceById(req.user.uid, id, {
+    name: parsed.data.name,
+    currency: parsed.data.currency,
+  });
+
+  res.status(HTTP_STATUS.ok).json({ success: true, data: { workspace } });
+};
+
 export const createWorkspaceController = async (
   req: Request,
   res: Response,
@@ -139,6 +165,7 @@ export const createWorkspaceController = async (
   const workspace = await createWorkspaceForUser(
     req.user.uid,
     parsed.data.name,
+    parsed.data.currency,
   );
 
   res.status(HTTP_STATUS.created).json({ success: true, data: { workspace } });

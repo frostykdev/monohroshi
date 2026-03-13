@@ -1,5 +1,10 @@
 import { apiClient } from "@services/api";
 
+type ApiResponse<TData> = {
+  success: boolean;
+  data: TData;
+};
+
 export type CurrentUser = {
   id: string;
   firebaseUid: string;
@@ -8,21 +13,6 @@ export type CurrentUser = {
   onboarding: unknown;
   createdAt: string;
   updatedAt: string;
-};
-
-type ApiResponse<TData> = {
-  success: boolean;
-  data: TData;
-};
-
-export const fetchCurrentUser = async (): Promise<CurrentUser> => {
-  const response = await apiClient.get<
-    ApiResponse<{
-      user: CurrentUser;
-    }>
-  >("/v1/me");
-
-  return response.data.data.user;
 };
 
 export type CompleteOnboardingPayload = {
@@ -49,15 +39,19 @@ export type CompleteOnboardingPayload = {
   }[];
 };
 
+export const fetchCurrentUser = async (): Promise<CurrentUser> => {
+  const response =
+    await apiClient.get<ApiResponse<{ user: CurrentUser }>>("/v1/me");
+  return response.data.data.user;
+};
+
 export const completeOnboarding = async (
   payload: CompleteOnboardingPayload,
 ): Promise<CurrentUser> => {
-  const response = await apiClient.post<
-    ApiResponse<{
-      user: CurrentUser;
-    }>
-  >("/v1/onboarding/complete", payload);
-
+  const response = await apiClient.post<ApiResponse<{ user: CurrentUser }>>(
+    "/v1/onboarding/complete",
+    payload,
+  );
   return response.data.data.user;
 };
 

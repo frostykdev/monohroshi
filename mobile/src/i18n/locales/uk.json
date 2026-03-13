@@ -32,6 +32,7 @@
       "generalSection": "ЗАГАЛЬНЕ",
       "nameLabel": "Назва",
       "namePlaceholder": "Назва робочого простору",
+      "currencyLabel": "Валюта",
       "membersSection": "УЧАСНИКИ",
       "inviteSection": "ЗАПРОСИТИ ЛЮДЕЙ",
       "emailPlaceholder": "Електронна пошта",

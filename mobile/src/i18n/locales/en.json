@@ -32,6 +32,7 @@
       "generalSection": "GENERAL",
       "nameLabel": "Name",
       "namePlaceholder": "Workspace name",
+      "currencyLabel": "Currency",
       "membersSection": "MEMBERS",
       "inviteSection": "INVITE PEOPLE",
       "emailPlaceholder": "Email address",

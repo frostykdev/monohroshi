@@ -5,21 +5,17 @@ import {
   StyleSheet,
   View,
   ViewStyle,
-  TextStyle,
 } from "react-native";
 import { useEffect } from "react";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import {
-  fetchAllWorkspaces,
-  type WorkspaceSummary,
-} from "@services/workspace-api";
+import { useAllWorkspaces } from "@services/workspaces/workspaces.queries";
+import type { WorkspaceSummary } from "@services/workspaces/workspaces.api";
 
 const ICON_COLORS = [
   colors.iconBlue,
@@ -38,10 +34,7 @@ const WorkspaceListScreen = () => {
   const setWorkspace = useWorkspaceStore((s) => s.setWorkspace);
   const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["workspaces"],
-    queryFn: fetchAllWorkspaces,
-  });
+  const { data, isLoading } = useAllWorkspaces();
 
   useEffect(() => {
     if (data) {
