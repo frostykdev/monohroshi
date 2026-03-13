@@ -10,6 +10,15 @@
     "continue": "Continue",
     "retry": "Retry"
   },
+  "balanceInput": {
+    "title": "Current balance",
+    "positive": "Positive",
+    "negative": "Negative",
+    "done": "Done",
+    "infoTitle": "Current balance",
+    "infoMessage": "Current balance is the amount available in your account (or the debt amount if it is a debt account). If you manually change the current balance, Monohroshi will create a Balance Correction transaction that will affect your expenses or income.",
+    "infoButton": "Got it!"
+  },
   "accounts": {
     "title": "Accounts",
     "add": { "title": "New Account" },

@@ -24,6 +24,7 @@ import {
   getCurrencySymbol,
 } from "@constants/account-types";
 import { DEFAULT_ICON_COLOR } from "@constants/icon-list";
+import { BalanceInput } from "@components/ui/BalanceInput";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
@@ -280,26 +281,11 @@ const AddAccountScreen = () => {
 
             <View style={s.separator} />
 
-            <View style={s.settingRow}>
-              <Typography variant="body" color="textSecondary">
-                {t("onboarding.accountSetup.balance")} ({formik.values.currency}
-                )
-              </Typography>
-              <TextInput
-                style={s.balanceInput}
-                value={formik.values.balance}
-                onChangeText={(text) => {
-                  const cleaned = text
-                    .replace(/[^0-9.,]/g, "")
-                    .replace(",", ".");
-                  formik.setFieldValue("balance", cleaned);
-                }}
-                placeholder={`0.00 ${currencySymbol}`}
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-              />
-            </View>
+            <BalanceInput
+              value={formik.values.balance}
+              onChange={(v) => formik.setFieldValue("balance", v)}
+              currency={formik.values.currency}
+            />
           </View>
 
           <View style={s.toggleGroup}>
@@ -309,7 +295,9 @@ const AddAccountScreen = () => {
               </Typography>
               <Switch
                 value={formik.values.isPrimary}
-                onValueChange={(v) => formik.setFieldValue("isPrimary", v)}
+                onValueChange={(v) => {
+                  formik.setFieldValue("isPrimary", v);
+                }}
                 trackColor={{
                   false: colors.backgroundSurface,
                   true: colors.accent,
@@ -416,12 +404,6 @@ const s = StyleSheet.create({
     backgroundColor: colors.border,
     marginLeft: 16,
   } as ViewStyle,
-  balanceInput: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    textAlign: "right",
-    minWidth: 100,
-  } as TextStyle,
   toggleGroup: {
     marginHorizontal: 24,
     marginTop: 12,
