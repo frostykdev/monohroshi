@@ -22,6 +22,7 @@ import { useSetupStore } from "@stores/useSetupStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useDeleteAccount } from "@services/users/users.queries";
 import { useCategories } from "@services/categories/categories.queries";
+import { useBudgets } from "@services/budgets/budgets.queries";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -129,6 +130,12 @@ const SettingsScreen = () => {
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
   const { data: categories } = useCategories(activeWorkspaceId);
   const categoriesCount = categories?.length ?? 0;
+  const currentMonth = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  })();
+  const { data: budgets } = useBudgets(activeWorkspaceId, currentMonth);
+  const budgetsCount = budgets?.length ?? 0;
   const { mutateAsync: deleteAccountMutation, isPending: deleting } =
     useDeleteAccount();
 
@@ -244,15 +251,15 @@ const SettingsScreen = () => {
           />
         </Pressable>
 
-        {/* Data */}
+        {/* Data — coming soon
         <Section>
-          {/* <Row
-          icon="document-text-outline"
-          iconBg={colors.success}
-          labelKey="home.settings.importData"
-          onPress={handleComingSoon}
-        /> */}
-          {/* <Row
+          <Row
+            icon="document-text-outline"
+            iconBg={colors.success}
+            labelKey="home.settings.importData"
+            onPress={handleComingSoon}
+          />
+          <Row
             icon="share-outline"
             iconBg={colors.iconBlue}
             labelKey="home.settings.exportData"
@@ -264,8 +271,9 @@ const SettingsScreen = () => {
             labelKey="home.settings.rateApp"
             onPress={handleComingSoon}
             isLast
-          /> */}
+          />
         </Section>
+        */}
 
         {/* Finance */}
         <Section>
@@ -283,17 +291,11 @@ const SettingsScreen = () => {
             onPress={() => router.push("/settings/accounts" as never)}
           />
           <Row
-            icon="repeat-outline"
-            iconBg={colors.success}
-            labelKey="home.settings.recurringTransactions"
-            onPress={handleComingSoon}
-          />
-          <Row
-            icon="wallet-outline"
+            icon="bar-chart-outline"
             iconBg={colors.success}
             labelKey="home.settings.budgets"
-            value="1"
-            onPress={handleComingSoon}
+            value={budgetsCount > 0 ? String(budgetsCount) : undefined}
+            onPress={() => router.push("/settings/budgets" as never)}
             isLast
           />
         </Section>

@@ -27,6 +27,9 @@ interface BalanceInputProps {
   onChange: (value: string) => void;
   currency: string;
   label?: string;
+  title?: string;
+  showSignToggle?: boolean;
+  showInfo?: boolean;
 }
 
 const KEY_H = 64;
@@ -48,6 +51,9 @@ export const BalanceInput = ({
   onChange,
   currency,
   label,
+  title,
+  showSignToggle = true,
+  showInfo = true,
 }: BalanceInputProps) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -63,7 +69,7 @@ export const BalanceInput = ({
   const openSheet = () => {
     Keyboard.dismiss();
     const num = parseFloat(value) || 0;
-    setIsNegative(num < 0);
+    setIsNegative(showSignToggle && num < 0);
     setInput(num !== 0 ? String(Math.abs(num)) : "");
     setPendingOp(null);
     setPendingValue("");
@@ -227,8 +233,9 @@ export const BalanceInput = ({
         handleComponent={() => null}
       >
         <BottomSheetView>
-          {/* Header: X | title | ⓘ */}
+          {/* Header */}
           <View style={ns.sheetHeader}>
+            {/* Left: X */}
             <Pressable
               style={({ pressed }) => [ns.headerBtn, pressed && ns.rowPressed]}
               onPress={() => sheetRef.current?.dismiss()}
@@ -236,20 +243,46 @@ export const BalanceInput = ({
             >
               <Ionicons name="close" size={18} color={colors.textPrimary} />
             </Pressable>
-            <Typography variant="label" style={ns.headerTitle}>
-              {t("balanceInput.title")}
-            </Typography>
-            <Pressable
-              style={({ pressed }) => [ns.headerBtn, pressed && ns.rowPressed]}
-              onPress={handleInfo}
-              hitSlop={8}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={20}
-                color={colors.accent}
-              />
-            </Pressable>
+
+            {/* Title — absolutely centered */}
+            <View style={ns.headerTitleAbsolute} pointerEvents="none">
+              <Typography variant="label" style={ns.headerTitle}>
+                {title ?? t("balanceInput.title")}
+              </Typography>
+            </View>
+
+            {/* Right: Done / info / invisible placeholder */}
+            {!showSignToggle ? (
+              <Pressable
+                style={({ pressed }) => [
+                  ns.headerDoneBtn,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => handleKey("done")}
+                hitSlop={8}
+              >
+                <Typography style={ns.headerDoneLabel}>
+                  {t("balanceInput.done")}
+                </Typography>
+              </Pressable>
+            ) : showInfo ? (
+              <Pressable
+                style={({ pressed }) => [
+                  ns.headerBtn,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={handleInfo}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={colors.accent}
+                />
+              </Pressable>
+            ) : (
+              <View style={[ns.headerBtn, ns.invisible]} pointerEvents="none" />
+            )}
           </View>
 
           <View style={ns.divider} />
@@ -264,53 +297,55 @@ export const BalanceInput = ({
             </View>
           </View>
 
-          {/* Positive / Negative / Done */}
-          <View style={ns.toggleRow}>
-            <Pressable
-              style={({ pressed }) => [
-                ns.toggleBtn,
-                !isNegative && ns.toggleBtnActive,
-                pressed && ns.rowPressed,
-              ]}
-              onPress={() => {
-                haptic();
-                setIsNegative(false);
-              }}
-            >
-              <Typography
-                style={ns.toggleLabel}
-                color={!isNegative ? "accent" : "textSecondary"}
+          {/* Positive / Negative / Done — hidden when showSignToggle is false */}
+          {showSignToggle && (
+            <View style={ns.toggleRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  ns.toggleBtn,
+                  !isNegative && ns.toggleBtnActive,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => {
+                  haptic();
+                  setIsNegative(false);
+                }}
               >
-                {t("balanceInput.positive")}
-              </Typography>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                ns.toggleBtn,
-                isNegative && ns.toggleBtnActive,
-                pressed && ns.rowPressed,
-              ]}
-              onPress={() => {
-                haptic();
-                setIsNegative(true);
-              }}
-            >
-              <Typography
-                style={ns.toggleLabel}
-                color={isNegative ? "accent" : "textSecondary"}
+                <Typography
+                  style={ns.toggleLabel}
+                  color={!isNegative ? "accent" : "textSecondary"}
+                >
+                  {t("balanceInput.positive")}
+                </Typography>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  ns.toggleBtn,
+                  isNegative && ns.toggleBtnActive,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => {
+                  haptic();
+                  setIsNegative(true);
+                }}
               >
-                {t("balanceInput.negative")}
-              </Typography>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [ns.doneBtn, pressed && ns.rowPressed]}
-              onPress={() => handleKey("done")}
-            >
-              <Typography style={ns.doneLabel}>
-                {t("balanceInput.done")}
-              </Typography>
-            </Pressable>
-          </View>
+                <Typography
+                  style={ns.toggleLabel}
+                  color={isNegative ? "accent" : "textSecondary"}
+                >
+                  {t("balanceInput.negative")}
+                </Typography>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [ns.doneBtn, pressed && ns.rowPressed]}
+                onPress={() => handleKey("done")}
+              >
+                <Typography style={ns.doneLabel}>
+                  {t("balanceInput.done")}
+                </Typography>
+              </Pressable>
+            </View>
+          )}
 
           {/* Numpad — full width, = spans all 4 rows */}
           <View style={ns.numpad}>
@@ -369,8 +404,12 @@ const ns = StyleSheet.create({
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 10,
+  } as ViewStyle,
+  invisible: {
+    opacity: 0,
   } as ViewStyle,
   headerBtn: {
     width: 36,
@@ -380,9 +419,30 @@ const ns = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  headerTitleAbsolute: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  } as ViewStyle,
   headerTitle: {
-    flex: 1,
     textAlign: "center",
+    fontWeight: "700",
+  } as TextStyle,
+  headerDoneBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderCurve: "continuous",
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  } as ViewStyle,
+  headerDoneLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
   } as TextStyle,
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -454,6 +514,7 @@ const ns = StyleSheet.create({
   // ── Numpad ────────────────────────────────────────────────────────────────
   numpad: {
     paddingHorizontal: GAP,
+    paddingTop: 12,
     paddingBottom: GAP,
   } as ViewStyle,
   numRow: {

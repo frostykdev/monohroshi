@@ -19,6 +19,7 @@ model User {
   workspaceMembers WorkspaceMember[]
   invitations      WorkspaceInvitation[]
   transactions     Transaction[]
+  budgets          Budget[]
 }
 
 model Workspace {
@@ -34,6 +35,7 @@ model Workspace {
   categories   Category[]
   tags         Tag[]
   transactions Transaction[]
+  budgets      Budget[]
 }
 
 model WorkspaceMember {
@@ -103,6 +105,7 @@ model Category {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   transactions Transaction[]
+  budgets      Budget[]
 
   @@unique([workspaceId, systemCode])
 }
@@ -161,4 +164,24 @@ model TransactionTag {
   tag   Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([transactionId, tagId])
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  amount     Decimal  @db.Decimal(19, 4)
+  monthStart DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  @@index([workspaceId, monthStart])
+  @@index([categoryId])
 }
