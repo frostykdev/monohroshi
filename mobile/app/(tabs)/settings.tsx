@@ -171,39 +171,70 @@ const SettingsScreen = () => {
     Alert.alert("Coming soon", "This feature is not yet available.");
 
   return (
-    <ScrollView
-      style={s.container}
-      contentContainerStyle={[
-        s.content,
-        { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 },
-      ]}
-      showsVerticalScrollIndicator={false}
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: insets.top,
+      }}
     >
-      <Typography
-        variant="h2"
-        i18nKey="home.tabs.settings"
-        style={s.pageTitle}
-      />
+      <ScrollView
+        style={s.container}
+        contentContainerStyle={[
+          s.content,
+          { paddingBottom: insets.bottom + 32 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Typography
+          variant="h2"
+          i18nKey="home.tabs.settings"
+          style={s.pageTitle}
+        />
 
-      {/* Workspace */}
-      <Section>
-        <Pressable
-          style={({ pressed }) => [s.row, pressed && s.rowPressed]}
-          onPress={() => router.push("/settings/workspace-list" as never)}
-        >
-          <View style={[s.iconWrap, { backgroundColor: colors.iconBlue }]}>
+        {/* Workspace */}
+        <Section>
+          <Pressable
+            style={({ pressed }) => [s.row, pressed && s.rowPressed]}
+            onPress={() => router.push("/settings/workspace-list" as never)}
+          >
+            <View style={[s.iconWrap, { backgroundColor: colors.iconBlue }]}>
+              <Ionicons
+                name="business-outline"
+                size={18}
+                color={colors.textPrimary}
+              />
+            </View>
+            <View style={s.workspaceLabelWrap}>
+              <Typography variant="label">{workspaceName}</Typography>
+              <Typography
+                variant="caption"
+                color="textSecondary"
+                i18nKey="workspace.details.title"
+              />
+            </View>
             <Ionicons
-              name="business-outline"
-              size={18}
-              color={colors.textPrimary}
+              name="chevron-forward"
+              size={16}
+              color={colors.textTertiary}
             />
+          </Pressable>
+        </Section>
+
+        {/* Pro Banner */}
+        <Pressable
+          style={({ pressed }) => [s.proBanner, pressed && s.rowPressed]}
+          onPress={handleComingSoon}
+        >
+          <View style={s.proIconWrap}>
+            <Ionicons name="star" size={22} color={colors.iconYellow} />
           </View>
-          <View style={s.workspaceLabelWrap}>
-            <Typography variant="label">{workspaceName}</Typography>
+          <View style={s.proText}>
+            <Typography variant="label" i18nKey="home.settings.upgradePro" />
             <Typography
-              variant="caption"
+              variant="bodySmall"
               color="textSecondary"
-              i18nKey="workspace.details.title"
+              i18nKey="home.settings.upgradeProSubtitle"
             />
           </View>
           <Ionicons
@@ -212,221 +243,198 @@ const SettingsScreen = () => {
             color={colors.textTertiary}
           />
         </Pressable>
-      </Section>
 
-      {/* Pro Banner */}
-      <Pressable
-        style={({ pressed }) => [s.proBanner, pressed && s.rowPressed]}
-        onPress={handleComingSoon}
-      >
-        <View style={s.proIconWrap}>
-          <Ionicons name="star" size={22} color={colors.iconYellow} />
-        </View>
-        <View style={s.proText}>
-          <Typography variant="label" i18nKey="home.settings.upgradePro" />
-          <Typography
-            variant="bodySmall"
-            color="textSecondary"
-            i18nKey="home.settings.upgradeProSubtitle"
-          />
-        </View>
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={colors.textTertiary}
-        />
-      </Pressable>
-
-      {/* Data */}
-      <Section>
-        {/* <Row
+        {/* Data */}
+        <Section>
+          {/* <Row
           icon="document-text-outline"
           iconBg={colors.success}
           labelKey="home.settings.importData"
           onPress={handleComingSoon}
         /> */}
-        <Row
-          icon="share-outline"
-          iconBg={colors.iconBlue}
-          labelKey="home.settings.exportData"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="star-outline"
-          iconBg={colors.iconYellow}
-          labelKey="home.settings.rateApp"
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+          {/* <Row
+            icon="share-outline"
+            iconBg={colors.iconBlue}
+            labelKey="home.settings.exportData"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="star-outline"
+            iconBg={colors.iconYellow}
+            labelKey="home.settings.rateApp"
+            onPress={handleComingSoon}
+            isLast
+          /> */}
+        </Section>
 
-      {/* Finance */}
-      <Section>
-        <Row
-          icon="pricetag-outline"
-          iconBg={colors.warning}
-          labelKey="home.settings.categories"
-          value={String(categoriesCount)}
-          onPress={() => router.push("/settings/categories" as never)}
-        />
-        <Row
-          icon="wallet-outline"
-          iconBg={colors.iconPurple}
-          labelKey="home.settings.accounts"
-          onPress={() => router.push("/settings/accounts" as never)}
-        />
-        <Row
-          icon="repeat-outline"
-          iconBg={colors.success}
-          labelKey="home.settings.recurringTransactions"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="wallet-outline"
-          iconBg={colors.success}
-          labelKey="home.settings.budgets"
-          value="1"
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+        {/* Finance */}
+        <Section>
+          <Row
+            icon="pricetag-outline"
+            iconBg={colors.warning}
+            labelKey="home.settings.categories"
+            value={String(categoriesCount)}
+            onPress={() => router.push("/settings/categories" as never)}
+          />
+          <Row
+            icon="wallet-outline"
+            iconBg={colors.iconPurple}
+            labelKey="home.settings.accounts"
+            onPress={() => router.push("/settings/accounts" as never)}
+          />
+          <Row
+            icon="repeat-outline"
+            iconBg={colors.success}
+            labelKey="home.settings.recurringTransactions"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="wallet-outline"
+            iconBg={colors.success}
+            labelKey="home.settings.budgets"
+            value="1"
+            onPress={handleComingSoon}
+            isLast
+          />
+        </Section>
 
-      {/* Display */}
-      <Section>
-        <Row
-          icon="trending-up-outline"
-          iconBg={colors.success}
-          labelKey="home.settings.showIncome"
-          toggle={{ value: showIncome, onChange: setShowIncome }}
-          isLast
-        />
-      </Section>
+        {/* Display */}
+        <Section>
+          <Row
+            icon="trending-up-outline"
+            iconBg={colors.success}
+            labelKey="home.settings.showIncome"
+            toggle={{ value: showIncome, onChange: setShowIncome }}
+            isLast
+          />
+        </Section>
 
-      {/* Currency */}
-      <Section>
-        <Row
-          icon="cash-outline"
-          iconBg={colors.iconPurple}
-          labelKey="home.settings.transactionCurrency"
-          value="UAH"
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+        {/* Currency */}
+        <Section>
+          <Row
+            icon="cash-outline"
+            iconBg={colors.iconPurple}
+            labelKey="home.settings.transactionCurrency"
+            value="UAH"
+            onPress={handleComingSoon}
+            isLast
+          />
+        </Section>
 
-      {/* Appearance */}
-      <Section>
-        <Row
-          icon="moon-outline"
-          iconBg={colors.error}
-          labelKey="home.settings.darkMode"
-          toggle={{ value: darkMode, onChange: setDarkMode }}
-        />
-        <Row
-          icon="globe-outline"
-          iconBg={colors.iconBlue}
-          labelKey="home.settings.language"
-          value={languageLabel}
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+        {/* Appearance */}
+        <Section>
+          <Row
+            icon="moon-outline"
+            iconBg={colors.error}
+            labelKey="home.settings.darkMode"
+            toggle={{ value: darkMode, onChange: setDarkMode }}
+          />
+          <Row
+            icon="globe-outline"
+            iconBg={colors.iconBlue}
+            labelKey="home.settings.language"
+            value={languageLabel}
+            onPress={handleComingSoon}
+            isLast
+          />
+        </Section>
 
-      {/* Notifications */}
-      <Section hintKey="home.settings.dailyReminderHint">
-        <Row
-          icon="notifications-outline"
-          iconBg={colors.warning}
-          labelKey="home.settings.dailyReminder"
-          toggle={{ value: dailyReminder, onChange: setDailyReminder }}
-          isLast
-        />
-      </Section>
+        {/* Notifications */}
+        <Section hintKey="home.settings.dailyReminderHint">
+          <Row
+            icon="notifications-outline"
+            iconBg={colors.warning}
+            labelKey="home.settings.dailyReminder"
+            toggle={{ value: dailyReminder, onChange: setDailyReminder }}
+            isLast
+          />
+        </Section>
 
-      {/* Community */}
-      <Section>
-        <Row
-          icon="chatbubble-outline"
-          iconBg={colors.iconTeal}
-          labelKey="home.settings.sendFeedback"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="share-social-outline"
-          iconBg={colors.iconBlue}
-          labelKey="home.settings.shareWithFriends"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="list-outline"
-          iconBg={colors.accent}
-          labelKey="home.settings.whatsNext"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="help-circle-outline"
-          iconBg={colors.iconPurple}
-          labelKey="home.settings.faq"
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+        {/* Community */}
+        <Section>
+          <Row
+            icon="chatbubble-outline"
+            iconBg={colors.iconTeal}
+            labelKey="home.settings.sendFeedback"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="share-social-outline"
+            iconBg={colors.iconBlue}
+            labelKey="home.settings.shareWithFriends"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="list-outline"
+            iconBg={colors.accent}
+            labelKey="home.settings.whatsNext"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="help-circle-outline"
+            iconBg={colors.iconPurple}
+            labelKey="home.settings.faq"
+            onPress={handleComingSoon}
+            isLast
+          />
+        </Section>
 
-      {/* Backup */}
-      <Section hintKey="home.settings.localBackupHint">
-        <Row
-          icon="save-outline"
-          iconBg={colors.iconTeal}
-          labelKey="home.settings.localBackup"
-          onPress={handleComingSoon}
-          isLast
-        />
-      </Section>
+        {/* Backup */}
+        <Section hintKey="home.settings.localBackupHint">
+          <Row
+            icon="save-outline"
+            iconBg={colors.iconTeal}
+            labelKey="home.settings.localBackup"
+            onPress={handleComingSoon}
+            isLast
+          />
+        </Section>
 
-      {/* Danger */}
-      <Section>
-        <Row
-          icon="trash-outline"
-          iconBg={colors.error}
-          labelKey="home.settings.resetData"
-          onPress={deleting ? undefined : handleDeleteAccount}
-          destructive
-          isLast
-        />
-      </Section>
+        {/* Danger */}
+        <Section>
+          <Row
+            icon="trash-outline"
+            iconBg={colors.error}
+            labelKey="home.settings.resetData"
+            onPress={deleting ? undefined : handleDeleteAccount}
+            destructive
+            isLast
+          />
+        </Section>
 
-      {/* Legal */}
-      <Section>
-        <Row
-          icon="document-outline"
-          iconBg={colors.backgroundSurface}
-          labelKey="home.settings.termsOfUse"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="shield-checkmark-outline"
-          iconBg={colors.backgroundSurface}
-          labelKey="home.settings.privacyPolicy"
-          onPress={handleComingSoon}
-        />
-        <Row
-          icon="information-circle-outline"
-          iconBg={colors.backgroundSurface}
-          labelKey="home.settings.version"
-          value="1.0.4"
-          isLast
-          showChevron={false}
-        />
-      </Section>
+        {/* Legal */}
+        <Section>
+          <Row
+            icon="document-outline"
+            iconBg={colors.backgroundSurface}
+            labelKey="home.settings.termsOfUse"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="shield-checkmark-outline"
+            iconBg={colors.backgroundSurface}
+            labelKey="home.settings.privacyPolicy"
+            onPress={handleComingSoon}
+          />
+          <Row
+            icon="information-circle-outline"
+            iconBg={colors.backgroundSurface}
+            labelKey="home.settings.version"
+            value="1.0.4"
+            isLast
+            showChevron={false}
+          />
+        </Section>
 
-      <Typography
-        variant="caption"
-        color="textTertiary"
-        align="center"
-        style={s.footer}
-        i18nKey="home.settings.footer"
-      />
-    </ScrollView>
+        <Typography
+          variant="caption"
+          color="textTertiary"
+          align="center"
+          style={s.footer}
+          i18nKey="home.settings.footer"
+        />
+      </ScrollView>
+    </View>
   );
 };
 

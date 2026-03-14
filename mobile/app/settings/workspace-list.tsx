@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useAllWorkspaces } from "@services/workspaces/workspaces.queries";
@@ -73,17 +74,13 @@ const WorkspaceListScreen = () => {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.backButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
+      <ScreenHeader
+        title={t("workspace.list.title")}
+        left={
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey="workspace.list.title" />
-        <View style={s.placeholder} />
-      </View>
+        }
+        onLeftPress={() => router.back()}
+      />
 
       <ScrollView
         style={s.flex}
@@ -177,24 +174,6 @@ const s = StyleSheet.create({
   } as ViewStyle,
   flex: {
     flex: 1,
-  } as ViewStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 56,
-  } as ViewStyle,
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  placeholder: {
-    width: 40,
   } as ViewStyle,
   pressed: {
     opacity: 0.6,
