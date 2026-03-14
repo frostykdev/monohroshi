@@ -26,7 +26,7 @@ const WelcomeScreen = () => {
 
   const onSignInSuccess = useCallback(() => {
     setOnboardingComplete(true);
-    router.replace("/(home)");
+    router.replace("/(tabs)");
   }, [setOnboardingComplete]);
 
   const { handleSignIn: handleApplePress, loading: appleLoading } =

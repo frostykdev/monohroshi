@@ -137,10 +137,72 @@ Located at `mobile/src/components/ui/Button.tsx`.
 <Button variant="danger" i18nKey="common.delete" onPress={handleDelete} disabled={loading} />
 ```
 
-## 8. Reuse Existing UI Components
+## 8. Use `ScreenHeader` for All Screen Headers
+
+Every screen must use `ScreenHeader` from `@components/ui/ScreenHeader` for its top navigation bar. Never build a custom header row with `View` + `Pressable` + `Typography`.
+
+```tsx
+import { ScreenHeader } from "@components/ui/ScreenHeader";
+import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@constants/colors";
+```
+
+### Props
+
+| Prop            | Type                  | Description                                              |
+| --------------- | --------------------- | -------------------------------------------------------- |
+| `title`         | `string`              | Always centered regardless of button widths              |
+| `left`          | `ReactNode`           | Icon/content for the left button                         |
+| `right`         | `ReactNode`           | Icon/content for the right button                        |
+| `onLeftPress`   | `() => void`          | Makes left slot a `Pressable`                            |
+| `onRightPress`  | `() => void`          | Makes right slot a `Pressable`                           |
+| `rightVariant`  | `"icon" \| "pill"`    | `"icon"` = circle (default), `"pill"` = capsule for text |
+| `rightDisabled` | `boolean`             | Dims + disables the right button                         |
+
+### Stack screen (push navigation) — chevron-back on left
+
+```tsx
+<ScreenHeader
+  title={t("accounts.title")}
+  left={<Ionicons name="chevron-back" size={24} color={colors.textPrimary} />}
+  onLeftPress={() => router.back()}
+  right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
+  onRightPress={handleAdd}
+/>
+```
+
+### Modal screen — close (×) on left, text action on right
+
+```tsx
+<ScreenHeader
+  title={t("accounts.add.title")}
+  left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+  onLeftPress={() => router.back()}
+  right={
+    <Typography variant="label" color={saving ? "textTertiary" : "textPrimary"}>
+      {t("common.save")}
+    </Typography>
+  }
+  onRightPress={() => formik.handleSubmit()}
+  rightVariant="pill"
+  rightDisabled={saving}
+/>
+```
+
+### Rules
+
+- **Stack screens** use `chevron-back` for back navigation.
+- **Modal screens** use `close` (×) for dismissal.
+- If there is no right action, omit `right`/`onRightPress` — the header renders an invisible placeholder so the title stays centered.
+- Never set `paddingTop` on the header itself; instead apply `paddingTop: insets.top` on the screen's root `View`.
+
+---
+
+## 9. Reuse Existing UI Components
 
 Before building a new component or screen, check `mobile/src/components/ui/` for existing primitives:
 
+- **`ScreenHeader`** — every screen's top navigation bar (see rule 8)
 - **`Typography`** — all text
 - **`Button`** — all tappable actions
 - **`Dropdown`** — selector rows that open a picker
@@ -198,7 +260,7 @@ const segments: Segment<Tab>[] = [
 - `onPress` — called with the selected key
 - Generic `<T extends string>` — keys are type-safe when you provide a union type
 
-## 9. Always Use `@expo/vector-icons` for Icons
+## 10. Always Use `@expo/vector-icons` for Icons
 
 Never use emoji or custom SVG components for icons. Always import from `@expo/vector-icons`.
 
@@ -216,7 +278,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 Prefer `Ionicons` as the default icon set. Use `size` and `color` directly on the icon — never wrap in `Typography`.
 
-## 10. Form Validation With Formik + Yup
+## 11. Form Validation With Formik + Yup
 
 Use `formik` for form state management and `yup` for validation schemas. All validation error messages must use i18n keys.
 

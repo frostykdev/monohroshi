@@ -2,7 +2,6 @@ import { useCallback, useRef } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -19,6 +18,8 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { colors } from "@constants/colors";
 import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
+import { IconPickerButton } from "@components/ui/IconPickerButton";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
@@ -145,10 +146,6 @@ const AddCategoryScreen = () => {
     }, []),
   );
 
-  const haptic = () => {
-    if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
-  };
-
   const nameError =
     formik.submitCount > 0 && formik.errors.name
       ? formik.errors.name
@@ -166,33 +163,22 @@ const AddCategoryScreen = () => {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey={titleKey} />
-        <Pressable
-          style={({ pressed }) => [
-            s.saveButton,
-            pressed && s.pressed,
-            saving && s.disabledButton,
-          ]}
-          onPress={() => !saving && formik.handleSubmit()}
-          disabled={saving}
-          hitSlop={8}
-        >
+      <ScreenHeader
+        title={t(titleKey as never)}
+        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        onLeftPress={() => router.back()}
+        right={
           <Typography
             variant="label"
             color={saving ? "textTertiary" : "textPrimary"}
           >
             {t("onboarding.accountSetup.save")}
           </Typography>
-        </Pressable>
-      </View>
+        }
+        onRightPress={() => formik.handleSubmit()}
+        rightVariant="pill"
+        rightDisabled={saving}
+      />
 
       <KeyboardAvoidingView
         style={s.flex}
@@ -204,34 +190,11 @@ const AddCategoryScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Pressable
-            style={s.iconSection}
-            onPress={() => {
-              haptic();
-              router.push(
-                `/(modals)/icon-picker?selectedIcon=${encodeURIComponent(formik.values.icon)}&selectedColor=${encodeURIComponent(DEFAULT_ICON_COLOR)}&hideColorBar=true`,
-              );
-            }}
-          >
-            <View style={s.iconWrapper}>
-              <View
-                style={[s.iconCircle, { backgroundColor: DEFAULT_ICON_COLOR }]}
-              >
-                <Ionicons
-                  name={
-                    formik.values.icon as React.ComponentProps<
-                      typeof Ionicons
-                    >["name"]
-                  }
-                  size={32}
-                  color={colors.textOnAccent}
-                />
-              </View>
-              <View style={s.editBadge}>
-                <Ionicons name="pencil" size={13} color={colors.textPrimary} />
-              </View>
-            </View>
-          </Pressable>
+          <IconPickerButton
+            icon={formik.values.icon}
+            color={DEFAULT_ICON_COLOR}
+            hideColorBar
+          />
 
           <Typography
             variant="caption"
@@ -275,66 +238,8 @@ const s = StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 56,
-  } as ViewStyle,
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  saveButton: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  pressed: {
-    opacity: 0.6,
-  } as ViewStyle,
-  disabledButton: {
-    opacity: 0.4,
-  } as ViewStyle,
   scrollContent: {
     paddingBottom: 40,
-  } as ViewStyle,
-  iconSection: {
-    alignItems: "center",
-    paddingVertical: 24,
-  } as ViewStyle,
-  iconWrapper: {
-    position: "relative",
-    width: 80,
-    height: 80,
-  } as ViewStyle,
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  editBadge: {
-    position: "absolute",
-    bottom: -3,
-    right: -3,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: colors.border,
   } as ViewStyle,
   sectionLabel: {
     marginHorizontal: 28,

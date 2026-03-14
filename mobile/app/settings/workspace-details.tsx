@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { getAuth } from "@react-native-firebase/auth";
 import { colors } from "@constants/colors";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
@@ -187,50 +188,46 @@ const WorkspaceDetailsScreen = () => {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.backButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
+      <ScreenHeader
+        title={t("workspace.details.title")}
+        left={
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey="workspace.details.title" />
-        <Pressable
-          style={({ pressed }) => [
-            s.saveButton,
-            pressed && s.pressed,
-            (!hasChanges || saving) && s.disabledButton,
-          ]}
-          onPress={() =>
-            hasChanges &&
-            !saving &&
-            saveWorkspace(
-              { workspaceId, name: trimmedName, currency },
-              {
-                onSuccess: (data) => {
-                  if (!workspaceId || workspaceId === activeId) {
-                    setWorkspace(data.id, data.name);
-                  }
-                },
-                onError: () =>
-                  Alert.alert(
-                    t("workspace.details.errors.saveTitle"),
-                    t("workspace.details.errors.saveMessage"),
-                  ),
-              },
-            )
-          }
-          hitSlop={8}
-          disabled={!hasChanges || saving}
-        >
-          {saving ? (
+        }
+        onLeftPress={() => router.back()}
+        right={
+          saving ? (
             <ActivityIndicator size="small" color={colors.textPrimary} />
           ) : (
-            <Typography variant="label">{t("common.save")}</Typography>
-          )}
-        </Pressable>
-      </View>
+            <Typography
+              variant="label"
+              color={!hasChanges ? "textTertiary" : "textPrimary"}
+            >
+              {t("common.save")}
+            </Typography>
+          )
+        }
+        onRightPress={() =>
+          hasChanges &&
+          !saving &&
+          saveWorkspace(
+            { workspaceId, name: trimmedName, currency },
+            {
+              onSuccess: (data) => {
+                if (!workspaceId || workspaceId === activeId) {
+                  setWorkspace(data.id, data.name);
+                }
+              },
+              onError: () =>
+                Alert.alert(
+                  t("workspace.details.errors.saveTitle"),
+                  t("workspace.details.errors.saveMessage"),
+                ),
+            },
+          )
+        }
+        rightVariant="pill"
+        rightDisabled={!hasChanges || saving}
+      />
 
       <KeyboardAvoidingView
         style={s.flex}
@@ -543,29 +540,6 @@ const s = StyleSheet.create({
   currencyValue: {
     flex: 1,
   } as TextStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 56,
-  } as ViewStyle,
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  saveButton: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
   pressed: {
     opacity: 0.6,
   } as ViewStyle,

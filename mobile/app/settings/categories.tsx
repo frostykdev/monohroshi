@@ -28,6 +28,7 @@ import { Typography } from "@components/ui/Typography";
 import { SegmentedControl, Segment } from "@components/ui/SegmentedControl";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
+import { usePickerStore } from "@stores/usePickerStore";
 import {
   CategoryActionsSheet,
   CategoryActionsSheetItem,
@@ -38,7 +39,22 @@ type Tab = "expense" | "income";
 const CategoriesScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
+  const {
+    tab: initialTab,
+    pickerMode,
+    fromModal,
+    excludedCategoryIds,
+  } = useLocalSearchParams<{
+    tab?: string;
+    pickerMode?: string;
+    fromModal?: string;
+    excludedCategoryIds?: string;
+  }>();
+  const isPickerMode = pickerMode === "true";
+  const excludedIds = excludedCategoryIds
+    ? excludedCategoryIds.split(",").filter(Boolean)
+    : [];
+  const setCategory = usePickerStore((s) => s.setCategory);
 
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
 
@@ -54,7 +70,10 @@ const CategoriesScreen = () => {
     useState<CategoryActionsSheetItem | null>(null);
   const actionsSheetRef = useRef<BottomSheetModal>(null);
 
-  const categories = allCategories.filter((c) => c.type === activeTab);
+  const categories = allCategories.filter(
+    (c) =>
+      c.type === activeTab && !(isPickerMode && excludedIds.includes(c.id)),
+  );
 
   const segments: Segment<Tab>[] = [
     { key: "expense", label: t("onboarding.categoriesSetup.expenseTab") },
@@ -87,7 +106,7 @@ const CategoriesScreen = () => {
   };
 
   const handleShowTransactions = (item: CategoryActionsSheetItem) => {
-    router.push(`/(home)/index?categoryId=${item.id}` as never);
+    router.push(`/(tabs)/index?categoryId=${item.id}` as never);
   };
 
   const handleDelete = (item: CategoryActionsSheetItem) => {
@@ -116,12 +135,19 @@ const CategoriesScreen = () => {
     );
   };
 
+  const handlePickCategory = (item: Category) => {
+    haptic();
+    setCategory(item.id, item.name);
+    router.back();
+  };
+
   const renderItem = ({ item, drag, isActive }: RenderItemParams<Category>) => (
     <ScaleDecorator>
       <Pressable
         style={[s.categoryRow, isActive && s.dragging]}
-        onLongPress={drag}
+        onLongPress={isPickerMode ? undefined : drag}
         delayLongPress={200}
+        onPress={isPickerMode ? () => handlePickCategory(item) : undefined}
       >
         <View style={s.categoryIcon}>
           <Ionicons
@@ -136,7 +162,13 @@ const CategoriesScreen = () => {
         <Typography variant="body" color="textPrimary" style={s.categoryName}>
           {item.name}
         </Typography>
-        {item.isSystem ? (
+        {isPickerMode ? (
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={colors.textTertiary}
+          />
+        ) : item.isSystem ? (
           <Ionicons
             name="lock-closed-outline"
             size={16}
@@ -163,7 +195,10 @@ const CategoriesScreen = () => {
     <View
       style={[
         s.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
+        {
+          paddingTop: fromModal === "1" ? 10 : insets.top,
+          paddingBottom: insets.bottom,
+        },
       ]}
     >
       <ScreenHeader
@@ -172,13 +207,21 @@ const CategoriesScreen = () => {
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         }
         onLeftPress={() => router.back()}
-        right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
-        onRightPress={() => {
-          haptic();
-          router.push(
-            `/(modals)/add-category?tab=${activeTab}&workspaceId=${activeWorkspaceId ?? ""}` as never,
-          );
-        }}
+        right={
+          isPickerMode ? undefined : (
+            <Ionicons name="add" size={26} color={colors.textPrimary} />
+          )
+        }
+        onRightPress={
+          isPickerMode
+            ? undefined
+            : () => {
+                haptic();
+                router.push(
+                  `/(modals)/add-category?tab=${activeTab}&workspaceId=${activeWorkspaceId ?? ""}` as never,
+                );
+              }
+        }
       />
 
       <SegmentedControl

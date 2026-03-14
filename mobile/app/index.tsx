@@ -27,7 +27,7 @@ const Index = () => {
   }
 
   if (authenticated && isOnboardingComplete) {
-    return <Redirect href="/(home)" />;
+    return <Redirect href="/(tabs)" />;
   }
 
   if (authenticated && !isOnboardingComplete) {

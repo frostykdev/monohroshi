@@ -22,8 +22,11 @@ export const ScreenHeader = ({
   rightVariant = "icon",
   rightDisabled,
 }: ScreenHeaderProps) => {
+  const rightStyle = rightVariant === "pill" ? s.pillButton : s.circleButton;
+
   return (
     <View style={s.container}>
+      {/* Left slot */}
       {onLeftPress ? (
         <Pressable
           style={({ pressed }) => [s.circleButton, pressed && s.pressed]}
@@ -33,15 +36,19 @@ export const ScreenHeader = ({
           {left}
         </Pressable>
       ) : (
-        <View style={s.placeholder} />
+        <View style={s.circleButton} />
       )}
 
-      <Typography variant="label">{title}</Typography>
+      {/* Title — absolutely centred regardless of button widths */}
+      <View style={s.titleContainer} pointerEvents="none">
+        <Typography variant="label">{title}</Typography>
+      </View>
 
+      {/* Right slot */}
       {onRightPress ? (
         <Pressable
           style={({ pressed }) => [
-            rightVariant === "pill" ? s.pillButton : s.circleButton,
+            rightStyle,
             pressed && s.pressed,
             rightDisabled && s.disabledButton,
           ]}
@@ -52,9 +59,9 @@ export const ScreenHeader = ({
           {right}
         </Pressable>
       ) : right ? (
-        <View style={s.placeholder}>{right}</View>
+        <View style={rightStyle}>{right}</View>
       ) : (
-        <View style={s.placeholder} />
+        <View style={[s.circleButton, { opacity: 0 }]} />
       )}
     </View>
   );
@@ -67,6 +74,13 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     height: 56,
+  } as ViewStyle,
+  titleContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
   } as ViewStyle,
   circleButton: {
     width: 40,
@@ -81,11 +95,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 18,
     backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  placeholder: {
-    width: 40,
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,

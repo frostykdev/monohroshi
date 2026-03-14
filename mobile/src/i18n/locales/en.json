@@ -165,6 +165,29 @@
       "footer": "Made with ❤ by @gonahmias"
     }
   },
+  "budgets": {
+    "title": "Budgets",
+    "empty": "No budgets yet. Create your first budget.",
+    "add": {
+      "title": "New Budget",
+      "titleEdit": "Edit Budget"
+    },
+    "general": "General workspace budget",
+    "category": "Category budget",
+    "scopeLabel": "Scope",
+    "amountLabel": "Limit",
+    "spent": "Spent",
+    "remaining": "Remaining",
+    "of": "of",
+    "delete": "Delete budget",
+    "deleteConfirmTitle": "Delete budget",
+    "deleteConfirmMessage": "This will permanently delete this budget.",
+    "deleteConfirmButton": "Delete",
+    "errors": {
+      "duplicate": "A budget for this scope already exists this month.",
+      "saveFailed": "Failed to save budget. Please try again."
+    }
+  },
   "onboarding": {
     "welcome": {
       "title": "Your money under control",

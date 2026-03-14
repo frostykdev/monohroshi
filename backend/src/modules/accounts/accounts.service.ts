@@ -191,7 +191,14 @@ export const deleteAccountForUser = async (
 ) => {
   const user = await getUser(firebaseUid);
   await verifyAccountAccess(user.id, accountId);
-  await prisma.account.delete({ where: { id: accountId } });
+  await prisma.$transaction([
+    prisma.transaction.deleteMany({
+      where: {
+        OR: [{ accountId }, { destinationAccountId: accountId }],
+      },
+    }),
+    prisma.account.delete({ where: { id: accountId } }),
+  ]);
 };
 
 export const getTransactionsForAccount = async (

@@ -70,7 +70,7 @@ const CreatingPlanScreen = () => {
     setOnboardingComplete(true);
     resetOnboarding();
     resetSetup();
-    setTimeout(() => router.replace("/(home)"), 600);
+    setTimeout(() => router.replace("/(tabs)"), 600);
   };
 
   const fireApiCall = () => {

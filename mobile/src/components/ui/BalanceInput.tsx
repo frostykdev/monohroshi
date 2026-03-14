@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Keyboard,
   Alert,
   Pressable,
   StyleSheet,
@@ -7,6 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -25,9 +27,13 @@ interface BalanceInputProps {
   onChange: (value: string) => void;
   currency: string;
   label?: string;
+  title?: string;
+  showSignToggle?: boolean;
+  showInfo?: boolean;
 }
 
 const KEY_H = 64;
+const GAP = 6;
 const OPERATOR_KEYS = ["+", "−", "×", "÷"] as const;
 const ALL_ROWS = [
   ["+", "1", "2", "3"],
@@ -45,8 +51,12 @@ export const BalanceInput = ({
   onChange,
   currency,
   label,
+  title,
+  showSignToggle = true,
+  showInfo = true,
 }: BalanceInputProps) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
 
   const [input, setInput] = useState("");
@@ -57,8 +67,9 @@ export const BalanceInput = ({
   const symbol = getCurrencySymbol(currency);
 
   const openSheet = () => {
+    Keyboard.dismiss();
     const num = parseFloat(value) || 0;
-    setIsNegative(num < 0);
+    setIsNegative(showSignToggle && num < 0);
     setInput(num !== 0 ? String(Math.abs(num)) : "");
     setPendingOp(null);
     setPendingValue("");
@@ -102,8 +113,14 @@ export const BalanceInput = ({
         return;
       }
       if (OPERATOR_KEYS.includes(key as (typeof OPERATOR_KEYS)[number])) {
-        const currentNum = parseFloat(input) || parseFloat(pendingValue) || 0;
-        setPendingValue(String(currentNum));
+        if (pendingOp && pendingValue && input) {
+          // chain: evaluate existing expression and use result as the new left operand
+          const result = evaluate();
+          setPendingValue(String(parseFloat(result.toFixed(10))));
+        } else {
+          const currentNum = parseFloat(input) || parseFloat(pendingValue) || 0;
+          setPendingValue(String(currentNum));
+        }
         setPendingOp(key);
         setInput("");
         return;
@@ -126,7 +143,7 @@ export const BalanceInput = ({
         return prev + key;
       });
     },
-    [evaluate, input, pendingValue, isNegative, onChange],
+    [evaluate, input, pendingOp, pendingValue, isNegative, onChange],
   );
 
   const displayValue = input || (pendingValue ? "..." : "0");
@@ -164,30 +181,18 @@ export const BalanceInput = ({
     ]);
   };
 
-  const NumKey = ({
-    k,
-    isOperator,
-    isSpecial,
-    height,
-  }: {
-    k: string;
-    isOperator?: boolean;
-    isSpecial?: boolean;
-    height?: number;
-  }) => (
+  const NumKey = ({ k, isOperator }: { k: string; isOperator?: boolean }) => (
     <Pressable
       style={({ pressed }) => [
         ns.key,
         isOperator && ns.keyOperator,
-        isSpecial && ns.keySpecial,
-        height !== undefined ? { height } : { height: KEY_H },
         pressed && ns.keyPressed,
       ]}
       onPress={() => handleKey(k)}
     >
       <Typography
         variant="body"
-        style={[ns.keyText, (isOperator || isSpecial) && ns.keyTextMuted]}
+        style={isOperator ? [ns.keyText, ns.keyTextOperator] : ns.keyText}
       >
         {k}
       </Typography>
@@ -228,8 +233,9 @@ export const BalanceInput = ({
         handleComponent={() => null}
       >
         <BottomSheetView>
-          {/* Header: X | title | ⓘ */}
+          {/* Header */}
           <View style={ns.sheetHeader}>
+            {/* Left: X */}
             <Pressable
               style={({ pressed }) => [ns.headerBtn, pressed && ns.rowPressed]}
               onPress={() => sheetRef.current?.dismiss()}
@@ -237,20 +243,46 @@ export const BalanceInput = ({
             >
               <Ionicons name="close" size={18} color={colors.textPrimary} />
             </Pressable>
-            <Typography variant="label" style={ns.headerTitle}>
-              {t("balanceInput.title")}
-            </Typography>
-            <Pressable
-              style={({ pressed }) => [ns.headerBtn, pressed && ns.rowPressed]}
-              onPress={handleInfo}
-              hitSlop={8}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={20}
-                color={colors.accent}
-              />
-            </Pressable>
+
+            {/* Title — absolutely centered */}
+            <View style={ns.headerTitleAbsolute} pointerEvents="none">
+              <Typography variant="label" style={ns.headerTitle}>
+                {title ?? t("balanceInput.title")}
+              </Typography>
+            </View>
+
+            {/* Right: Done / info / invisible placeholder */}
+            {!showSignToggle ? (
+              <Pressable
+                style={({ pressed }) => [
+                  ns.headerDoneBtn,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => handleKey("done")}
+                hitSlop={8}
+              >
+                <Typography style={ns.headerDoneLabel}>
+                  {t("balanceInput.done")}
+                </Typography>
+              </Pressable>
+            ) : showInfo ? (
+              <Pressable
+                style={({ pressed }) => [
+                  ns.headerBtn,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={handleInfo}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={colors.accent}
+                />
+              </Pressable>
+            ) : (
+              <View style={[ns.headerBtn, ns.invisible]} pointerEvents="none" />
+            )}
           </View>
 
           <View style={ns.divider} />
@@ -265,53 +297,55 @@ export const BalanceInput = ({
             </View>
           </View>
 
-          {/* Positive / Negative / Done */}
-          <View style={ns.toggleRow}>
-            <Pressable
-              style={({ pressed }) => [
-                ns.toggleBtn,
-                !isNegative && ns.toggleBtnActive,
-                pressed && ns.rowPressed,
-              ]}
-              onPress={() => {
-                haptic();
-                setIsNegative(false);
-              }}
-            >
-              <Typography
-                variant="bodySmall"
-                color={!isNegative ? "accent" : "textSecondary"}
+          {/* Positive / Negative / Done — hidden when showSignToggle is false */}
+          {showSignToggle && (
+            <View style={ns.toggleRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  ns.toggleBtn,
+                  !isNegative && ns.toggleBtnActive,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => {
+                  haptic();
+                  setIsNegative(false);
+                }}
               >
-                {t("balanceInput.positive")}
-              </Typography>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                ns.toggleBtn,
-                isNegative && ns.toggleBtnActiveNeg,
-                pressed && ns.rowPressed,
-              ]}
-              onPress={() => {
-                haptic();
-                setIsNegative(true);
-              }}
-            >
-              <Typography
-                variant="bodySmall"
-                color={isNegative ? "error" : "textSecondary"}
+                <Typography
+                  style={ns.toggleLabel}
+                  color={!isNegative ? "accent" : "textSecondary"}
+                >
+                  {t("balanceInput.positive")}
+                </Typography>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  ns.toggleBtn,
+                  isNegative && ns.toggleBtnActive,
+                  pressed && ns.rowPressed,
+                ]}
+                onPress={() => {
+                  haptic();
+                  setIsNegative(true);
+                }}
               >
-                {t("balanceInput.negative")}
-              </Typography>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [ns.doneBtn, pressed && ns.rowPressed]}
-              onPress={() => handleKey("done")}
-            >
-              <Typography variant="label" color="textPrimary">
-                {t("balanceInput.done")}
-              </Typography>
-            </Pressable>
-          </View>
+                <Typography
+                  style={ns.toggleLabel}
+                  color={isNegative ? "accent" : "textSecondary"}
+                >
+                  {t("balanceInput.negative")}
+                </Typography>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [ns.doneBtn, pressed && ns.rowPressed]}
+                onPress={() => handleKey("done")}
+              >
+                <Typography style={ns.doneLabel}>
+                  {t("balanceInput.done")}
+                </Typography>
+              </Pressable>
+            </View>
+          )}
 
           {/* Numpad — full width, = spans all 4 rows */}
           <View style={ns.numpad}>
@@ -321,32 +355,28 @@ export const BalanceInput = ({
                 {ALL_ROWS.map((row, ri) => (
                   <View key={ri} style={ns.numRow}>
                     {row.map((k, ki) => (
-                      <NumKey
-                        key={ki}
-                        k={k}
-                        isOperator={ki === 0}
-                        isSpecial={k === "⌫"}
-                      />
+                      <NumKey key={ki} k={k} isOperator={ki === 0} />
                     ))}
                   </View>
                 ))}
               </View>
-              {/* = spanning all 4 rows */}
+              {/* = spanning all 4 rows (height = 4 keys + 3 gaps) */}
               <Pressable
                 style={({ pressed }) => [
-                  ns.key,
                   ns.equalsKey,
-                  { width: 72, height: KEY_H * 4 },
+                  { height: KEY_H * 4 + GAP * 3 },
                   pressed && ns.keyPressed,
                 ]}
                 onPress={() => handleKey("=")}
               >
-                <Typography variant="body" style={ns.keyText}>
+                <Typography variant="body" style={ns.keyTextEquals}>
                   =
                 </Typography>
               </Pressable>
             </View>
           </View>
+          {/* Safe area spacer */}
+          <View style={{ height: insets.bottom || GAP }} />
         </BottomSheetView>
       </BottomSheetModal>
     </>
@@ -374,8 +404,12 @@ const ns = StyleSheet.create({
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 10,
+  } as ViewStyle,
+  invisible: {
+    opacity: 0,
   } as ViewStyle,
   headerBtn: {
     width: 36,
@@ -385,9 +419,30 @@ const ns = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  headerTitleAbsolute: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  } as ViewStyle,
   headerTitle: {
-    flex: 1,
     textAlign: "center",
+    fontWeight: "700",
+  } as TextStyle,
+  headerDoneBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderCurve: "continuous",
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  } as ViewStyle,
+  headerDoneLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
   } as TextStyle,
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -419,66 +474,93 @@ const ns = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 8,
+    marginTop: 28,
     marginBottom: 10,
+    alignItems: "center",
   } as ViewStyle,
   toggleBtn: {
     paddingVertical: 7,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 8,
     borderCurve: "continuous",
-    backgroundColor: colors.backgroundSurface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     alignItems: "center",
   } as ViewStyle,
   toggleBtnActive: {
-    backgroundColor: `${colors.accent}22`,
+    borderColor: colors.accent,
   } as ViewStyle,
-  toggleBtnActiveNeg: {
-    backgroundColor: `${colors.error}22`,
-  } as ViewStyle,
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  } as TextStyle,
   doneBtn: {
     marginLeft: "auto",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 8,
     borderCurve: "continuous",
     backgroundColor: colors.backgroundSurface,
     alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
   } as ViewStyle,
+  doneLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  } as TextStyle,
 
   // ── Numpad ────────────────────────────────────────────────────────────────
-  numpad: {} as ViewStyle,
-  numRow: { flexDirection: "row" } as ViewStyle,
-  numColGroup: { flex: 1 } as ViewStyle,
+  numpad: {
+    paddingHorizontal: GAP,
+    paddingTop: 12,
+    paddingBottom: GAP,
+  } as ViewStyle,
+  numRow: {
+    flexDirection: "row",
+    gap: GAP,
+  } as ViewStyle,
+  numColGroup: {
+    flex: 1,
+    gap: GAP,
+  } as ViewStyle,
   key: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
     height: KEY_H,
-  } as ViewStyle,
-  keyOperator: {
-    backgroundColor: colors.backgroundElevated,
-  } as ViewStyle,
-  keySpecial: {
-    backgroundColor: colors.backgroundElevated,
-  } as ViewStyle,
-  equalsKey: {
-    flex: 0,
+    borderRadius: 12,
+    borderCurve: "continuous",
     backgroundColor: colors.backgroundSurface,
   } as ViewStyle,
+  keyOperator: {
+    backgroundColor: "#5C2410",
+  } as ViewStyle,
+  equalsKey: {
+    width: 72,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderCurve: "continuous",
+    backgroundColor: colors.accent,
+  } as ViewStyle,
   keyPressed: {
-    opacity: 0.6,
+    opacity: 0.65,
   } as ViewStyle,
   keyText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "400",
     color: colors.textPrimary,
   } as TextStyle,
-  keyTextMuted: {
-    color: colors.textSecondary,
+  keyTextOperator: {
+    fontSize: 22,
+    fontWeight: "400",
+    color: colors.accent,
+  } as TextStyle,
+  keyTextEquals: {
+    fontSize: 22,
+    fontWeight: "500",
+    color: colors.textOnAccent,
   } as TextStyle,
 });
