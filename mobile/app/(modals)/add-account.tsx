@@ -25,6 +25,7 @@ import {
 } from "@constants/account-types";
 import { DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { BalanceInput } from "@components/ui/BalanceInput";
+import { IconPickerButton } from "@components/ui/IconPickerButton";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
@@ -159,37 +160,10 @@ const AddAccountScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Icon */}
-          <Pressable
-            style={s.iconSection}
-            onPress={() => {
-              haptic();
-              router.push(
-                `/(modals)/icon-picker?selectedIcon=${encodeURIComponent(formik.values.icon)}&selectedColor=${encodeURIComponent(formik.values.iconColor)}`,
-              );
-            }}
-          >
-            <View style={s.iconWrapper}>
-              <View
-                style={[
-                  s.iconCircle,
-                  { backgroundColor: formik.values.iconColor },
-                ]}
-              >
-                <Ionicons
-                  name={
-                    formik.values.icon as React.ComponentProps<
-                      typeof Ionicons
-                    >["name"]
-                  }
-                  size={32}
-                  color={colors.textOnAccent}
-                />
-              </View>
-              <View style={s.editBadge}>
-                <Ionicons name="pencil" size={13} color={colors.textPrimary} />
-              </View>
-            </View>
-          </Pressable>
+          <IconPickerButton
+            icon={formik.values.icon}
+            color={formik.values.iconColor}
+          />
 
           {/* Name */}
           <View style={s.nameInputContainer}>
@@ -308,28 +282,6 @@ const s = StyleSheet.create({
   pressed: { opacity: 0.6 } as ViewStyle,
   disabledButton: { opacity: 0.4 } as ViewStyle,
   scrollContent: { paddingBottom: 40 } as ViewStyle,
-  iconSection: { alignItems: "center", paddingVertical: 24 } as ViewStyle,
-  iconWrapper: { position: "relative", width: 80, height: 80 } as ViewStyle,
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  editBadge: {
-    position: "absolute",
-    bottom: -3,
-    right: -3,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  } as ViewStyle,
   nameInputContainer: {
     marginHorizontal: 24,
     marginBottom: 8,

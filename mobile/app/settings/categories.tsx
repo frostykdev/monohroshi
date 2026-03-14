@@ -87,7 +87,7 @@ const CategoriesScreen = () => {
   };
 
   const handleShowTransactions = (item: CategoryActionsSheetItem) => {
-    router.push(`/(home)/index?categoryId=${item.id}` as never);
+    router.push(`/(tabs)/index?categoryId=${item.id}` as never);
   };
 
   const handleDelete = (item: CategoryActionsSheetItem) => {

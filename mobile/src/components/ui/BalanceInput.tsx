@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Keyboard,
   Alert,
   Pressable,
   StyleSheet,
@@ -60,6 +61,7 @@ export const BalanceInput = ({
   const symbol = getCurrencySymbol(currency);
 
   const openSheet = () => {
+    Keyboard.dismiss();
     const num = parseFloat(value) || 0;
     setIsNegative(num < 0);
     setInput(num !== 0 ? String(Math.abs(num)) : "");

@@ -78,7 +78,7 @@ const CurrencyPickerScreen = () => {
         s.container,
         {
           paddingBottom: insets.bottom,
-          paddingTop: fromModal === "1" ? 0 : insets.top,
+          paddingTop: fromModal === "1" ? 10 : insets.top,
         },
       ]}
     >

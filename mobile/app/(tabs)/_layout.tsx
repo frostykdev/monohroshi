@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Pressable } from "react-native";
 import { Tabs, router } from "expo-router";
+import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import {
   getAuth,
   onAuthStateChanged,
@@ -8,7 +9,24 @@ import {
 } from "@react-native-firebase/auth";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { colors } from "@constants/colors";
+
+const HapticTabButton = ({
+  onPress,
+  children,
+  style,
+}: BottomTabBarButtonProps) => (
+  <Pressable
+    style={style}
+    onPress={(e) => {
+      Haptics.selectionAsync().catch(() => {});
+      onPress?.(e);
+    }}
+  >
+    {children}
+  </Pressable>
+);
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -71,6 +89,7 @@ const HomeLayout = () => {
           backgroundColor: colors.backgroundElevated,
           borderTopColor: colors.border,
         },
+        tabBarButton: (props) => <HapticTabButton {...props} />,
         tabBarIcon: ({ focused, color, size }) => {
           const icon = TAB_ICONS[route.name];
           return (
