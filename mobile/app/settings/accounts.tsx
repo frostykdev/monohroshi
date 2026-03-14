@@ -176,7 +176,13 @@ const AccountsScreen = () => {
         left={
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         }
-        onLeftPress={() => router.back()}
+        onLeftPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(tabs)/settings" as never);
+          }
+        }}
         right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
         onRightPress={() => {
           haptic();
