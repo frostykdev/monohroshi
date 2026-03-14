@@ -22,6 +22,7 @@ import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
 import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { BalanceInput } from "@components/ui/BalanceInput";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
@@ -122,25 +123,18 @@ const AccountSetupScreen = () => {
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey="onboarding.accountSetup.title" />
-        <Pressable
-          style={({ pressed }) => [s.headerButton, pressed && s.pressed]}
-          onPress={() => formik.handleSubmit()}
-          hitSlop={8}
-        >
+      <ScreenHeader
+        title={t("onboarding.accountSetup.title")}
+        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        onLeftPress={() => router.back()}
+        right={
           <Typography variant="label" color="textSecondary">
             {t("onboarding.accountSetup.save")}
           </Typography>
-        </Pressable>
-      </View>
+        }
+        onRightPress={() => formik.handleSubmit()}
+        rightVariant="pill"
+      />
 
       <KeyboardAvoidingView
         style={s.flex}
@@ -300,17 +294,6 @@ const s = StyleSheet.create({
   } as ViewStyle,
   flex: {
     flex: 1,
-  } as ViewStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 52,
-  } as ViewStyle,
-  headerButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
   } as ViewStyle,
   scrollContent: {
     paddingBottom: 40,

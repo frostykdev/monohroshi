@@ -176,7 +176,7 @@ const AccountsScreen = () => {
         left={
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         }
-        onLeftPress={() => router.back()}
+        onLeftPress={() => router.navigate("/settings" as never)}
         right={<Ionicons name="add" size={26} color={colors.textPrimary} />}
         onRightPress={() => {
           haptic();

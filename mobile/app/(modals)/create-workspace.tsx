@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { colors } from "@constants/colors";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
@@ -96,17 +97,11 @@ const CreateWorkspaceScreen = () => {
     <View
       style={[s.container, { paddingBottom: insets.bottom, paddingTop: 10 }]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey="workspace.create.title" />
-        <View style={s.placeholder} />
-      </View>
+      <ScreenHeader
+        title={t("workspace.create.title")}
+        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        onLeftPress={() => router.back()}
+      />
 
       <KeyboardAvoidingView
         style={s.flex}
@@ -215,27 +210,7 @@ const s = StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 56,
-  } as ViewStyle,
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  placeholder: {
-    width: 40,
-  } as ViewStyle,
-  pressed: {
-    opacity: 0.6,
-  } as ViewStyle,
+  pressed: { opacity: 0.6 } as ViewStyle,
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,

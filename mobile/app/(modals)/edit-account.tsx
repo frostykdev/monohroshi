@@ -26,6 +26,7 @@ import {
 } from "@constants/account-types";
 import { DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { BalanceInput } from "@components/ui/BalanceInput";
+import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
 import { usePickerStore } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
@@ -194,7 +195,10 @@ const EditAccountScreen = () => {
           style: "destructive",
           onPress: () =>
             deleteAccount(id, {
-              onSuccess: () => router.navigate("/accounts" as never),
+              onSuccess: () => {
+                router.dismissAll();
+                router.replace("/settings/accounts" as never);
+              },
               onError: () =>
                 Alert.alert(
                   t("accounts.errors.deleteTitle"),
@@ -213,33 +217,22 @@ const EditAccountScreen = () => {
         { paddingBottom: insets.bottom, paddingTop: insets.top },
       ]}
     >
-      <View style={s.header}>
-        <Pressable
-          style={({ pressed }) => [s.closeButton, pressed && s.pressed]}
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
-          <Ionicons name="close" size={24} color={colors.textPrimary} />
-        </Pressable>
-        <Typography variant="label" i18nKey="accounts.edit.title" />
-        <Pressable
-          style={({ pressed }) => [
-            s.saveButton,
-            pressed && s.pressed,
-            saving && s.disabledButton,
-          ]}
-          onPress={() => !saving && formik.handleSubmit()}
-          disabled={saving}
-          hitSlop={8}
-        >
+      <ScreenHeader
+        title={t("accounts.edit.title")}
+        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
+        onLeftPress={() => router.back()}
+        right={
           <Typography
             variant="label"
             color={saving ? "textTertiary" : "textPrimary"}
           >
             {t("common.save")}
           </Typography>
-        </Pressable>
-      </View>
+        }
+        onRightPress={() => formik.handleSubmit()}
+        rightVariant="pill"
+        rightDisabled={saving}
+      />
 
       <KeyboardAvoidingView
         style={s.flex}
@@ -431,29 +424,6 @@ const EditAccountScreen = () => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
   flex: { flex: 1 } as ViewStyle,
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    height: 56,
-  } as ViewStyle,
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  saveButton: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
   pressed: { opacity: 0.6 } as ViewStyle,
   disabledButton: { opacity: 0.4 } as ViewStyle,
   scrollContent: { paddingBottom: 40 } as ViewStyle,
