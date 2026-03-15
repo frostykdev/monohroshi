@@ -7,6 +7,7 @@ import {
   deleteAccountForUser,
   getAccountById,
   getAccountsForWorkspace,
+  getAccountTotalsConverted,
   getTransactionsForAccount,
   updateAccountForUser,
 } from "./accounts.service";
@@ -87,6 +88,17 @@ export const deleteAccountController = async (
   if (!req.user) throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
   await deleteAccountForUser(req.user.uid, req.params.id);
   res.status(HTTP_STATUS.ok).json({ success: true });
+};
+
+export const getAccountTotalsConvertedController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  const workspaceId = req.query.workspaceId as string | undefined;
+  const date = req.query.date as string | undefined;
+  const result = await getAccountTotalsConverted(req.user.uid, workspaceId, date);
+  res.status(HTTP_STATUS.ok).json({ success: true, data: result });
 };
 
 export const getAccountTransactionsController = async (

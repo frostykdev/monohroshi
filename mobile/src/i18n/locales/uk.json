@@ -117,7 +117,21 @@
     }
   },
   "addTransaction": {
-    "title": "Додати транзакцію"
+    "title": "Додати транзакцію",
+    "expense": "Витрата",
+    "income": "Дохід",
+    "transfer": "Переказ",
+    "descriptionPlaceholder": "Додайте опис",
+    "fromAccount": "З рахунку",
+    "toAccount": "На рахунок",
+    "category": "Категорія",
+    "uncategorisedExpense": "Без категорії (витрата)",
+    "uncategorisedIncome": "Без категорії (дохід)",
+    "save": "Зберегти",
+    "errors": {
+      "saveFailed": "Не вдалося зберегти транзакцію. Спробуйте ще раз.",
+      "accountRequired": "Рахунок обов'язковий"
+    }
   },
   "home": {
     "tabs": {

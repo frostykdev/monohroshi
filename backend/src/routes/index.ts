@@ -6,6 +6,8 @@ import { workspaceRouter } from "../modules/workspaces/workspace.routes";
 import { categoriesRouter } from "../modules/categories/categories.routes";
 import { accountsRouter } from "../modules/accounts/accounts.routes";
 import { budgetsRouter } from "../modules/budgets/budgets.routes";
+import { transactionsRouter } from "../modules/transactions/transactions.routes";
+import { fxRouter } from "../modules/fx/fx.routes";
 
 const apiRouter = Router();
 
@@ -14,6 +16,8 @@ apiRouter.use("/workspaces", workspaceRouter);
 apiRouter.use("/categories", categoriesRouter);
 apiRouter.use("/accounts", accountsRouter);
 apiRouter.use("/budgets", budgetsRouter);
+apiRouter.use("/transactions", transactionsRouter);
+apiRouter.use("/fx", fxRouter);
 apiRouter.use("/", authRouter);
 
 export { apiRouter };

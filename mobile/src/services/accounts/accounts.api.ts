@@ -108,6 +108,38 @@ export const deleteAccount = async (id: string): Promise<void> => {
   await apiClient.delete(`/v1/accounts/${id}`);
 };
 
+export type ConvertedAccountTotal = {
+  accountId: string;
+  accountName: string;
+  accountCurrency: string;
+  balance: number;
+  /** Null when FX conversion was not available. */
+  balanceInPrimary: number | null;
+  /** True when the balance was actually converted (or currencies already matched). */
+  converted: boolean;
+  primaryCurrency: string;
+  conversionDate: string;
+};
+
+export type AccountTotalsConverted = {
+  primaryCurrency: string;
+  conversionDate: string;
+  accounts: ConvertedAccountTotal[];
+};
+
+export const fetchAccountTotalsConverted = async (
+  workspaceId?: string | null,
+  date?: string,
+): Promise<AccountTotalsConverted> => {
+  const params = new URLSearchParams();
+  if (workspaceId) params.set("workspaceId", workspaceId);
+  if (date) params.set("date", date);
+  const res = await apiClient.get<ApiResponse<AccountTotalsConverted>>(
+    `/v1/accounts/totals-converted?${params.toString()}`,
+  );
+  return res.data.data;
+};
+
 export const fetchAccountTransactions = async (
   accountId: string,
   limit = 50,

@@ -11,6 +11,11 @@ const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().min(1),
   FIREBASE_CLIENT_EMAIL: z.string().email(),
   FIREBASE_PRIVATE_KEY: z.string().min(1),
+  // FX exchange-rate provider (optional; required only if using /fx endpoints)
+  FX_PROVIDER_URL: z.string().optional(),
+  FX_PROVIDER_KEY: z.string().optional(),
+  FX_REFRESH_SECRET: z.string().optional(),
+  FX_PIVOT_BASE: z.string().default("USD"),
 });
 
 const parsed = envSchema.safeParse(process.env);

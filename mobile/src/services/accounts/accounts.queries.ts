@@ -4,6 +4,7 @@ import {
   deleteAccount,
   fetchAccountById,
   fetchAccounts,
+  fetchAccountTotalsConverted,
   fetchAccountTransactions,
   updateAccount,
   type CreateAccountPayload,
@@ -15,6 +16,8 @@ export const ACCOUNT_KEYS = {
   byWorkspace: (workspaceId: string) => ["accounts", workspaceId] as const,
   byId: (id: string) => ["accounts", "detail", id] as const,
   transactions: (id: string) => ["accounts", "transactions", id] as const,
+  totalsConverted: (workspaceId?: string | null) =>
+    ["accounts", "totals-converted", workspaceId ?? "default"] as const,
 };
 
 export const useAccounts = (workspaceId?: string | null) =>
@@ -38,6 +41,13 @@ export const useAccountTransactions = (accountId?: string | null) =>
     queryKey: ACCOUNT_KEYS.transactions(accountId!),
     queryFn: () => fetchAccountTransactions(accountId!),
     enabled: !!accountId,
+  });
+
+export const useAccountTotalsConverted = (workspaceId?: string | null) =>
+  useQuery({
+    queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+    queryFn: () => fetchAccountTotalsConverted(workspaceId),
+    enabled: workspaceId !== undefined,
   });
 
 export const useCreateAccount = (workspaceId?: string | null) => {

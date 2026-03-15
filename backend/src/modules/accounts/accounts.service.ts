@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
 import { TRANSACTION_TYPES } from "../../shared/constants";
+import { convertAmount, refreshDailyRates, todayUTC } from "../fx/fx.service";
 
 const accountSelect = {
   id: true,
@@ -199,6 +200,108 @@ export const deleteAccountForUser = async (
     }),
     prisma.account.delete({ where: { id: accountId } }),
   ]);
+};
+
+export type ConvertedAccountTotal = {
+  accountId: string;
+  accountName: string;
+  accountCurrency: string;
+  balance: number;
+  /** Balance expressed in the workspace primary currency. Null when conversion failed. */
+  balanceInPrimary: number | null;
+  /** True when FX conversion was actually performed (or currencies already matched). */
+  converted: boolean;
+  primaryCurrency: string;
+  conversionDate: string;
+};
+
+/**
+ * Returns each account's balance converted to the workspace's primary currency.
+ * Accounts already in the primary currency are passed through without an FX lookup.
+ * When FX rates are not yet persisted the raw balance is returned with a flag.
+ */
+export const getAccountTotalsConverted = async (
+  firebaseUid: string,
+  workspaceId?: string,
+  dateStr?: string,
+): Promise<{
+  primaryCurrency: string;
+  conversionDate: string;
+  accounts: ConvertedAccountTotal[];
+}> => {
+  const user = await getUser(firebaseUid);
+  const wsId = await resolveWorkspaceId(user.id, workspaceId);
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: wsId },
+    select: { currency: true },
+  });
+
+  if (!workspace) throw new ApiError("Workspace not found", HTTP_STATUS.notFound);
+
+  const primaryCurrency = workspace.currency;
+  const conversionDate = dateStr ?? todayUTC();
+
+  const accounts = await prisma.account.findMany({
+    where: { workspaceId: wsId, isArchived: false },
+    select: { id: true, name: true, currency: true, balance: true },
+  });
+
+  // Pre-seed today's rates keyed by the primary currency so the snapshot is
+  // always stored under the workspace currency (e.g. UAH) rather than a pivot.
+  // Errors are swallowed — individual conversions will fail gracefully if needed.
+  await refreshDailyRates(primaryCurrency, conversionDate).catch(() => null);
+
+  const results: ConvertedAccountTotal[] = await Promise.all(
+    accounts.map(async (acc) => {
+      const balance = parseFloat(acc.balance.toString());
+
+      if (acc.currency === primaryCurrency) {
+        return {
+          accountId: acc.id,
+          accountName: acc.name,
+          accountCurrency: acc.currency,
+          balance,
+          balanceInPrimary: balance,
+          converted: true,
+          primaryCurrency,
+          conversionDate,
+        };
+      }
+
+      try {
+        const balanceInPrimary = await convertAmount(
+          balance,
+          acc.currency,
+          primaryCurrency,
+          conversionDate,
+        );
+        return {
+          accountId: acc.id,
+          accountName: acc.name,
+          accountCurrency: acc.currency,
+          balance,
+          balanceInPrimary,
+          converted: true,
+          primaryCurrency,
+          conversionDate,
+        };
+      } catch {
+        return {
+          accountId: acc.id,
+          accountName: acc.name,
+          accountCurrency: acc.currency,
+          balance,
+          balanceInPrimary: null,
+          converted: false,
+          primaryCurrency,
+          conversionDate,
+        };
+      }
+    }),
+  );
+
+  return { primaryCurrency, conversionDate, accounts: results };
 };
 
 export const getTransactionsForAccount = async (

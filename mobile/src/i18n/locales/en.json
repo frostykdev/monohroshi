@@ -117,7 +117,21 @@
     }
   },
   "addTransaction": {
-    "title": "Add Transaction"
+    "title": "Add Transaction",
+    "expense": "Expense",
+    "income": "Income",
+    "transfer": "Transfer",
+    "descriptionPlaceholder": "Add description",
+    "fromAccount": "From account",
+    "toAccount": "To account",
+    "category": "Category",
+    "uncategorisedExpense": "Uncategorised expense",
+    "uncategorisedIncome": "Uncategorised income",
+    "save": "Save",
+    "errors": {
+      "saveFailed": "Failed to save transaction. Please try again.",
+      "accountRequired": "Account is required"
+    }
   },
   "home": {
     "tabs": {

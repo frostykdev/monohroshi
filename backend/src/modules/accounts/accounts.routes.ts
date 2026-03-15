@@ -6,6 +6,7 @@ import {
   deleteAccountController,
   getAccountByIdController,
   getAccountsController,
+  getAccountTotalsConvertedController,
   getAccountTransactionsController,
   updateAccountController,
 } from "./accounts.controller";
@@ -13,6 +14,11 @@ import {
 const accountsRouter = Router();
 
 accountsRouter.get("/", checkAuthenticated, asyncHandler(getAccountsController));
+accountsRouter.get(
+  "/totals-converted",
+  checkAuthenticated,
+  asyncHandler(getAccountTotalsConvertedController),
+);
 accountsRouter.post("/", checkAuthenticated, asyncHandler(createAccountController));
 accountsRouter.get("/:id", checkAuthenticated, asyncHandler(getAccountByIdController));
 accountsRouter.patch("/:id", checkAuthenticated, asyncHandler(updateAccountController));

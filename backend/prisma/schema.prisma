@@ -166,6 +166,28 @@ model TransactionTag {
   @@id([transactionId, tagId])
 }
 
+model ExchangeRateSnapshot {
+  id           String         @id @default(cuid())
+  baseCurrency String
+  asOfDate     DateTime       @db.Date
+  provider     String
+  fetchedAt    DateTime       @default(now())
+  rates        ExchangeRate[]
+
+  @@unique([baseCurrency, asOfDate, provider])
+  @@index([baseCurrency, asOfDate])
+}
+
+model ExchangeRate {
+  id           String               @id @default(cuid())
+  quoteCurrency String
+  rate         Decimal              @db.Decimal(19, 8)
+  snapshotId   String
+  snapshot     ExchangeRateSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, quoteCurrency])
+}
+
 model Budget {
   id         String   @id @default(cuid())
   amount     Decimal  @db.Decimal(19, 4)
