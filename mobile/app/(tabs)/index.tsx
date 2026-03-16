@@ -13,24 +13,23 @@ import {
 import { useRef, useState, useCallback, useMemo } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { DateTime } from "luxon";
 import * as Haptics from "expo-haptics";
 import {
+  BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetView,
+  type BottomSheetBackdropProps,
 } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
-import {
-  getCurrencySymbol,
-  getAccountTypeConfig,
-} from "@constants/account-types";
+import { getCurrencySymbol } from "@constants/account-types";
 import { Typography } from "@components/ui/Typography";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import { useTransactionStats } from "@services/transactions/transactions.queries";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import type { Account } from "@services/accounts/accounts.api";
+import { usePickerStore } from "@stores/usePickerStore";
 import type { CategoryStat } from "@services/transactions/transactions.api";
 import {
   StatCardSkeleton,
@@ -48,40 +47,28 @@ type DatePreset =
   | "thisYear"
   | "allTime";
 
-const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
-
 const getDateRange = (preset: DatePreset) => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
+  const now = DateTime.now();
   switch (preset) {
     case "thisMonth":
-      return { from: toDateStr(new Date(y, m, 1)), to: toDateStr(now) };
-    case "lastMonth":
+      return { from: now.startOf("month").toISODate()!, to: now.toISODate()! };
+    case "lastMonth": {
+      const lastMonth = now.minus({ months: 1 });
       return {
-        from: toDateStr(new Date(y, m - 1, 1)),
-        to: toDateStr(new Date(y, m, 0)),
+        from: lastMonth.startOf("month").toISODate()!,
+        to: lastMonth.endOf("month").toISODate()!,
       };
+    }
     case "last3Months":
-      return { from: toDateStr(new Date(y, m - 2, 1)), to: toDateStr(now) };
+      return {
+        from: now.minus({ months: 2 }).startOf("month").toISODate()!,
+        to: now.toISODate()!,
+      };
     case "thisYear":
-      return { from: toDateStr(new Date(y, 0, 1)), to: toDateStr(now) };
+      return { from: now.startOf("year").toISODate()!, to: now.toISODate()! };
     case "allTime":
       return { from: undefined, to: undefined };
   }
-};
-
-const formatDateRange = (from?: string, to?: string): string => {
-  if (!from && !to) return "All time";
-  const fmt = (s: string) =>
-    new Date(s).toLocaleDateString("uk-UA", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  if (!from) return `— ${fmt(to!)}`;
-  if (!to) return `${fmt(from)} —`;
-  return `${fmt(from)} - ${fmt(to)}`;
 };
 
 const fmtAmount = (n: number, currency: string) => {
@@ -322,155 +309,6 @@ const cr = StyleSheet.create({
   pct: { textAlign: "right" } as TextStyle,
 });
 
-// ─── Account selector sheet ────────────────────────────────────────────────────
-
-const AccountSheet = ({
-  accounts,
-  selectedIds,
-  onApply,
-  sheetRef,
-}: {
-  accounts: Account[];
-  selectedIds: string[];
-  onApply: (ids: string[]) => void;
-  sheetRef: React.RefObject<BottomSheetModal | null>;
-}) => {
-  const { t } = useTranslation();
-  // Empty parent selectedIds = "all" → show all checked
-  const [local, setLocal] = useState<string[]>(
-    selectedIds.length > 0 ? selectedIds : accounts.map((a) => a.id),
-  );
-
-  const toggle = (id: string) =>
-    setLocal((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-
-  const handleApply = () => {
-    const allChecked = local.length === accounts.length;
-    onApply(allChecked ? [] : local);
-    sheetRef.current?.dismiss();
-  };
-
-  return (
-    <BottomSheetView style={as.wrapper}>
-      <Typography variant="h3" style={as.title}>
-        {t("analytics.source")}
-      </Typography>
-      <BottomSheetScrollView
-        style={as.list}
-        showsVerticalScrollIndicator={false}
-      >
-        {accounts.map((acc, index) => {
-          const cfg = getAccountTypeConfig(acc.type);
-          const checked = local.includes(acc.id);
-          const isLast = index === accounts.length - 1;
-          const bg = acc.color ?? cfg.color;
-          return (
-            <Pressable
-              key={acc.id}
-              style={({ pressed }) => [
-                as.row,
-                !isLast && as.divider,
-                pressed && as.pressed,
-              ]}
-              onPress={() => toggle(acc.id)}
-            >
-              <View style={[as.icon, { backgroundColor: bg }]}>
-                <Ionicons
-                  name={
-                    (acc.icon as React.ComponentProps<
-                      typeof Ionicons
-                    >["name"]) ?? cfg.icon
-                  }
-                  size={18}
-                  color="#fff"
-                />
-              </View>
-              <View style={as.rowInfo}>
-                <Typography variant="label">{acc.name}</Typography>
-                <Typography variant="caption" color="textSecondary">
-                  {parseFloat(acc.balance).toFixed(2)}{" "}
-                  {getCurrencySymbol(acc.currency)}
-                </Typography>
-              </View>
-              {checked ? (
-                <View style={as.checkOn}>
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color={colors.textOnAccent}
-                  />
-                </View>
-              ) : (
-                <View style={as.checkOff} />
-              )}
-            </Pressable>
-          );
-        })}
-      </BottomSheetScrollView>
-      <View style={as.footer}>
-        <Pressable
-          style={({ pressed }) => [as.applyBtn, pressed && as.pressed]}
-          onPress={handleApply}
-        >
-          <Typography variant="label" color="textOnAccent">
-            {t("analytics.show")}
-          </Typography>
-        </Pressable>
-      </View>
-    </BottomSheetView>
-  );
-};
-
-const as = StyleSheet.create({
-  wrapper: { flex: 1 } as ViewStyle,
-  title: { textAlign: "center", paddingVertical: 14 } as TextStyle,
-  list: { flex: 1 } as ViewStyle,
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    gap: 12,
-  } as ViewStyle,
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  } as ViewStyle,
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  rowInfo: { flex: 1, gap: 2 } as ViewStyle,
-  checkOn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  checkOff: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  } as ViewStyle,
-  footer: { padding: 16, paddingBottom: 8 } as ViewStyle,
-  applyBtn: {
-    backgroundColor: colors.error,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-  } as ViewStyle,
-  pressed: { opacity: 0.65 } as ViewStyle,
-});
-
 // ─── Date preset sheet ─────────────────────────────────────────────────────────
 
 const DATE_PRESETS: DatePreset[] = [
@@ -536,7 +374,7 @@ const ds = StyleSheet.create({
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 const HomeScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const workspaceId = useWorkspaceStore((s) => s.id);
@@ -557,8 +395,17 @@ const HomeScreen = () => {
   const [scrollViewHeight, setScrollViewHeight] = useState(0);
   const [stickyTabHeight, setStickyTabHeight] = useState(0);
 
-  const accountSheetRef = useRef<BottomSheetModal>(null);
   const dateSheetRef = useRef<BottomSheetModal>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.selectedAccountIds !== null) {
+        setSelectedAccountIds(store.selectedAccountIds);
+        usePickerStore.setState({ selectedAccountIds: null });
+      }
+    }, []),
+  );
   const pagerRef = useRef<ScrollView>(null);
   const scrollRef = useRef<ScrollView>(null);
   const isSnapping = useRef(false);
@@ -579,15 +426,28 @@ const HomeScreen = () => {
   );
   const categories = activeStat?.byCategory ?? [];
 
+  const formatDateRange = useCallback(
+    (from?: string, to?: string): string => {
+      const locale = i18n.language;
+      if (!from && !to) return t("analytics.datePresets.allTime");
+      const fmt = (s: string) =>
+        DateTime.fromISO(s)
+          .setLocale(locale)
+          .toLocaleString({ day: "numeric", month: "long", year: "numeric" });
+      if (!from) return `— ${fmt(to!)}`;
+      if (!to) return `${fmt(from)} —`;
+      return `${fmt(from)} – ${fmt(to)}`;
+    },
+    [i18n.language, t],
+  );
+
   const accountLabel = useMemo(() => {
     if (selectedAccountIds.length === 0) return t("analytics.allAccounts");
-    if (selectedAccountIds.length === 1) {
-      return (
-        accounts.find((a) => a.id === selectedAccountIds[0])?.name ??
-        t("analytics.allAccounts")
-      );
-    }
-    return `${selectedAccountIds.length} accounts`;
+    const names = selectedAccountIds
+      .map((id) => accounts.find((a) => a.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+    return names || t("analytics.allAccounts");
   }, [selectedAccountIds, accounts, t]);
 
   const onCardsLayout = useCallback((e: LayoutChangeEvent) => {
@@ -617,16 +477,24 @@ const HomeScreen = () => {
     scrollRef.current?.scrollTo({ y: target, animated: true });
   }, []);
 
+  const getSnapTarget = useCallback(
+    (y: number, vy: number) => {
+      if (Math.abs(vy) > 0.3) return vy > 0 ? cardsHeight : 0;
+      return y < cardsHeight / 2 ? 0 : cardsHeight;
+    },
+    [cardsHeight],
+  );
+
   const handleScrollEndDrag = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (cardsHeight <= 0 || isSnapping.current) return;
       const y = e.nativeEvent.contentOffset.y;
       const vy = e.nativeEvent.velocity?.y ?? 0;
-      if (y > 1 && y < cardsHeight - 1 && Math.abs(vy) < 0.5) {
-        snapTo(y < cardsHeight / 2 ? 0 : cardsHeight);
+      if (y > 1 && y < cardsHeight - 1) {
+        snapTo(getSnapTarget(y, vy));
       }
     },
-    [cardsHeight, snapTo],
+    [cardsHeight, snapTo, getSnapTarget],
   );
 
   const handleMomentumEnd = useCallback(
@@ -643,6 +511,18 @@ const HomeScreen = () => {
       }
     },
     [cardsHeight, snapTo],
+  );
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.6}
+      />
+    ),
+    [],
   );
 
   const openAdd = () => {
@@ -706,7 +586,12 @@ const HomeScreen = () => {
           {/* Account card */}
           <Pressable
             style={({ pressed }) => [s.accountCard, pressed && s.pressed]}
-            onPress={() => accountSheetRef.current?.present()}
+            onPress={() => {
+              const param = selectedAccountIds.join(",");
+              router.push(
+                `/(modals)/account-picker${param ? `?selected=${param}` : ""}` as never,
+              );
+            }}
           >
             <View style={s.accountLeft}>
               <View style={s.accountIconBox}>
@@ -716,7 +601,14 @@ const HomeScreen = () => {
                   color={colors.textPrimary}
                 />
               </View>
-              <Typography variant="label">{accountLabel}</Typography>
+              <Typography
+                variant="label"
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                style={s.accountLabel}
+              >
+                {accountLabel}
+              </Typography>
             </View>
             <Ionicons
               name="ellipsis-vertical"
@@ -838,28 +730,13 @@ const HomeScreen = () => {
         <Ionicons name="add" size={28} color={colors.textOnAccent} />
       </Pressable>
 
-      {/* ── Account sheet ──────────────────────────────── */}
-      <BottomSheetModal
-        ref={accountSheetRef}
-        snapPoints={["60%", "90%"]}
-        index={accounts.length > 4 ? 1 : 0}
-        backgroundStyle={s.sheetBg}
-        handleIndicatorStyle={s.sheetHandle}
-      >
-        <AccountSheet
-          accounts={accounts}
-          selectedIds={selectedAccountIds}
-          onApply={setSelectedAccountIds}
-          sheetRef={accountSheetRef}
-        />
-      </BottomSheetModal>
-
       {/* ── Date sheet ─────────────────────────────────── */}
       <BottomSheetModal
         ref={dateSheetRef}
-        snapPoints={["45%"]}
+        enableDynamicSizing
         backgroundStyle={s.sheetBg}
         handleIndicatorStyle={s.sheetHandle}
+        backdropComponent={renderBackdrop}
       >
         <DateSheet
           selected={datePreset}
@@ -937,7 +814,11 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flex: 1,
   } as ViewStyle,
+  accountLabel: {
+    flex: 1,
+  } as TextStyle,
   accountIconBox: {
     width: 36,
     height: 36,
