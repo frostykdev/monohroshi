@@ -24,7 +24,7 @@ import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { usePickerStore } from "@stores/usePickerStore";
 import { useCreateWorkspace } from "@services/workspaces/workspaces.queries";
-import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
+import { getCurrencySymbol } from "@constants/account-types";
 
 const MIN_NAME_LENGTH = 2;
 
@@ -64,7 +64,7 @@ const CreateWorkspaceScreen = () => {
       {
         onSuccess: (data) => {
           setWorkspace(data.id, data.name);
-          router.dismiss(2);
+          router.replace("/settings/workspace-list" as never);
         },
         onError: () => {
           Alert.alert(
@@ -95,7 +95,10 @@ const CreateWorkspaceScreen = () => {
 
   return (
     <View
-      style={[s.container, { paddingBottom: insets.bottom, paddingTop: 10 }]}
+      style={[
+        s.container,
+        { paddingBottom: insets.bottom, paddingTop: insets.top },
+      ]}
     >
       <ScreenHeader
         title={t("workspace.create.title")}
@@ -172,7 +175,10 @@ const CreateWorkspaceScreen = () => {
                 style={s.currencyValue}
                 numberOfLines={1}
               >
-                {`${currencyFlag(formik.values.currency)} ${getCurrencyByCode(formik.values.currency)?.name ?? formik.values.currency}`}
+                {getCurrencySymbol(formik.values.currency) !==
+                formik.values.currency
+                  ? `${formik.values.currency} (${getCurrencySymbol(formik.values.currency)})`
+                  : formik.values.currency}
               </Typography>
               <Ionicons
                 name="chevron-forward"

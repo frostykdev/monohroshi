@@ -21,8 +21,14 @@ import {
 import { Typography } from "@components/ui/Typography";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import { useAccounts } from "@services/accounts/accounts.queries";
-import type { Account } from "@services/accounts/accounts.api";
+import {
+  useAccounts,
+  useAccountTotalsConverted,
+} from "@services/accounts/accounts.queries";
+import type {
+  Account,
+  ConvertedAccountTotal,
+} from "@services/accounts/accounts.api";
 
 const haptic = () => {
   if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
@@ -83,6 +89,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
 type SectionProps = {
   typeKey: string;
   accounts: Account[];
+  convertedTotals: ConvertedAccountTotal[];
   isExpanded: boolean;
   onToggle: () => void;
 };
@@ -90,16 +97,38 @@ type SectionProps = {
 const AccountSection = ({
   typeKey,
   accounts,
+  convertedTotals,
   isExpanded,
   onToggle,
 }: SectionProps) => {
   const { t } = useTranslation();
 
-  const total = accounts.every((a) => a.currency === accounts[0]?.currency)
-    ? accounts.reduce((sum, a) => sum + parseFloat(a.balance || "0"), 0)
-    : null;
+  const primaryCurrency = convertedTotals[0]?.primaryCurrency;
 
-  const currency = accounts[0]?.currency ?? "";
+  const total = (() => {
+    if (convertedTotals.length > 0 && primaryCurrency) {
+      const sectionIds = new Set(accounts.map((a) => a.id));
+      const relevant = convertedTotals.filter((ct) =>
+        sectionIds.has(ct.accountId),
+      );
+      if (relevant.length === 0) return null;
+      // Only show total when every account was successfully converted
+      if (!relevant.every((ct) => ct.converted)) return null;
+      return relevant.reduce((sum, ct) => sum + (ct.balanceInPrimary ?? 0), 0);
+    }
+    const allSameCurrency = accounts.every(
+      (a) => a.currency === accounts[0]?.currency,
+    );
+    if (allSameCurrency) {
+      return accounts.reduce((sum, a) => sum + parseFloat(a.balance || "0"), 0);
+    }
+    return null;
+  })();
+
+  const currency =
+    convertedTotals.length > 0 && primaryCurrency
+      ? primaryCurrency
+      : (accounts[0]?.currency ?? "");
 
   return (
     <View style={s.section}>
@@ -149,6 +178,8 @@ const AccountsScreen = () => {
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
 
   const { data: accounts = [], isLoading } = useAccounts(activeWorkspaceId);
+  const { data: totalsData } = useAccountTotalsConverted(activeWorkspaceId);
+  const convertedTotals = totalsData?.accounts ?? [];
 
   const allTypes = ACCOUNT_TYPES.map((a) => a.type);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -215,6 +246,7 @@ const AccountsScreen = () => {
               key={type}
               typeKey={type}
               accounts={typeAccounts}
+              convertedTotals={convertedTotals}
               isExpanded={!collapsed[type]}
               onToggle={() => toggleSection(type)}
             />

@@ -137,7 +137,7 @@ const CategoriesScreen = () => {
 
   const handlePickCategory = (item: Category) => {
     haptic();
-    setCategory(item.id, item.name);
+    setCategory(item.id, item.name, item.icon, item.color);
     router.back();
   };
 

@@ -55,6 +55,13 @@ const BudgetRow = ({ budget, currency, onEdit, onDelete }: BudgetRowProps) => {
   const progress = amount > 0 ? Math.min(spent / amount, 1) : 0;
   const isOverBudget = spent > amount;
 
+  const iconName = (budget.category?.icon ??
+    (budget.category ? "pricetag" : "globe-outline")) as React.ComponentProps<
+    typeof Ionicons
+  >["name"];
+  const iconBg = budget.category?.color ?? colors.backgroundSurface;
+  const iconColor = budget.category?.color ? "#fff" : colors.textPrimary;
+
   return (
     <Pressable
       style={({ pressed }) => [s.row, pressed && s.pressed]}
@@ -64,12 +71,8 @@ const BudgetRow = ({ budget, currency, onEdit, onDelete }: BudgetRowProps) => {
       }}
     >
       <View style={s.rowHeader}>
-        <View style={s.rowIcon}>
-          <Ionicons
-            name={budget.category ? "pricetag" : "globe-outline"}
-            size={18}
-            color={colors.textPrimary}
-          />
+        <View style={[s.rowIcon, { backgroundColor: iconBg }]}>
+          <Ionicons name={iconName} size={18} color={iconColor} />
         </View>
         <View style={s.rowInfo}>
           <Typography variant="label">

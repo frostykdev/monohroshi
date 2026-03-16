@@ -45,6 +45,9 @@ const AddBudgetModal = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const workspaceCurrency = useWorkspaceStore(
+    (s) => s.workspaces.find((w) => w.id === s.id)?.currency ?? "USD",
+  );
   const month = getCurrentMonth();
 
   const {
@@ -329,18 +332,11 @@ const AddBudgetModal = () => {
           )}
 
           {/* Amount */}
-          <Typography
-            variant="caption"
-            color="textSecondary"
-            style={s.sectionLabel}
-          >
-            {t("budgets.amountLabel").toUpperCase()}
-          </Typography>
-          <View style={s.card}>
+          <View style={[s.card, { marginTop: 16 }]}>
             <BalanceInput
               value={formik.values.amount}
               onChange={(v) => formik.setFieldValue("amount", v)}
-              currency="USD"
+              currency={workspaceCurrency}
               label={t("budgets.amountLabel")}
               title={t("budgets.amountLabel")}
               showSignToggle={false}
@@ -418,7 +414,7 @@ const s = StyleSheet.create({
     marginLeft: 58,
   } as ViewStyle,
   deleteButton: {
-    marginTop: 32,
+    marginTop: 16,
     marginHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 14,

@@ -1,5 +1,4 @@
-import "../src/i18n";
-
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { colors } from "@constants/colors";
@@ -11,6 +10,8 @@ import { useRevenueCat } from "@hooks/useRevenueCat";
 import { useAuthListener } from "@hooks/useAuthListener";
 import { useAppsFlyer } from "@hooks/useAppsFlyer";
 import { queryClient } from "@services/query-client";
+import { useLanguageStore } from "@stores/useLanguageStore";
+import i18n from "@i18n";
 
 GoogleSignin.configure({
   webClientId: env.googleWebClientId,
@@ -21,6 +22,18 @@ const RootLayout = () => {
   useRevenueCat();
   useAuthListener();
   useAppsFlyer();
+
+  // Apply the user's persisted language preference once the store hydrates.
+  // If no preference is stored, i18n already initialised with the device locale
+  // (see src/i18n/index.ts), so nothing extra is needed.
+  const language = useLanguageStore((s) => s.language);
+  const hasHydrated = useLanguageStore((s) => s.hasHydrated);
+
+  useEffect(() => {
+    if (hasHydrated && language && i18n.language !== language) {
+      i18n.changeLanguage(language);
+    }
+  }, [hasHydrated, language]);
 
   return (
     <GestureHandlerRootView

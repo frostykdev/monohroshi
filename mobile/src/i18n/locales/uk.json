@@ -21,7 +21,9 @@
   },
   "accounts": {
     "title": "Рахунки",
-    "add": { "title": "Новий рахунок" },
+    "add": {
+      "title": "Новий рахунок"
+    },
     "edit": {
       "title": "Редагувати рахунок"
     },
@@ -68,13 +70,13 @@
   "workspace": {
     "defaultName": "Особистий",
     "list": {
-      "title": "Робочі простори"
+      "title": "Простори"
     },
     "details": {
-      "title": "Робочий простір",
+      "title": "Простір",
       "generalSection": "ЗАГАЛЬНЕ",
       "nameLabel": "Назва",
-      "namePlaceholder": "Назва робочого простору",
+      "namePlaceholder": "Назва простору",
       "currencyLabel": "Валюта",
       "membersSection": "УЧАСНИКИ",
       "inviteSection": "ЗАПРОСИТИ ЛЮДЕЙ",
@@ -87,9 +89,9 @@
       "cancelInviteConfirmTitle": "Скасувати запрошення",
       "cancelInviteConfirmMessage": "Видалити запрошення для {{email}}?",
       "cancelInviteConfirmButton": "Видалити",
-      "createNew": "Створити новий робочий простір",
-      "deleteWorkspace": "Видалити робочий простір",
-      "deleteConfirmTitle": "Видалити робочий простір",
+      "createNew": "Створити новий простір",
+      "deleteWorkspace": "Видалити простір",
+      "deleteConfirmTitle": "Видалити простір",
       "deleteConfirmMessage": "Ви впевнені, що хочете видалити \"{{name}}\"? Цю дію не можна скасувати.",
       "deleteConfirmButton": "Видалити",
       "memberCount_one": "{{count}} учасник",
@@ -101,23 +103,61 @@
         "inviteMessage": "Щось пішло не так. Спробуйте ще раз.",
         "deleteTitle": "Не вдалося видалити",
         "deleteMessage": "Щось пішло не так. Спробуйте ще раз.",
-        "deleteLastMessage": "Не можна видалити єдиний робочий простір."
+        "deleteLastMessage": "Не можна видалити єдиний простір."
       }
     },
     "create": {
-      "title": "Новий робочий простір",
-      "namePlaceholder": "Назва робочого простору",
+      "title": "Новий простір",
+      "namePlaceholder": "Назва простору",
       "createButton": "Створити",
       "errors": {
-        "nameRequired": "Назва робочого простору обов'язкова",
+        "nameRequired": "Назва простору обов'язкова",
         "nameMin": "Назва повинна містити щонайменше {{min}} символи",
-        "createTitle": "Не вдалося створити робочий простір",
+        "createTitle": "Не вдалося створити простір",
         "createMessage": "Щось пішло не так. Спробуйте ще раз."
       }
     }
   },
   "addTransaction": {
-    "title": "Додати транзакцію"
+    "title": "Додати транзакцію",
+    "expense": "Витрата",
+    "income": "Дохід",
+    "transfer": "Переказ",
+    "descriptionPlaceholder": "Додайте опис",
+    "fromAccount": "З рахунку",
+    "toAccount": "На рахунок",
+    "category": "Категорія",
+    "uncategorisedExpense": "Без категорії (витрата)",
+    "uncategorisedIncome": "Без категорії (дохід)",
+    "save": "Зберегти",
+    "errors": {
+      "saveFailed": "Не вдалося зберегти транзакцію. Спробуйте ще раз.",
+      "accountRequired": "Рахунок обов'язковий"
+    }
+  },
+  "analytics": {
+    "title": "Статистика",
+    "allAccounts": "Усі рахунки",
+    "source": "Джерело",
+    "show": "Показати",
+    "expenses": "Витрати",
+    "income": "Надходження",
+    "transactionsCount": "Усього ви зробили {{count}} транзакцій",
+    "categories": "Категорії",
+    "tags": "Теги",
+    "categoriesCount_one": "{{count}} Категорія",
+    "categoriesCount_other": "{{count}} Категорій",
+    "tagsCount_one": "{{count}} Тег",
+    "tagsCount_other": "{{count}} Тегів",
+    "noData": "Немає транзакцій за цей період",
+    "uncategorised": "Без категорії",
+    "datePresets": {
+      "thisMonth": "Цей місяць",
+      "lastMonth": "Минулий місяць",
+      "last3Months": "Останні 3 місяці",
+      "thisYear": "Цей рік",
+      "allTime": "Весь час"
+    }
   },
   "home": {
     "tabs": {
@@ -145,7 +185,7 @@
       "recurringTransactions": "Повторювані транзакції",
       "budgets": "Бюджети",
       "showIncome": "Показувати доходи",
-      "transactionCurrency": "Валюта транзакцій",
+      "primaryCurrency": "Основна валюта",
       "darkMode": "Темний режим",
       "language": "Мова",
       "languageEn": "Англійська",
@@ -172,7 +212,7 @@
       "title": "Новий бюджет",
       "titleEdit": "Редагувати бюджет"
     },
-    "general": "Загальний бюджет простору",
+    "general": "Основний бюджет",
     "category": "Бюджет категорії",
     "scopeLabel": "Область",
     "amountLabel": "Ліміт",

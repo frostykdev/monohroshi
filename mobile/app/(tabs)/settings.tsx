@@ -8,21 +8,24 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getAuth, signOut } from "@react-native-firebase/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import type { ParseKeys } from "i18next";
 import { colors } from "@constants/colors";
+import { getCurrencySymbol } from "@constants/account-types";
 import { Typography } from "@components/ui/Typography";
 import { useOnboardingStore } from "@stores/useOnboardingStore";
 import { useSetupStore } from "@stores/useSetupStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
+import { usePickerStore } from "@stores/usePickerStore";
 import { useDeleteAccount } from "@services/users/users.queries";
 import { useCategories } from "@services/categories/categories.queries";
 import { useBudgets } from "@services/budgets/budgets.queries";
+import { useUpdateWorkspace } from "@services/workspaces/workspaces.queries";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -117,7 +120,6 @@ const Section = ({ children, hintKey }: SectionProps) => (
 const SettingsScreen = () => {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const [showIncome, setShowIncome] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(false);
   const resetOnboarding = useOnboardingStore((s) => s.reset);
@@ -128,6 +130,47 @@ const SettingsScreen = () => {
 
   const workspaceName = useWorkspaceStore((s) => s.name);
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const workspaceCurrency = useWorkspaceStore(
+    (s) => s.workspaces.find((w) => w.id === s.id)?.currency ?? "USD",
+  );
+  const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces);
+  const allWorkspacesInStore = useWorkspaceStore((s) => s.workspaces);
+
+  const { mutate: saveWorkspace } = useUpdateWorkspace();
+  const pickedCurrency = usePickerStore((s) => s.currency);
+  const clearPicker = usePickerStore((s) => s.clearAll);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (pickedCurrency && activeWorkspaceId) {
+        const newCurrency = pickedCurrency;
+        clearPicker();
+        saveWorkspace(
+          { workspaceId: activeWorkspaceId, currency: newCurrency },
+          {
+            onSuccess: () => {
+              // Keep the Zustand store in sync so downstream screens
+              // (budgets, accounts totals) pick up the new currency immediately
+              setWorkspaces(
+                allWorkspacesInStore.map((w) =>
+                  w.id === activeWorkspaceId
+                    ? { ...w, currency: newCurrency }
+                    : w,
+                ),
+              );
+            },
+          },
+        );
+      }
+    }, [
+      pickedCurrency,
+      clearPicker,
+      saveWorkspace,
+      activeWorkspaceId,
+      setWorkspaces,
+      allWorkspacesInStore,
+    ]),
+  );
   const { data: categories } = useCategories(activeWorkspaceId);
   const categoriesCount = categories?.length ?? 0;
   const currentMonth = (() => {
@@ -300,25 +343,22 @@ const SettingsScreen = () => {
           />
         </Section>
 
-        {/* Display */}
-        <Section>
-          <Row
-            icon="trending-up-outline"
-            iconBg={colors.success}
-            labelKey="home.settings.showIncome"
-            toggle={{ value: showIncome, onChange: setShowIncome }}
-            isLast
-          />
-        </Section>
-
-        {/* Currency */}
+        {/* Primary currency */}
         <Section>
           <Row
             icon="cash-outline"
             iconBg={colors.iconPurple}
-            labelKey="home.settings.transactionCurrency"
-            value="UAH"
-            onPress={handleComingSoon}
+            labelKey="home.settings.primaryCurrency"
+            value={
+              getCurrencySymbol(workspaceCurrency) !== workspaceCurrency
+                ? `${workspaceCurrency} (${getCurrencySymbol(workspaceCurrency)})`
+                : workspaceCurrency
+            }
+            onPress={() =>
+              router.push(
+                `/(modals)/currency-picker?selected=${workspaceCurrency}` as never,
+              )
+            }
             isLast
           />
         </Section>
@@ -326,17 +366,11 @@ const SettingsScreen = () => {
         {/* Appearance */}
         <Section>
           <Row
-            icon="moon-outline"
-            iconBg={colors.error}
-            labelKey="home.settings.darkMode"
-            toggle={{ value: darkMode, onChange: setDarkMode }}
-          />
-          <Row
             icon="globe-outline"
             iconBg={colors.iconBlue}
             labelKey="home.settings.language"
             value={languageLabel}
-            onPress={handleComingSoon}
+            onPress={() => router.push("/settings/language" as never)}
             isLast
           />
         </Section>

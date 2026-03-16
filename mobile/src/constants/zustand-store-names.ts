@@ -3,4 +3,5 @@ export enum ZustandStoreNames {
   SubscriptionStore = "SubscriptionStore",
   SetupStore = "SetupStore",
   WorkspaceStore = "WorkspaceStore",
+  LanguageStore = "LanguageStore",
 }
