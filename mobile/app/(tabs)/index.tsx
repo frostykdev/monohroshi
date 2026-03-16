@@ -6,8 +6,9 @@ import {
   View,
   ViewStyle,
   TextStyle,
-  ActivityIndicator,
   type LayoutChangeEvent,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from "react-native";
 import { useRef, useState, useCallback, useMemo } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,8 +32,12 @@ import { useTransactionStats } from "@services/transactions/transactions.queries
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import type { Account } from "@services/accounts/accounts.api";
 import type { CategoryStat } from "@services/transactions/transactions.api";
+import {
+  StatCardSkeleton,
+  CategoryRowsSkeleton,
+} from "@components/ui/Skeleton";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // ─── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -549,10 +554,15 @@ const HomeScreen = () => {
     "categories",
   );
   const [cardsHeight, setCardsHeight] = useState(0);
+  const [scrollViewHeight, setScrollViewHeight] = useState(0);
+  const [stickyTabHeight, setStickyTabHeight] = useState(0);
 
   const accountSheetRef = useRef<BottomSheetModal>(null);
   const dateSheetRef = useRef<BottomSheetModal>(null);
   const pagerRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const isSnapping = useRef(false);
+  const snapTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const { data: stats, isLoading } = useTransactionStats(
     workspaceId,
@@ -583,6 +593,57 @@ const HomeScreen = () => {
   const onCardsLayout = useCallback((e: LayoutChangeEvent) => {
     setCardsHeight(e.nativeEvent.layout.height);
   }, []);
+
+  const onScrollViewLayout = useCallback((e: LayoutChangeEvent) => {
+    setScrollViewHeight(e.nativeEvent.layout.height);
+  }, []);
+
+  const onStickyTabLayout = useCallback((e: LayoutChangeEvent) => {
+    setStickyTabHeight(e.nativeEvent.layout.height);
+  }, []);
+
+  const bottomPadding = insets.bottom + 110;
+  const catMinHeight =
+    scrollViewHeight > 0
+      ? scrollViewHeight - stickyTabHeight - bottomPadding
+      : 0;
+
+  const snapTo = useCallback((target: number) => {
+    isSnapping.current = true;
+    clearTimeout(snapTimeout.current);
+    snapTimeout.current = setTimeout(() => {
+      isSnapping.current = false;
+    }, 500);
+    scrollRef.current?.scrollTo({ y: target, animated: true });
+  }, []);
+
+  const handleScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (cardsHeight <= 0 || isSnapping.current) return;
+      const y = e.nativeEvent.contentOffset.y;
+      const vy = e.nativeEvent.velocity?.y ?? 0;
+      if (y > 1 && y < cardsHeight - 1 && Math.abs(vy) < 0.5) {
+        snapTo(y < cardsHeight / 2 ? 0 : cardsHeight);
+      }
+    },
+    [cardsHeight, snapTo],
+  );
+
+  const handleMomentumEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isSnapping.current) {
+        isSnapping.current = false;
+        clearTimeout(snapTimeout.current);
+        return;
+      }
+      if (cardsHeight <= 0) return;
+      const y = e.nativeEvent.contentOffset.y;
+      if (y > 1 && y < cardsHeight - 1) {
+        snapTo(y < cardsHeight / 2 ? 0 : cardsHeight);
+      }
+    },
+    [cardsHeight, snapTo],
+  );
 
   const openAdd = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -631,12 +692,14 @@ const HomeScreen = () => {
 
       {/* ── Scrollable body ────────────────────────────── */}
       <ScrollView
+        ref={scrollRef}
         style={s.scroll}
         stickyHeaderIndices={[1]}
-        snapToOffsets={cardsHeight > 0 ? [0, cardsHeight] : undefined}
-        decelerationRate="fast"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
+        onLayout={onScrollViewLayout}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumEnd}
       >
         {/* child 0 — collapsible pager section */}
         <View onLayout={onCardsLayout}>
@@ -664,9 +727,7 @@ const HomeScreen = () => {
 
           {/* Horizontal stat pager */}
           {isLoading ? (
-            <View style={s.loadingBox}>
-              <ActivityIndicator color={colors.accent} />
-            </View>
+            <StatCardSkeleton />
           ) : (
             <ScrollView
               ref={pagerRef}
@@ -715,7 +776,7 @@ const HomeScreen = () => {
              The outer wrapper spans the full scroll width and carries the
              screen background, so category rows can't bleed through the sides
              or the gap below when the bar is stuck to the top. */}
-        <View style={s.tabBarWrapper}>
+        <View style={s.tabBarWrapper} onLayout={onStickyTabLayout}>
           <View style={s.tabBar}>
             {(["categories", "tags"] as const).map((tab) => (
               <Pressable
@@ -737,8 +798,15 @@ const HomeScreen = () => {
         </View>
 
         {/* child 2 — category list (minHeight ensures snap can always reach tabs) */}
-        <View style={[s.catSection, { minHeight: SCREEN_HEIGHT }]}>
-          {categories.length === 0 ? (
+        <View
+          style={[
+            s.catSection,
+            catMinHeight > 0 && { minHeight: catMinHeight },
+          ]}
+        >
+          {isLoading ? (
+            <CategoryRowsSkeleton count={4} />
+          ) : categories.length === 0 ? (
             <View style={s.empty}>
               <Typography variant="body" color="textSecondary">
                 {t("analytics.noData")}
@@ -762,7 +830,7 @@ const HomeScreen = () => {
       <Pressable
         style={({ pressed }) => [
           s.fab,
-          { bottom: insets.bottom + 72 },
+          { bottom: 20 },
           pressed && s.fabPressed,
         ]}
         onPress={openAdd}
@@ -875,11 +943,6 @@ const s = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     backgroundColor: colors.backgroundSurface,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  loadingBox: {
-    height: 220,
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
