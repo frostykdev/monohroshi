@@ -5,15 +5,15 @@ export const colors = {
   backgroundSurface: "#2E3447",
 
   // Brand
-  accent: "#F05E23",
-  accentPressed: "#D4511C",
+  accent: "#F0B90B",
+  accentPressed: "#D4A800",
 
   // Text
   textPrimary: "#FFFFFF",
   textSecondary: "rgba(255, 255, 255, 0.55)",
   textTertiary: "rgba(255, 255, 255, 0.35)",
   textDisabled: "rgba(255, 255, 255, 0.25)",
-  textOnAccent: "#FFFFFF",
+  textOnAccent: "#1B1F2E",
 
   // Borders
   border: "rgba(255, 255, 255, 0.1)",

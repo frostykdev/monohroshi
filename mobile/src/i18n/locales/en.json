@@ -21,7 +21,9 @@
   },
   "accounts": {
     "title": "Accounts",
-    "add": { "title": "New Account" },
+    "add": {
+      "title": "New Account"
+    },
     "edit": {
       "title": "Edit Account"
     },
@@ -68,13 +70,13 @@
   "workspace": {
     "defaultName": "Personal",
     "list": {
-      "title": "Workspaces"
+      "title": "Spaces"
     },
     "details": {
-      "title": "Workspace",
+      "title": "Space",
       "generalSection": "GENERAL",
       "nameLabel": "Name",
-      "namePlaceholder": "Workspace name",
+      "namePlaceholder": "Space name",
       "currencyLabel": "Currency",
       "membersSection": "MEMBERS",
       "inviteSection": "INVITE PEOPLE",
@@ -87,9 +89,9 @@
       "cancelInviteConfirmTitle": "Cancel invite",
       "cancelInviteConfirmMessage": "Remove the pending invite for {{email}}?",
       "cancelInviteConfirmButton": "Remove",
-      "createNew": "Create new workspace",
-      "deleteWorkspace": "Delete workspace",
-      "deleteConfirmTitle": "Delete Workspace",
+      "createNew": "Create new space",
+      "deleteWorkspace": "Delete space",
+      "deleteConfirmTitle": "Delete Space",
       "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
       "deleteConfirmButton": "Delete",
       "memberCount_one": "{{count}} member",
@@ -101,17 +103,17 @@
         "inviteMessage": "Something went wrong. Please try again.",
         "deleteTitle": "Couldn't delete",
         "deleteMessage": "Something went wrong. Please try again.",
-        "deleteLastMessage": "You cannot delete your only workspace."
+        "deleteLastMessage": "You cannot delete your only space."
       }
     },
     "create": {
-      "title": "New Workspace",
-      "namePlaceholder": "Workspace name",
+      "title": "New Space",
+      "namePlaceholder": "Space name",
       "createButton": "Create",
       "errors": {
-        "nameRequired": "Workspace name is required",
+        "nameRequired": "Space name is required",
         "nameMin": "Name must be at least {{min}} characters",
-        "createTitle": "Couldn't create workspace",
+        "createTitle": "Couldn't create space",
         "createMessage": "Something went wrong. Please try again."
       }
     }
@@ -131,6 +133,30 @@
     "errors": {
       "saveFailed": "Failed to save transaction. Please try again.",
       "accountRequired": "Account is required"
+    }
+  },
+  "analytics": {
+    "title": "Statistics",
+    "allAccounts": "All accounts",
+    "source": "Source",
+    "show": "Show",
+    "expenses": "Expenses",
+    "income": "Income",
+    "transactionsCount": "Total you made {{count}} transactions",
+    "categories": "Categories",
+    "tags": "Tags",
+    "categoriesCount_one": "{{count}} Category",
+    "categoriesCount_other": "{{count}} Categories",
+    "tagsCount_one": "{{count}} Tag",
+    "tagsCount_other": "{{count}} Tags",
+    "noData": "No transactions for this period",
+    "uncategorised": "Uncategorised",
+    "datePresets": {
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "last3Months": "Last 3 months",
+      "thisYear": "This year",
+      "allTime": "All time"
     }
   },
   "home": {
@@ -159,7 +185,7 @@
       "recurringTransactions": "Recurring transactions",
       "budgets": "Budgets",
       "showIncome": "Show income",
-      "transactionCurrency": "Transaction currency",
+      "primaryCurrency": "Primary currency",
       "darkMode": "Dark mode",
       "language": "Language",
       "languageEn": "English",
@@ -186,7 +212,7 @@
       "title": "New Budget",
       "titleEdit": "Edit Budget"
     },
-    "general": "General workspace budget",
+    "general": "Main budget",
     "category": "Category budget",
     "scopeLabel": "Scope",
     "amountLabel": "Limit",

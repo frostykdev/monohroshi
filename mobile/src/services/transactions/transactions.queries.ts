@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createTransaction,
   fetchTransactions,
+  fetchTransactionStats,
   type CreateTransactionPayload,
 } from "./transactions.api";
 import { ACCOUNT_KEYS } from "@services/accounts/accounts.queries";
@@ -9,6 +10,20 @@ import { ACCOUNT_KEYS } from "@services/accounts/accounts.queries";
 export const TRANSACTION_KEYS = {
   all: () => ["transactions"] as const,
   byWorkspace: (workspaceId: string) => ["transactions", workspaceId] as const,
+  stats: (
+    workspaceId?: string | null,
+    fromDate?: string,
+    toDate?: string,
+    accountIds?: string[],
+  ) =>
+    [
+      "transactions",
+      "stats",
+      workspaceId ?? "default",
+      fromDate ?? "",
+      toDate ?? "",
+      accountIds?.join(",") ?? "",
+    ] as const,
 };
 
 export const useTransactions = (
@@ -62,6 +77,21 @@ export const useCreateTransaction = (workspaceId?: string | null) => {
       qc.invalidateQueries({
         queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
       });
+      // Stats
+      qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
     },
   });
 };
+
+export const useTransactionStats = (
+  workspaceId?: string | null,
+  fromDate?: string,
+  toDate?: string,
+  accountIds?: string[],
+) =>
+  useQuery({
+    queryKey: TRANSACTION_KEYS.stats(workspaceId, fromDate, toDate, accountIds),
+    queryFn: () =>
+      fetchTransactionStats(workspaceId, fromDate, toDate, accountIds),
+    enabled: workspaceId !== undefined,
+  });

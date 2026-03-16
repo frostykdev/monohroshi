@@ -53,6 +53,46 @@ export const createTransaction = async (
   return res.data.data.transaction;
 };
 
+export type CategoryStat = {
+  categoryId: string | null;
+  categoryName: string | null;
+  icon: string | null;
+  color: string | null;
+  total: number;
+  count: number;
+  percent: number;
+};
+
+export type TypeStats = {
+  total: number;
+  count: number;
+  byCategory: CategoryStat[];
+};
+
+export type TransactionStats = {
+  expenses: TypeStats;
+  income: TypeStats;
+  currency: string;
+};
+
+export const fetchTransactionStats = async (
+  workspaceId?: string | null,
+  fromDate?: string,
+  toDate?: string,
+  accountIds?: string[],
+): Promise<TransactionStats> => {
+  const params = new URLSearchParams();
+  if (workspaceId) params.set("workspaceId", workspaceId);
+  if (fromDate) params.set("fromDate", fromDate);
+  if (toDate) params.set("toDate", toDate);
+  if (accountIds && accountIds.length > 0)
+    params.set("accountIds", accountIds.join(","));
+  const res = await apiClient.get<ApiResponse<TransactionStats>>(
+    `/v1/transactions/stats?${params.toString()}`,
+  );
+  return res.data.data;
+};
+
 export const fetchTransactions = async (
   workspaceId?: string | null,
   limit = 50,

@@ -173,3 +173,116 @@ export const getTransactions = async (
     select: transactionSelect,
   });
 };
+
+export type CategoryStat = {
+  categoryId: string | null;
+  categoryName: string | null;
+  icon: string | null;
+  color: string | null;
+  total: number;
+  count: number;
+  percent: number;
+};
+
+export type TypeStats = {
+  total: number;
+  count: number;
+  byCategory: CategoryStat[];
+};
+
+export type TransactionStats = {
+  expenses: TypeStats;
+  income: TypeStats;
+  currency: string;
+};
+
+export const getTransactionStats = async (
+  firebaseUid: string,
+  workspaceId?: string,
+  fromDate?: string,
+  toDate?: string,
+  accountIds?: string[],
+): Promise<TransactionStats> => {
+  const user = await getUser(firebaseUid);
+  const wsId = await resolveWorkspaceId(user.id, workspaceId);
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: wsId },
+    select: { currency: true },
+  });
+  const currency = workspace?.currency ?? "USD";
+
+  const from = fromDate ? new Date(fromDate) : undefined;
+  const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
+
+  const grouped = await prisma.transaction.groupBy({
+    by: ["type", "categoryId"],
+    where: {
+      workspaceId: wsId,
+      type: { in: ["expense", "income"] },
+      ...(from || to
+        ? {
+            date: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
+      ...(accountIds && accountIds.length > 0
+        ? { accountId: { in: accountIds } }
+        : {}),
+    },
+    _sum: { amount: true },
+    _count: { id: true },
+  });
+
+  // Fetch category details for all referenced category IDs
+  const catIds = [
+    ...new Set(grouped.map((g) => g.categoryId).filter(Boolean)),
+  ] as string[];
+  const categories = await prisma.category.findMany({
+    where: { id: { in: catIds } },
+    select: { id: true, name: true, icon: true, color: true },
+  });
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+
+  const buildResult = (type: "expense" | "income"): TypeStats => {
+    const rows = grouped.filter((g) => g.type === type);
+    const totalAmount = rows.reduce(
+      (sum, r) => sum + parseFloat((r._sum.amount ?? 0).toString()),
+      0,
+    );
+    const count = rows.reduce((sum, r) => sum + r._count.id, 0);
+
+    const byCategory: CategoryStat[] = rows
+      .map((r) => {
+        const cat = r.categoryId ? catMap.get(r.categoryId) : null;
+        const rowTotal = parseFloat((r._sum.amount ?? 0).toString());
+        return {
+          categoryId: r.categoryId,
+          categoryName: cat?.name ?? null,
+          icon: cat?.icon ?? null,
+          color: cat?.color ?? null,
+          total: Math.round(rowTotal * 100) / 100,
+          count: r._count.id,
+          percent:
+            totalAmount > 0
+              ? Math.round((rowTotal / totalAmount) * 100)
+              : 0,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+
+    return {
+      total: Math.round(totalAmount * 100) / 100,
+      count,
+      byCategory,
+    };
+  };
+
+  return {
+    expenses: buildResult("expense"),
+    income: buildResult("income"),
+    currency,
+  };
+};

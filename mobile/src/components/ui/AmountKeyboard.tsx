@@ -213,7 +213,7 @@ const ns = StyleSheet.create({
     backgroundColor: colors.backgroundSurface,
   } as ViewStyle,
   keyOperator: {
-    backgroundColor: "#5C2410",
+    backgroundColor: "rgba(240, 185, 11, 0.12)",
   } as ViewStyle,
   equalsKey: {
     width: 72,
@@ -232,12 +232,12 @@ const ns = StyleSheet.create({
     color: colors.textPrimary,
   } as TextStyle,
   keyTextOperator: {
-    fontSize: 22,
-    fontWeight: "400",
+    fontSize: 28,
+    fontWeight: "500",
     color: colors.accent,
   } as TextStyle,
   keyTextEquals: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: "500",
     color: colors.textOnAccent,
   } as TextStyle,

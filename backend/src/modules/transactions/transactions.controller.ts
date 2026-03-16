@@ -2,7 +2,11 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
-import { createTransaction, getTransactions } from "./transactions.service";
+import {
+  createTransaction,
+  getTransactions,
+  getTransactionStats,
+} from "./transactions.service";
 
 const createTransactionSchema = z.object({
   type: z.enum(["expense", "income", "transfer"]),
@@ -41,4 +45,25 @@ export const getTransactionsController = async (
 
   const transactions = await getTransactions(req.user.uid, workspaceId, limit, offset);
   res.status(HTTP_STATUS.ok).json({ success: true, data: { transactions } });
+};
+
+export const getTransactionStatsController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  const workspaceId = req.query.workspaceId as string | undefined;
+  const fromDate = req.query.fromDate as string | undefined;
+  const toDate = req.query.toDate as string | undefined;
+  const accountIdsRaw = req.query.accountIds as string | undefined;
+  const accountIds = accountIdsRaw ? accountIdsRaw.split(",").filter(Boolean) : undefined;
+
+  const stats = await getTransactionStats(
+    req.user.uid,
+    workspaceId,
+    fromDate,
+    toDate,
+    accountIds,
+  );
+  res.status(HTTP_STATUS.ok).json({ success: true, data: stats });
 };
