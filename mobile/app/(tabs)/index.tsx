@@ -711,24 +711,29 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* child 1 — STICKY tab bar */}
-        <View style={s.tabBar}>
-          {(["categories", "tags"] as const).map((tab) => (
-            <Pressable
-              key={tab}
-              style={[s.tab, activeTab === tab && s.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Typography
-                variant="label"
-                color={activeTab === tab ? "textPrimary" : "textSecondary"}
+        {/* child 1 — STICKY tab bar
+             The outer wrapper spans the full scroll width and carries the
+             screen background, so category rows can't bleed through the sides
+             or the gap below when the bar is stuck to the top. */}
+        <View style={s.tabBarWrapper}>
+          <View style={s.tabBar}>
+            {(["categories", "tags"] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                style={[s.tab, activeTab === tab && s.tabActive]}
+                onPress={() => setActiveTab(tab)}
               >
-                {tab === "categories"
-                  ? t("analytics.categories")
-                  : t("analytics.tags")}
-              </Typography>
-            </Pressable>
-          ))}
+                <Typography
+                  variant="label"
+                  color={activeTab === tab ? "textPrimary" : "textSecondary"}
+                >
+                  {tab === "categories"
+                    ? t("analytics.categories")
+                    : t("analytics.tags")}
+                </Typography>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {/* child 2 — category list (minHeight ensures snap can always reach tabs) */}
@@ -897,14 +902,19 @@ const s = StyleSheet.create({
     backgroundColor: colors.textPrimary,
   } as ViewStyle,
   // Sticky tab bar
+  tabBarWrapper: {
+    // Full-width background covers any content scrolling behind the sticky bar
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingTop: 2,
+  } as ViewStyle,
   tabBar: {
     flexDirection: "row",
     backgroundColor: colors.backgroundElevated,
-    marginHorizontal: 16,
     borderRadius: 10,
     borderCurve: "continuous",
     padding: 3,
-    marginBottom: 10,
   } as ViewStyle,
   tab: {
     flex: 1,
