@@ -147,6 +147,16 @@ export type BalanceHistoryPoint = {
   balance: number;
 };
 
+export const fetchWorkspaceBalanceHistory = async (
+  workspaceId?: string | null,
+): Promise<BalanceHistoryPoint[]> => {
+  const params = workspaceId ? `?workspaceId=${workspaceId}` : "";
+  const res = await apiClient.get<
+    ApiResponse<{ history: BalanceHistoryPoint[] }>
+  >(`/v1/accounts/workspace-balance-history${params}`);
+  return res.data.data.history;
+};
+
 export const fetchAccountBalanceHistory = async (
   accountId: string,
 ): Promise<BalanceHistoryPoint[]> => {

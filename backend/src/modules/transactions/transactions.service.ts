@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
 import { TRANSACTION_TYPES } from "../../shared/constants";
 import { convertAmount, todayUTC } from "../fx/fx.service";
+import { bn, bnParse, bnRound } from "../../shared/bn";
 
 const getUser = async (firebaseUid: string) => {
   const user = await prisma.user.findUnique({ where: { firebaseUid } });
@@ -37,6 +38,7 @@ export type CreateTransactionData = {
   currency?: string;
   accountId: string;
   destinationAccountId?: string;
+  destinationAmount?: string;
   categoryId?: string;
   tagIds?: string[];
   description?: string;
@@ -92,15 +94,17 @@ export const createTransaction = async (
     throw new ApiError("Invalid transaction type", HTTP_STATUS.badRequest);
   }
 
-  let amount = parseFloat(data.amount);
-  if (isNaN(amount) || amount <= 0)
+  const rawAmount = bnParse(data.amount);
+  if (rawAmount.isNaN() || rawAmount.isLessThanOrEqualTo(0))
     throw new ApiError("Amount must be positive", HTTP_STATUS.badRequest);
 
   // Convert to account's currency if entry currency differs
   const entryCurrency = data.currency?.toUpperCase();
+  let amount = rawAmount;
   if (entryCurrency && entryCurrency !== account.currency) {
     const dateStr = new Date(data.date).toISOString().slice(0, 10) || todayUTC();
-    amount = await convertAmount(amount, entryCurrency, account.currency, dateStr);
+    const converted = await convertAmount(rawAmount.toNumber(), entryCurrency, account.currency, dateStr);
+    amount = bn(converted);
   }
 
   const txDate = new Date(data.date);
@@ -122,8 +126,14 @@ export const createTransaction = async (
     const newTx = await tx.transaction.create({
       data: {
         type: data.type,
-        amount: String(amount),
-        destinationAmount: data.destinationAccountId ? String(amount) : null,
+        amount: bnRound(amount),
+        destinationAmount: data.destinationAccountId
+          ? bnRound(
+              data.destinationAmount
+                ? bnParse(data.destinationAmount).abs()
+                : amount,
+            )
+          : null,
         description: data.description ?? null,
         date: txDate,
         accountId: data.accountId,
@@ -142,21 +152,15 @@ export const createTransaction = async (
     });
 
     // Update account balances
-    const currentBalance = parseFloat(account.balance.toString());
-    let newBalance: number;
-
-    if (data.type === TRANSACTION_TYPES.EXPENSE) {
-      newBalance = currentBalance - amount;
-    } else if (data.type === TRANSACTION_TYPES.INCOME) {
-      newBalance = currentBalance + amount;
-    } else {
-      // transfer: deduct from source
-      newBalance = currentBalance - amount;
-    }
+    const currentBalance = bnParse(account.balance);
+    let newBalance =
+      data.type === TRANSACTION_TYPES.INCOME
+        ? currentBalance.plus(amount)
+        : currentBalance.minus(amount); // expense or transfer (deduct from source)
 
     await tx.account.update({
       where: { id: data.accountId },
-      data: { balance: String(newBalance) },
+      data: { balance: bnRound(newBalance) },
     });
 
     // For transfer: add to destination
@@ -168,10 +172,16 @@ export const createTransaction = async (
       if (!destAccount)
         throw new ApiError("Destination account not found", HTTP_STATUS.notFound);
 
-      const destBalance = parseFloat(destAccount.balance.toString());
+      // Use the explicit destination amount when provided (cross-currency transfers),
+      // otherwise mirror the source amount (same-currency transfers).
+      const destCredit = data.destinationAmount
+        ? bnParse(data.destinationAmount).abs()
+        : amount;
+
+      const destBalance = bnParse(destAccount.balance);
       await tx.account.update({
         where: { id: data.destinationAccountId },
-        data: { balance: String(destBalance + amount) },
+        data: { balance: bnRound(destBalance.plus(destCredit)) },
       });
     }
 

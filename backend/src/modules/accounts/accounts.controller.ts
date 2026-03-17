@@ -9,6 +9,7 @@ import {
   getAccountsForWorkspace,
   getAccountTotalsConverted,
   getBalanceHistoryForAccount,
+  getWorkspaceBalanceHistory,
   getTransactionsForAccount,
   updateAccountForUser,
 } from "./accounts.service";
@@ -124,5 +125,15 @@ export const getAccountBalanceHistoryController = async (
 ): Promise<void> => {
   if (!req.user) throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
   const history = await getBalanceHistoryForAccount(req.user.uid, req.params.id);
+  res.status(HTTP_STATUS.ok).json({ success: true, data: { history } });
+};
+
+export const getWorkspaceBalanceHistoryController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  if (!req.user) throw new ApiError("Unauthorized", HTTP_STATUS.unauthorized);
+  const workspaceId = req.query.workspaceId as string | undefined;
+  const history = await getWorkspaceBalanceHistory(req.user.uid, workspaceId);
   res.status(HTTP_STATUS.ok).json({ success: true, data: { history } });
 };

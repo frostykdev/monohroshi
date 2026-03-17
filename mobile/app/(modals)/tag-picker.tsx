@@ -26,8 +26,9 @@ const TagPickerScreen = () => {
   const insets = useSafeAreaInsets();
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
 
-  const { selected: selectedParam } = useLocalSearchParams<{
+  const { selected: selectedParam, fromModal } = useLocalSearchParams<{
     selected?: string;
+    fromModal?: string;
   }>();
 
   const initialIds = selectedParam
@@ -89,7 +90,10 @@ const TagPickerScreen = () => {
     <View
       style={[
         s.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
+        {
+          paddingTop: fromModal === "1" ? 10 : insets.top,
+          paddingBottom: insets.bottom,
+        },
       ]}
     >
       <ScreenHeader

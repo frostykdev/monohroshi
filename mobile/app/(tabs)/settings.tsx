@@ -25,6 +25,7 @@ import { usePickerStore } from "@stores/usePickerStore";
 import { useDeleteAccount } from "@services/users/users.queries";
 import { useCategories } from "@services/categories/categories.queries";
 import { useBudgets } from "@services/budgets/budgets.queries";
+import { useTags } from "@services/tags/tags.queries";
 import { useUpdateWorkspace } from "@services/workspaces/workspaces.queries";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -120,7 +121,6 @@ const Section = ({ children, hintKey }: SectionProps) => (
 const SettingsScreen = () => {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const [darkMode, setDarkMode] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(false);
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const setOnboardingComplete = useOnboardingStore(
@@ -173,6 +173,8 @@ const SettingsScreen = () => {
   );
   const { data: categories } = useCategories(activeWorkspaceId);
   const categoriesCount = categories?.length ?? 0;
+  const { data: tagsList } = useTags(activeWorkspaceId);
+  const tagsCount = tagsList?.length ?? 0;
   const currentMonth = (() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -326,6 +328,13 @@ const SettingsScreen = () => {
             labelKey="home.settings.categories"
             value={String(categoriesCount)}
             onPress={() => router.push("/settings/categories" as never)}
+          />
+          <Row
+            icon="bookmark-outline"
+            iconBg={colors.iconTeal}
+            labelKey="home.settings.tags"
+            value={tagsCount > 0 ? String(tagsCount) : undefined}
+            onPress={() => router.push("/settings/tags" as never)}
           />
           <Row
             icon="wallet-outline"

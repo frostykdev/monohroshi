@@ -45,6 +45,7 @@ export type CreateTransactionPayload = {
   currency?: string;
   accountId: string;
   destinationAccountId?: string;
+  destinationAmount?: string;
   categoryId?: string;
   tagIds?: string[];
   description?: string;

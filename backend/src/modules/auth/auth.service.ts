@@ -16,6 +16,7 @@ type CategoryInput = {
   icon: string;
   isSystem?: boolean;
   systemCode?: string;
+  translationKey?: string;
 };
 
 export const completeOnboardingForCurrentUser = async (input: {
@@ -35,97 +36,108 @@ export const completeOnboardingForCurrentUser = async (input: {
   };
   categories: CategoryInput[];
 }) => {
-  console.log("[completeOnboarding] Starting transaction with payload keys:", Object.keys(input));
+  console.log(
+    "[completeOnboarding] Starting transaction with payload keys:",
+    Object.keys(input),
+  );
 
-  return prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-    const existingUser = await tx.user.findUnique({
-      where: { firebaseUid: input.firebaseUid },
-    });
+  return prisma.$transaction(
+    async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+      const existingUser = await tx.user.findUnique({
+        where: { firebaseUid: input.firebaseUid },
+      });
 
-    if (existingUser) {
-      throw new ApiError("User is already registered", HTTP_STATUS.conflict);
-    }
+      if (existingUser) {
+        throw new ApiError("User is already registered", HTTP_STATUS.conflict);
+      }
 
-    const user = await tx.user.create({
-      data: {
-        firebaseUid: input.firebaseUid,
-        email: input.email,
-        name: input.name,
-        onboarding: input.onboarding as never,
-      },
-    });
+      const user = await tx.user.create({
+        data: {
+          firebaseUid: input.firebaseUid,
+          email: input.email,
+          name: input.name,
+          onboarding: input.onboarding as never,
+        },
+      });
 
-    const workspace = await tx.workspace.create({
-      data: {
-        name: input.workspace.name,
-        currency: input.workspace.currency,
-      },
-    });
+      const workspace = await tx.workspace.create({
+        data: {
+          name: input.workspace.name,
+          currency: input.workspace.currency,
+        },
+      });
 
-    await tx.workspaceMember.create({
-      data: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        role: WORKSPACE_ROLES.OWNER,
-      },
-    });
+      await tx.workspaceMember.create({
+        data: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          role: WORKSPACE_ROLES.OWNER,
+        },
+      });
 
-    await tx.account.create({
-      data: {
-        name: input.account.name || input.workspace.name,
-        type: input.account.type,
-        currency: input.account.currency,
-        balance: input.account.balance || "0",
-        isPrimary: input.account.isPrimary,
-        icon: input.account.icon ?? null,
-        color: input.account.color ?? null,
-        workspaceId: workspace.id,
-      },
-    });
+      await tx.account.create({
+        data: {
+          name: input.account.name || input.workspace.name,
+          type: input.account.type,
+          currency: input.account.currency,
+          balance: input.account.balance || "0",
+          isPrimary: input.account.isPrimary,
+          icon: input.account.icon ?? null,
+          color: input.account.color ?? null,
+          workspaceId: workspace.id,
+        },
+      });
 
-    const categories =
-      input.categories.length > 0 ? input.categories : ALL_DEFAULT_CATEGORIES;
+      const categories =
+        input.categories.length > 0 ? input.categories : ALL_DEFAULT_CATEGORIES;
 
-    await tx.category.createMany({
-      data: categories.map((cat, index) => ({
-        name: cat.name,
-        type: cat.type,
-        icon: cat.icon,
-        isSystem: cat.isSystem ?? false,
-        systemCode: cat.systemCode ?? null,
-        translationKey: cat.translationKey ?? null,
-        sortOrder: index,
-        workspaceId: workspace.id,
-      })),
-    });
+      await tx.category.createMany({
+        data: categories.map((cat, index) => ({
+          name: cat.name,
+          type: cat.type,
+          icon: cat.icon,
+          isSystem: cat.isSystem ?? false,
+          systemCode: cat.systemCode ?? null,
+          translationKey: cat.translationKey ?? null,
+          sortOrder: index,
+          workspaceId: workspace.id,
+        })),
+      });
 
-    return user;
-  });
+      return user;
+    },
+  );
 };
 
 export const deleteCurrentUser = async (firebaseUid: string): Promise<void> => {
-  await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-    const user = await tx.user.findUnique({ where: { firebaseUid } });
+  await prisma.$transaction(
+    async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+      const user = await tx.user.findUnique({ where: { firebaseUid } });
 
-    if (!user) {
-      throw new ApiError("User account not found", HTTP_STATUS.notFound);
-    }
+      if (!user) {
+        throw new ApiError("User account not found", HTTP_STATUS.notFound);
+      }
 
-    const ownedMemberships = await tx.workspaceMember.findMany({
-      where: { userId: user.id, role: WORKSPACE_ROLES.OWNER },
-      select: { workspaceId: true },
-    });
+      const ownedMemberships = await tx.workspaceMember.findMany({
+        where: { userId: user.id, role: WORKSPACE_ROLES.OWNER },
+        select: { workspaceId: true },
+      });
 
-    const ownedWorkspaceIds = ownedMemberships.map((m) => m.workspaceId);
+      const ownedWorkspaceIds = ownedMemberships.map((m) => m.workspaceId);
 
-    if (ownedWorkspaceIds.length > 0) {
-      await tx.workspace.deleteMany({ where: { id: { in: ownedWorkspaceIds } } });
-    }
+      if (ownedWorkspaceIds.length > 0) {
+        await tx.workspace.deleteMany({
+          where: { id: { in: ownedWorkspaceIds } },
+        });
+      }
 
-    await tx.workspaceInvitation.deleteMany({ where: { invitedById: user.id } });
+      await tx.workspaceInvitation.deleteMany({
+        where: { invitedById: user.id },
+      });
 
-    await tx.transaction.deleteMany({ where: { createdById: user.id } });
+      await tx.transaction.deleteMany({ where: { createdById: user.id } });
 
-    await tx.user.delete({ where: { id: user.id } });
-  });
+      await tx.user.delete({ where: { id: user.id } });
+    },
+  );
 };

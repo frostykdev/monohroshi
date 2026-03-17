@@ -15,6 +15,7 @@ export const colors = {
   textTertiary: "rgba(255, 255, 255, 0.50)",
   textDisabled: "rgba(255, 255, 255, 0.28)",
   textOnAccent: "#1B1F2E",
+  white: "#FFFFFF",
 
   // Borders
   border: "rgba(255, 255, 255, 0.1)",

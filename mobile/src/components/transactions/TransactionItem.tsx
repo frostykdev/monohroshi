@@ -5,6 +5,7 @@ import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
 import { getCategoryDisplayName } from "@constants/default-categories";
 import { Typography } from "@components/ui/Typography";
+import { bnParse } from "@utils/bn";
 import type { AccountTransaction } from "@services/accounts/accounts.api";
 
 type AmountResult = { text: string; color: string };
@@ -15,18 +16,16 @@ export const formatTxAmount = (
 ): AmountResult => {
   const isIncomingTransfer =
     tx.destinationAccount?.id === accountId && tx.type === "transfer";
-  const raw =
+  const raw = bnParse(
     isIncomingTransfer && tx.destinationAmount
-      ? parseFloat(tx.destinationAmount)
-      : parseFloat(tx.amount);
+      ? tx.destinationAmount
+      : tx.amount,
+  );
   const currency = isIncomingTransfer
     ? (tx.destinationAccount?.currency ?? tx.account.currency)
     : tx.account.currency;
   const symbol = getCurrencySymbol(currency);
-  const abs = Math.abs(raw).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const abs = raw.abs().toFormat(2);
 
   if (tx.type === "income" || isIncomingTransfer) {
     return { text: `+${abs} ${symbol}`, color: colors.success };

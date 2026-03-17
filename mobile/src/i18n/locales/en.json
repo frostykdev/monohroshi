@@ -22,6 +22,7 @@
   },
   "accounts": {
     "title": "Accounts",
+    "balanceDynamics": "Total balance dynamics",
     "add": {
       "title": "New Account"
     },
@@ -180,9 +181,11 @@
     "uncategorisedExpense": "Uncategorised expense",
     "uncategorisedIncome": "Uncategorised income",
     "save": "Save",
+    "autoConverted": "auto",
     "errors": {
       "saveFailed": "Failed to save transaction. Please try again.",
-      "accountRequired": "Account is required"
+      "accountRequired": "Account is required",
+      "destinationRequired": "Please select a destination account for the transfer"
     }
   },
   "analytics": {

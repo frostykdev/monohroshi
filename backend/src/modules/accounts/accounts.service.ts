@@ -3,6 +3,7 @@ import { ApiError } from "../../shared/errors/api-error";
 import { HTTP_STATUS } from "../../shared/http-status";
 import { TRANSACTION_TYPES } from "../../shared/constants";
 import { convertAmount, refreshDailyRates, todayUTC } from "../fx/fx.service";
+import { bn, bnParse, bnRound } from "../../shared/bn";
 
 const accountSelect = {
   id: true,
@@ -169,18 +170,18 @@ export const updateAccountForUser = async (
     });
 
     if (current) {
-      const oldBalance = parseFloat(current.balance.toString());
-      const newBalance = parseFloat(data.balance);
-      const delta = newBalance - oldBalance;
+      const oldBalance = bnParse(current.balance);
+      const newBalance = bnParse(data.balance);
+      const delta = newBalance.minus(oldBalance);
 
-      if (Math.abs(delta) > 0.00001) {
+      if (delta.abs().isGreaterThan("0.00001")) {
         return prisma.$transaction(async (tx) => {
           await tx.transaction.create({
             data: {
               type: TRANSACTION_TYPES.BALANCE_CORRECTION,
               // Store signed delta: positive = balance went up, negative = went down.
               // This lets the history reconstruction correctly undo the correction.
-              amount: String(delta),
+              amount: bnRound(delta),
               date: new Date(),
               accountId,
               createdById: user.id,
@@ -273,7 +274,7 @@ export const getAccountTotalsConverted = async (
 
   const results: ConvertedAccountTotal[] = await Promise.all(
     accounts.map(async (acc) => {
-      const balance = parseFloat(acc.balance.toString());
+      const balance = bnParse(acc.balance).toNumber();
 
       if (acc.currency === primaryCurrency) {
         return {
@@ -391,33 +392,133 @@ export const getBalanceHistoryForAccount = async (
 
   // Walk backwards: for each month record end-of-month balance, then undo
   // that month's transactions to get the end-of-previous-month balance.
-  let endBalance = parseFloat(account.balance.toString());
+  let endBalance = bnParse(account.balance);
   const result: BalanceHistoryPoint[] = [];
 
   for (let i = allMonths.length - 1; i >= 0; i--) {
     const month = allMonths[i];
-    result.unshift({ month, balance: endBalance });
+    result.unshift({ month, balance: endBalance.toNumber() });
 
     for (const tx of (txByMonth.get(month) ?? []).reverse()) {
       const isIncoming =
         tx.destinationAccountId === accountId && tx.type === "transfer";
       const amount =
         isIncoming && tx.destinationAmount
-          ? parseFloat(tx.destinationAmount.toString())
-          : parseFloat(tx.amount.toString());
+          ? bnParse(tx.destinationAmount)
+          : bnParse(tx.amount);
 
-      if (tx.type === "expense") endBalance += amount;
-      else if (tx.type === "income") endBalance -= amount;
+      if (tx.type === "expense") endBalance = endBalance.plus(amount);
+      else if (tx.type === "income") endBalance = endBalance.minus(amount);
       else if (tx.type === "transfer") {
-        if (isIncoming) endBalance -= amount;
-        else endBalance += amount;
+        if (isIncoming) endBalance = endBalance.minus(amount);
+        else endBalance = endBalance.plus(amount);
       } else if (
         tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
         tx.type === TRANSACTION_TYPES.INITIAL_BALANCE
       ) {
         // amount is stored as a signed value (positive = balance went up).
         // To reconstruct the prior balance, undo the signed effect.
-        endBalance -= amount;
+        endBalance = endBalance.minus(amount);
+      }
+    }
+  }
+
+  return result;
+};
+
+/**
+ * Returns end-of-month total balance across all non-archived workspace accounts.
+ * Uses the same backwards-walking algorithm as getBalanceHistoryForAccount.
+ */
+export const getWorkspaceBalanceHistory = async (
+  firebaseUid: string,
+  workspaceId?: string | null,
+): Promise<BalanceHistoryPoint[]> => {
+  const user = await getUser(firebaseUid);
+  const wsId = await resolveWorkspaceId(user.id, workspaceId ?? undefined);
+
+  const accounts = await prisma.account.findMany({
+    where: { workspaceId: wsId, isArchived: false },
+    select: { id: true, balance: true },
+  });
+
+  if (accounts.length === 0) return [];
+
+  const accountIds = accounts.map((a) => a.id);
+  const accountIdSet = new Set(accountIds);
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      OR: [
+        { accountId: { in: accountIds } },
+        { destinationAccountId: { in: accountIds } },
+      ],
+    },
+    orderBy: { date: "asc" },
+    select: {
+      type: true,
+      amount: true,
+      destinationAmount: true,
+      date: true,
+      accountId: true,
+      destinationAccountId: true,
+    },
+  });
+
+  const toMonthKey = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+
+  const txByMonth = new Map<string, typeof transactions>();
+  for (const tx of transactions) {
+    const key = toMonthKey(new Date(tx.date));
+    const existing = txByMonth.get(key) ?? [];
+    existing.push(tx);
+    txByMonth.set(key, existing);
+  }
+
+  const currentMonth = toMonthKey(new Date());
+  const allMonths = [
+    ...new Set([...txByMonth.keys(), currentMonth]),
+  ].sort();
+
+  let endBalance = accounts.reduce(
+    (sum, a) => sum.plus(bnParse(a.balance)),
+    bn(0),
+  );
+
+  const result: BalanceHistoryPoint[] = [];
+
+  for (let i = allMonths.length - 1; i >= 0; i--) {
+    const month = allMonths[i];
+    result.unshift({ month, balance: endBalance.toNumber() });
+
+    for (const tx of (txByMonth.get(month) ?? []).reverse()) {
+      const srcInWs = accountIdSet.has(tx.accountId);
+      const dstInWs =
+        tx.destinationAccountId != null &&
+        accountIdSet.has(tx.destinationAccountId);
+
+      const txAmount = bnParse(tx.amount);
+      if (tx.type === "expense") {
+        endBalance = endBalance.plus(txAmount);
+      } else if (tx.type === "income") {
+        endBalance = endBalance.minus(txAmount);
+      } else if (tx.type === "transfer") {
+        if (srcInWs && dstInWs) {
+          // internal transfer – net zero
+        } else if (srcInWs) {
+          endBalance = endBalance.plus(txAmount);
+        } else if (dstInWs) {
+          const destAmt = tx.destinationAmount
+            ? bnParse(tx.destinationAmount)
+            : txAmount;
+          endBalance = endBalance.minus(destAmt);
+        }
+      } else if (
+        tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
+        tx.type === TRANSACTION_TYPES.INITIAL_BALANCE
+      ) {
+        endBalance = endBalance.minus(txAmount);
       }
     }
   }

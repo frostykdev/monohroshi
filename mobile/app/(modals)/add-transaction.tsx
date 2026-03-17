@@ -20,6 +20,7 @@ import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetScrollView,
+  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import type { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types";
 import { colors } from "@constants/colors";
@@ -27,6 +28,7 @@ import {
   getCurrencySymbol,
   getAccountTypeConfig,
 } from "@constants/account-types";
+import { bnParse } from "@utils/bn";
 import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import {
@@ -60,14 +62,9 @@ const formatDateLocale = (date: Date, language: string): string =>
   });
 
 const formatAmount = (value: string, currency: string): string => {
-  const num = parseFloat(value);
-  if (!value || isNaN(num) || num === 0)
-    return `0 ${getCurrencySymbol(currency)}`;
-  const abs = Math.abs(num).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-  return `${num < 0 ? "−" : ""}${abs} ${getCurrencySymbol(currency)}`;
+  const num = bnParse(value);
+  if (!value || num.isZero()) return `0 ${getCurrencySymbol(currency)}`;
+  return `${num.isNegative() ? "−" : ""}${num.abs().toFormat(2)} ${getCurrencySymbol(currency)}`;
 };
 
 // ─── Mini Calendar ────────────────────────────────────────────────────────────
@@ -254,6 +251,13 @@ const AddTransactionModal = () => {
   const [accountColor, setAccountColor] = useState<string | null>(null);
   const [destAccountId, setDestAccountId] = useState<string | null>(null);
   const [destAccountName, setDestAccountName] = useState<string | null>(null);
+  const [destAccountIcon, setDestAccountIcon] = useState<string | null>(null);
+  const [destAccountColor, setDestAccountColor] = useState<string | null>(null);
+  const [destAccountCurrency, setDestAccountCurrency] = useState<string | null>(
+    null,
+  );
+  /** null = use auto FX, string = manually overridden */
+  const [destAmount, setDestAmount] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [categoryIcon, setCategoryIcon] = useState<string | null>(null);
@@ -275,6 +279,14 @@ const AddTransactionModal = () => {
   // ── Account picker sheet ─────────────────────────────────────────────────────
   const accountSheetRef = useRef<BottomSheetModal>(null);
   const destAccountSheetRef = useRef<BottomSheetModal>(null);
+  const destAmountSheetRef = useRef<BottomSheetModal>(null);
+  const destAmountKeyboard = useAmountKeyboard({
+    showSignToggle: false,
+    onDone: (v) => {
+      setDestAmount(v === "0" || v === "" ? null : v);
+      destAmountSheetRef.current?.dismiss();
+    },
+  });
   const { data: accounts = [] } = useAccounts(activeWorkspaceId);
 
   // Auto-select account once accounts are loaded.
@@ -333,6 +345,25 @@ const AddTransactionModal = () => {
     accountCurrency,
   );
   const convertedAmount = isCrossRate ? (fxData?.converted ?? null) : null;
+
+  // FX for transfer destination (source currency → dest account currency)
+  const isTransferCrossRate =
+    txType === "transfer" &&
+    destAccountCurrency !== null &&
+    currency !== destAccountCurrency;
+  const { data: destFxData } = useFxConvert(
+    Math.abs(keyboard.evaluate()),
+    currency,
+    destAccountCurrency ?? currency,
+  );
+  const autoDestAmount =
+    isTransferCrossRate && destFxData?.converted != null
+      ? String(destFxData.converted)
+      : txType === "transfer" && destAccountCurrency !== null
+        ? String(Math.abs(keyboard.evaluate()))
+        : null;
+  /** The effective destination amount to send to the backend and display */
+  const effectiveDestAmount = destAmount ?? autoDestAmount;
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const symbol = getCurrencySymbol(currency);
@@ -417,9 +448,19 @@ const AddTransactionModal = () => {
   const handleTagsPress = () => {
     haptic();
     const selected = selectedTags.map((t) => t.id).join(",");
-    router.push(
-      `/(modals)/tag-picker${selected ? `?selected=${selected}` : ""}` as never,
-    );
+    const params = new URLSearchParams({ fromModal: "1" });
+    if (selected) params.set("selected", selected);
+    router.push(`/(modals)/tag-picker?${params.toString()}` as never);
+  };
+
+  const handleDestAmountPress = () => {
+    haptic();
+    Keyboard.dismiss();
+    setShowKeyboard(false);
+    setShowCalendar(false);
+    const currentVal = effectiveDestAmount ?? "0";
+    destAmountKeyboard.reset(currentVal, false);
+    destAmountSheetRef.current?.present();
   };
 
   const handleCurrencyPress = () => {
@@ -442,6 +483,10 @@ const AddTransactionModal = () => {
   const handleSelectDestAccount = (account: Account) => {
     setDestAccountId(account.id);
     setDestAccountName(account.name);
+    setDestAccountIcon(account.icon ?? null);
+    setDestAccountColor(account.color ?? null);
+    setDestAccountCurrency(account.currency);
+    setDestAmount(null); // reset manual override when account changes
     destAccountSheetRef.current?.dismiss();
   };
 
@@ -450,6 +495,14 @@ const AddTransactionModal = () => {
       Alert.alert(
         t("addTransaction.title"),
         t("addTransaction.errors.accountRequired"),
+      );
+      return;
+    }
+
+    if (txType === "transfer" && !destAccountId) {
+      Alert.alert(
+        t("addTransaction.title"),
+        t("addTransaction.errors.destinationRequired"),
       );
       return;
     }
@@ -475,6 +528,10 @@ const AddTransactionModal = () => {
         accountId,
         destinationAccountId:
           txType === "transfer" ? (destAccountId ?? undefined) : undefined,
+        destinationAmount:
+          txType === "transfer" && effectiveDestAmount
+            ? effectiveDestAmount
+            : undefined,
         categoryId: categoryId ?? undefined,
         tagIds:
           selectedTags.length > 0 ? selectedTags.map((t) => t.id) : undefined,
@@ -563,6 +620,18 @@ const AddTransactionModal = () => {
           onPress={(k) => {
             haptic();
             setTxType(k);
+            setCategoryId(null);
+            setCategoryName(null);
+            setCategoryIcon(null);
+            setCategoryColor(null);
+            setSelectedTags([]);
+            setDescription("");
+            setDestAccountId(null);
+            setDestAccountName(null);
+            setDestAccountIcon(null);
+            setDestAccountColor(null);
+            setDestAccountCurrency(null);
+            setDestAmount(null);
           }}
           style={s.segmentedControl}
         />
@@ -688,42 +757,91 @@ const AddTransactionModal = () => {
               </Typography>
             </View>
           </Pressable>
-
-          {/* To account (transfer only) */}
-          {txType === "transfer" && (
-            <>
-              <View style={s.rowDivider} />
-              <Pressable
-                style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
-                onPress={() => handleAccountPress(true)}
-              >
-                <View
-                  style={[
-                    s.rowIconCircle,
-                    { backgroundColor: colors.backgroundSurface },
-                  ]}
-                >
-                  <Ionicons
-                    name="arrow-forward"
-                    size={18}
-                    color={colors.textTertiary}
-                  />
-                </View>
-                <View style={s.flex}>
-                  <Typography variant="caption" color="textTertiary">
-                    {t("addTransaction.toAccount")}
-                  </Typography>
-                  <Typography
-                    variant="body"
-                    color={destAccountId ? "textPrimary" : "textSecondary"}
-                  >
-                    {destAccountName ?? t("addTransaction.toAccount")}
-                  </Typography>
-                </View>
-              </Pressable>
-            </>
-          )}
         </View>
+
+        {/* To account (transfer only) */}
+        {txType === "transfer" && (
+          <View style={s.card}>
+            <Pressable
+              style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
+              onPress={() => handleAccountPress(true)}
+            >
+              {(() => {
+                const destCfg = destAccountId
+                  ? getAccountTypeConfig(
+                      accounts.find((a) => a.id === destAccountId)?.type ??
+                        "bank_account",
+                    )
+                  : null;
+                const destIconName = (destAccountIcon ??
+                  destCfg?.icon ??
+                  "wallet-outline") as React.ComponentProps<
+                  typeof Ionicons
+                >["name"];
+                const destIconBg =
+                  destAccountColor ??
+                  destCfg?.color ??
+                  colors.backgroundSurface;
+                return (
+                  <View
+                    style={[
+                      s.rowIconCircle,
+                      {
+                        backgroundColor: destAccountId
+                          ? destIconBg
+                          : colors.backgroundElevated,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={destAccountId ? destIconName : "arrow-forward"}
+                      size={18}
+                      color={
+                        destAccountId
+                          ? getIconColor(destIconBg)
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
+                );
+              })()}
+              <View style={s.flex}>
+                <Typography variant="caption" color="textTertiary">
+                  {t("addTransaction.toAccount")}
+                </Typography>
+                <Typography
+                  variant="body"
+                  color={destAccountId ? "textPrimary" : "textSecondary"}
+                >
+                  {destAccountName ?? t("addTransaction.toAccount")}
+                </Typography>
+              </View>
+              {destAccountId && amountValue !== 0 && (
+                <Pressable
+                  style={({ pressed }) => [
+                    s.destAmountBtn,
+                    pressed && s.pressed,
+                  ]}
+                  onPress={handleDestAmountPress}
+                >
+                  <View style={s.categoryAmountCol}>
+                    <Typography variant="body" color="textSecondary">
+                      {formatAmount(
+                        effectiveDestAmount ?? "0",
+                        destAccountCurrency ?? currency,
+                      )}
+                    </Typography>
+                    {isTransferCrossRate && destAmount === null && (
+                      <Typography variant="caption" color="textTertiary">
+                        {t("addTransaction.autoConverted")}
+                      </Typography>
+                    )}
+                  </View>
+                </Pressable>
+              )}
+            </Pressable>
+          </View>
+        )}
 
         {/* Category (expense / income only) */}
         {txType !== "transfer" && (
@@ -737,19 +855,15 @@ const AddTransactionModal = () => {
                   s.rowIconCircle,
                   {
                     backgroundColor: categoryId
-                      ? (categoryColor ?? colors.backgroundSurface)
-                      : colors.backgroundSurface,
+                      ? (categoryColor ?? colors.backgroundElevated)
+                      : colors.backgroundElevated,
                   },
                 ]}
               >
                 <Ionicons
                   name={categoryId ? categoryIconName : "help"}
                   size={18}
-                  color={
-                    categoryId
-                      ? getIconColor(categoryColor ?? colors.backgroundSurface)
-                      : colors.textTertiary
-                  }
+                  color={"#fff"}
                 />
               </View>
               <View style={s.flex}>
@@ -762,6 +876,18 @@ const AddTransactionModal = () => {
                 >
                   {categoryName ?? defaultCategoryLabel}
                 </Typography>
+                {selectedTags.length > 0 && (
+                  <View style={s.inlineTags}>
+                    <Ionicons
+                      name="pricetag"
+                      size={12}
+                      color={colors.textTertiary}
+                    />
+                    <Typography variant="caption" color="textTertiary">
+                      {selectedTags.map((tag) => tag.name).join(", ")}
+                    </Typography>
+                  </View>
+                )}
               </View>
               {amountValue !== 0 && (
                 <View style={s.categoryAmountCol}>
@@ -784,71 +910,31 @@ const AddTransactionModal = () => {
             </Pressable>
           </View>
         )}
-
-        {/* Tags */}
-        {txType !== "transfer" && (
-          <Pressable
-            style={({ pressed }) => [s.card, s.cardRow, pressed && s.pressed]}
-            onPress={handleTagsPress}
-          >
-            <View
-              style={[
-                s.rowIconCircle,
-                { backgroundColor: colors.backgroundSurface },
-              ]}
-            >
-              <Ionicons
-                name="bookmark-outline"
-                size={18}
-                color={
-                  selectedTags.length > 0
-                    ? colors.iconTeal
-                    : colors.textTertiary
-                }
-              />
-            </View>
-            <View style={s.flex}>
-              <Typography variant="caption" color="textTertiary">
-                {t("addTransaction.tags")}
-              </Typography>
-              {selectedTags.length > 0 ? (
-                <View style={s.tagChips}>
-                  {selectedTags.map((tag) => (
-                    <View
-                      key={tag.id}
-                      style={[
-                        s.tagChip,
-                        {
-                          backgroundColor:
-                            tag.color ?? colors.backgroundSurface,
-                        },
-                      ]}
-                    >
-                      <Typography variant="caption" color="textPrimary">
-                        {tag.name}
-                      </Typography>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Typography variant="body" color="textSecondary">
-                  {t("addTransaction.noTags")}
-                </Typography>
-              )}
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={colors.textTertiary}
-            />
-          </Pressable>
-        )}
       </ScrollView>
 
       {/* ── Sticky bottom ───────────────────────────────────────────────────── */}
       {showKeyboard ? (
         <View style={s.keyboardArea}>
           <View style={s.keyboardToolbar}>
+            {txType !== "transfer" ? (
+              <Pressable
+                style={({ pressed }) => [s.tagToolbarBtn, pressed && s.pressed]}
+                onPress={handleTagsPress}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="pricetag"
+                  size={20}
+                  color={
+                    selectedTags.length > 0
+                      ? colors.accent
+                      : colors.textSecondary
+                  }
+                />
+              </Pressable>
+            ) : (
+              <View />
+            )}
             <Pressable
               style={({ pressed }) => [
                 s.saveBtn,
@@ -925,6 +1011,61 @@ const AddTransactionModal = () => {
             .filter((a) => a.id !== accountId)
             .map((a) => renderAccountItem(a, handleSelectDestAccount))}
         </BottomSheetScrollView>
+      </BottomSheetModal>
+
+      {/* ── Destination amount sheet ─────────────────────────────────────────── */}
+      <BottomSheetModal
+        ref={destAmountSheetRef}
+        enableDynamicSizing
+        backdropComponent={renderBackdrop}
+        backgroundStyle={s.sheetBg}
+        handleComponent={() => null}
+      >
+        <BottomSheetView>
+          <View style={s.destAmountSheetHeader}>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderBtn,
+                pressed && s.pressed,
+              ]}
+              onPress={() => destAmountSheetRef.current?.dismiss()}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={18} color={colors.textPrimary} />
+            </Pressable>
+            <View style={s.destAmountHeaderCenter} pointerEvents="none">
+              <Typography variant="label" style={s.destAmountHeaderTitle}>
+                {getCurrencySymbol(destAccountCurrency ?? currency)}{" "}
+                {destAccountName ?? t("addTransaction.toAccount")}
+              </Typography>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderDone,
+                pressed && s.pressed,
+              ]}
+              onPress={() => destAmountKeyboard.handleKey("done")}
+              hitSlop={8}
+            >
+              <Typography style={s.destAmountDoneLabel}>
+                {t("common.done")}
+              </Typography>
+            </Pressable>
+          </View>
+          <View style={s.destAmountDivider} />
+          <View style={s.destAmountArea}>
+            <View style={s.destAmountUnderline}>
+              <Typography style={s.destAmountText}>
+                {getCurrencySymbol(destAccountCurrency ?? currency)}
+                {destAmountKeyboard.displayStr}
+              </Typography>
+            </View>
+          </View>
+          <AmountKeyboard
+            onKey={destAmountKeyboard.handleKey}
+            showSignToggle={false}
+          />
+        </BottomSheetView>
       </BottomSheetModal>
     </View>
   );
@@ -1031,6 +1172,13 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  rowIconSquare: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
@@ -1108,18 +1256,100 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
-  tagChips: {
+  destAmountBtn: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingLeft: 8,
+  } as ViewStyle,
+  destAmountSheetHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 4,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   } as ViewStyle,
-  tagChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  destAmountHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  destAmountHeaderCenter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  } as ViewStyle,
+  destAmountHeaderTitle: {
+    fontWeight: "700",
+    textAlign: "center",
+  } as TextStyle,
+  destAmountHeaderDone: {
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 8,
     borderCurve: "continuous",
+    backgroundColor: colors.backgroundSurface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
   } as ViewStyle,
+  destAmountDoneLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  } as TextStyle,
+  destAmountDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  } as ViewStyle,
+  destAmountArea: {
+    alignItems: "center",
+    paddingVertical: 16,
+  } as ViewStyle,
+  destAmountUnderline: {
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingHorizontal: 8,
+  } as ViewStyle,
+  destAmountText: {
+    fontSize: 40,
+    lineHeight: 46,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  } as TextStyle,
+  inlineTags: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 3,
+  } as ViewStyle,
+  tagToolbarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: "auto",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  } as ViewStyle,
+  tagBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  } as ViewStyle,
+  tagBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.textOnAccent,
+  } as TextStyle,
 });
 
 export default AddTransactionModal;

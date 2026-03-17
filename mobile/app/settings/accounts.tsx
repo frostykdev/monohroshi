@@ -53,8 +53,6 @@ const AccountRow = ({ account }: AccountRowProps) => {
     typeof Ionicons
   >["name"];
   const iconColor = account.color ?? cfg.color;
-  const isNegative = parseFloat(account.balance) < 0;
-
   return (
     <Pressable
       style={({ pressed }) => [s.accountRow, pressed && s.pressed]}
@@ -76,11 +74,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
           </Typography>
         )}
       </View>
-      <Typography
-        variant="body"
-        color={isNegative ? "error" : "textPrimary"}
-        style={s.accountBalance}
-      >
+      <Typography variant="body" color="textPrimary" style={s.accountBalance}>
         {formatBalance(account.balance, account.currency)}
       </Typography>
     </Pressable>

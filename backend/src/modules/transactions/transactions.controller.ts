@@ -15,6 +15,7 @@ const createTransactionSchema = z.object({
   currency: z.string().trim().toUpperCase().optional(),
   accountId: z.string().trim().min(1),
   destinationAccountId: z.string().trim().optional(),
+  destinationAmount: z.string().trim().optional(),
   categoryId: z.string().trim().optional(),
   tagIds: z.array(z.string().trim()).optional(),
   description: z.string().trim().max(500).optional(),
