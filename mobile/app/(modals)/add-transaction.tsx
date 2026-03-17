@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import {
@@ -27,6 +27,7 @@ import {
   getCurrencySymbol,
   getAccountTypeConfig,
 } from "@constants/account-types";
+import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import {
   SegmentedControl,
@@ -34,7 +35,7 @@ import {
 } from "@components/ui/SegmentedControl";
 import { AmountKeyboard } from "@components/ui/AmountKeyboard";
 import { useAmountKeyboard } from "@hooks/useAmountKeyboard";
-import { usePickerStore } from "@stores/usePickerStore";
+import { usePickerStore, type PickedTag } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import type { Account } from "@services/accounts/accounts.api";
@@ -235,6 +236,9 @@ const AddTransactionModal = () => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const { defaultAccountId } = useLocalSearchParams<{
+    defaultAccountId?: string;
+  }>();
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [txType, setTxType] = useState<TransactionType>("expense");
@@ -254,6 +258,7 @@ const AddTransactionModal = () => {
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [categoryIcon, setCategoryIcon] = useState<string | null>(null);
   const [categoryColor, setCategoryColor] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<PickedTag[]>([]);
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [showKeyboard, setShowKeyboard] = useState(true);
@@ -272,17 +277,20 @@ const AddTransactionModal = () => {
   const destAccountSheetRef = useRef<BottomSheetModal>(null);
   const { data: accounts = [] } = useAccounts(activeWorkspaceId);
 
-  // Auto-select default account once accounts are loaded
+  // Auto-select account once accounts are loaded.
+  // If `defaultAccountId` was passed (e.g. from account-details FAB), prefer that account.
   useEffect(() => {
     if (accounts.length === 0 || accountId) return;
-    const primary = accounts.find((a) => a.isPrimary) ?? accounts[0];
-    setAccountId(primary.id);
-    setAccountName(primary.name);
-    setAccountIcon(primary.icon ?? null);
-    setAccountColor(primary.color ?? null);
-    setCurrency(primary.currency);
-    setAccountCurrency(primary.currency);
-    // Only run when accounts first become available
+    const preset = defaultAccountId
+      ? accounts.find((a) => a.id === defaultAccountId)
+      : null;
+    const selected = preset ?? accounts.find((a) => a.isPrimary) ?? accounts[0];
+    setAccountId(selected.id);
+    setAccountName(selected.name);
+    setAccountIcon(selected.icon ?? null);
+    setAccountColor(selected.color ?? null);
+    setCurrency(selected.currency);
+    setAccountCurrency(selected.currency);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts]);
 
@@ -309,6 +317,10 @@ const AddTransactionModal = () => {
           categoryIcon: null,
           categoryColor: null,
         });
+      }
+      if (store.selectedTags !== null) {
+        setSelectedTags(store.selectedTags);
+        usePickerStore.setState({ selectedTags: null });
       }
     }, []),
   );
@@ -402,6 +414,14 @@ const AddTransactionModal = () => {
     );
   };
 
+  const handleTagsPress = () => {
+    haptic();
+    const selected = selectedTags.map((t) => t.id).join(",");
+    router.push(
+      `/(modals)/tag-picker${selected ? `?selected=${selected}` : ""}` as never,
+    );
+  };
+
   const handleCurrencyPress = () => {
     haptic();
     router.push(
@@ -456,6 +476,8 @@ const AddTransactionModal = () => {
         destinationAccountId:
           txType === "transfer" ? (destAccountId ?? undefined) : undefined,
         categoryId: categoryId ?? undefined,
+        tagIds:
+          selectedTags.length > 0 ? selectedTags.map((t) => t.id) : undefined,
         description: description.trim() || undefined,
         date: date.toISOString(),
         workspaceId: activeWorkspaceId ?? undefined,
@@ -502,7 +524,7 @@ const AddTransactionModal = () => {
         onPress={() => onPress(account)}
       >
         <View style={[s.accountIcon, { backgroundColor: iconBg }]}>
-          <Ionicons name={iconName} size={18} color="#fff" />
+          <Ionicons name={iconName} size={18} color={getIconColor(iconBg)} />
         </View>
         <View style={s.flex}>
           <Typography variant="body">{account.name}</Typography>
@@ -581,33 +603,26 @@ const AddTransactionModal = () => {
           </View>
 
           {/* Description */}
-          <Pressable style={s.descRow} onPress={handleDescPress}>
-            {isDescFocused ? (
-              <TextInput
-                ref={descRef}
-                style={s.descInput}
-                placeholder={t("addTransaction.descriptionPlaceholder")}
-                placeholderTextColor={colors.textTertiary}
-                value={description}
-                onChangeText={setDescription}
-                onFocus={() => setIsDescFocused(true)}
-                onBlur={() => setIsDescFocused(false)}
-                returnKeyType="done"
-                onSubmitEditing={() => {
-                  setIsDescFocused(false);
-                  setShowKeyboard(true);
-                }}
-                autoFocus
-              />
-            ) : (
-              <Typography
-                variant="body"
-                color={description ? "textPrimary" : "textTertiary"}
-              >
-                {description || t("addTransaction.descriptionPlaceholder")}
-              </Typography>
-            )}
-          </Pressable>
+          <TextInput
+            ref={descRef}
+            style={s.descInput}
+            placeholder={t("addTransaction.descriptionPlaceholder")}
+            placeholderTextColor={colors.textTertiary}
+            value={description}
+            onChangeText={setDescription}
+            onFocus={() => {
+              setIsDescFocused(true);
+              setShowKeyboard(false);
+              setShowCalendar(false);
+            }}
+            onBlur={() => setIsDescFocused(false)}
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              setIsDescFocused(false);
+              setShowKeyboard(true);
+            }}
+            onPress={handleDescPress}
+          />
         </Pressable>
 
         {/* Date row */}
@@ -656,7 +671,9 @@ const AddTransactionModal = () => {
               <Ionicons
                 name={accountId ? accountIconName : "wallet-outline"}
                 size={18}
-                color={accountId ? "#fff" : colors.textTertiary}
+                color={
+                  accountId ? getIconColor(accountIconBg) : colors.textTertiary
+                }
               />
             </View>
             <View style={s.flex}>
@@ -728,7 +745,11 @@ const AddTransactionModal = () => {
                 <Ionicons
                   name={categoryId ? categoryIconName : "help"}
                   size={18}
-                  color={categoryId ? "#fff" : colors.textTertiary}
+                  color={
+                    categoryId
+                      ? getIconColor(categoryColor ?? colors.backgroundSurface)
+                      : colors.textTertiary
+                  }
                 />
               </View>
               <View style={s.flex}>
@@ -763,13 +784,71 @@ const AddTransactionModal = () => {
             </Pressable>
           </View>
         )}
+
+        {/* Tags */}
+        {txType !== "transfer" && (
+          <Pressable
+            style={({ pressed }) => [s.card, s.cardRow, pressed && s.pressed]}
+            onPress={handleTagsPress}
+          >
+            <View
+              style={[
+                s.rowIconCircle,
+                { backgroundColor: colors.backgroundSurface },
+              ]}
+            >
+              <Ionicons
+                name="bookmark-outline"
+                size={18}
+                color={
+                  selectedTags.length > 0
+                    ? colors.iconTeal
+                    : colors.textTertiary
+                }
+              />
+            </View>
+            <View style={s.flex}>
+              <Typography variant="caption" color="textTertiary">
+                {t("addTransaction.tags")}
+              </Typography>
+              {selectedTags.length > 0 ? (
+                <View style={s.tagChips}>
+                  {selectedTags.map((tag) => (
+                    <View
+                      key={tag.id}
+                      style={[
+                        s.tagChip,
+                        {
+                          backgroundColor:
+                            tag.color ?? colors.backgroundSurface,
+                        },
+                      ]}
+                    >
+                      <Typography variant="caption" color="textPrimary">
+                        {tag.name}
+                      </Typography>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Typography variant="body" color="textSecondary">
+                  {t("addTransaction.noTags")}
+                </Typography>
+              )}
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.textTertiary}
+            />
+          </Pressable>
+        )}
       </ScrollView>
 
       {/* ── Sticky bottom ───────────────────────────────────────────────────── */}
       {showKeyboard ? (
         <View style={s.keyboardArea}>
           <View style={s.keyboardToolbar}>
-            <View style={s.toolbarLeft} />
             <Pressable
               style={({ pressed }) => [
                 s.saveBtn,
@@ -914,14 +993,11 @@ const s = StyleSheet.create({
     backgroundColor: colors.backgroundSurface,
     marginBottom: 8,
   } as ViewStyle,
-  descRow: {
-    marginTop: 6,
-    paddingVertical: 4,
-  } as ViewStyle,
   descInput: {
     fontSize: 16,
     color: colors.textPrimary,
-    paddingVertical: 0,
+    marginTop: 6,
+    paddingVertical: 4,
   } as TextStyle,
 
   formRow: {
@@ -962,33 +1038,31 @@ const s = StyleSheet.create({
   } as ViewStyle,
 
   keyboardArea: {
-    backgroundColor: colors.backgroundElevated,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   } as ViewStyle,
   keyboardToolbar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    justifyContent: "flex-end",
+    paddingLeft: 6,
+    paddingRight: 10,
+    paddingTop: 12,
+    paddingBottom: 0,
   } as ViewStyle,
-  toolbarLeft: { flexDirection: "row", gap: 12 } as ViewStyle,
   saveBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 7,
-    borderRadius: 8,
+    minHeight: 40,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: colors.backgroundSurface,
+    backgroundColor: colors.accent,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: "center",
   } as ViewStyle,
   saveBtnDisabled: { opacity: 0.5 } as ViewStyle,
   saveBtnLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: colors.textOnAccent,
   } as TextStyle,
 
   bottomSaveBtn: {
@@ -996,14 +1070,14 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: colors.backgroundSurface,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
   bottomSaveBtnLabel: {
     fontSize: 17,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: colors.textOnAccent,
   } as TextStyle,
 
   sheetBg: { backgroundColor: colors.backgroundElevated } as ViewStyle,
@@ -1033,6 +1107,18 @@ const s = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
+  } as ViewStyle,
+  tagChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  } as ViewStyle,
+  tagChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderCurve: "continuous",
   } as ViewStyle,
 });
 

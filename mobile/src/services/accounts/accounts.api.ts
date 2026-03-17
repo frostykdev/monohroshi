@@ -41,6 +41,7 @@ export type AccountTransaction = {
     name: string;
     icon: string | null;
     color: string | null;
+    translationKey: string | null;
   } | null;
 };
 
@@ -138,6 +139,21 @@ export const fetchAccountTotalsConverted = async (
     `/v1/accounts/totals-converted?${params.toString()}`,
   );
   return res.data.data;
+};
+
+export type BalanceHistoryPoint = {
+  /** "YYYY-MM", e.g. "2026-03" */
+  month: string;
+  balance: number;
+};
+
+export const fetchAccountBalanceHistory = async (
+  accountId: string,
+): Promise<BalanceHistoryPoint[]> => {
+  const res = await apiClient.get<
+    ApiResponse<{ history: BalanceHistoryPoint[] }>
+  >(`/v1/accounts/${accountId}/balance-history`);
+  return res.data.data.history;
 };
 
 export const fetchAccountTransactions = async (

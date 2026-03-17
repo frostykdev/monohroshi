@@ -16,6 +16,7 @@ const createTransactionSchema = z.object({
   accountId: z.string().trim().min(1),
   destinationAccountId: z.string().trim().optional(),
   categoryId: z.string().trim().optional(),
+  tagIds: z.array(z.string().trim()).optional(),
   description: z.string().trim().max(500).optional(),
   date: z.string().trim().min(1),
   workspaceId: z.string().trim().optional(),

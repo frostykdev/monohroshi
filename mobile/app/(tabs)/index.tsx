@@ -25,12 +25,17 @@ import {
 } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
+import { getCategoryDisplayName } from "@constants/default-categories";
+import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import { useTransactionStats } from "@services/transactions/transactions.queries";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { usePickerStore } from "@stores/usePickerStore";
-import type { CategoryStat } from "@services/transactions/transactions.api";
+import type {
+  CategoryStat,
+  TagStat,
+} from "@services/transactions/transactions.api";
 import {
   StatCardSkeleton,
   CategoryRowsSkeleton,
@@ -96,13 +101,19 @@ const StatCard = ({
   currency,
 }: {
   type: "expense" | "income";
-  data: { total: number; count: number; byCategory: CategoryStat[] };
+  data: {
+    total: number;
+    count: number;
+    byCategory: CategoryStat[];
+    byTag: TagStat[];
+  };
   currency: string;
 }) => {
   const { t } = useTranslation();
   const isExpense = type === "expense";
   const emoji = EMOJIS[type][data.count % EMOJIS[type].length];
   const catCount = data.byCategory.length;
+  const tagCount = data.byTag.length;
 
   return (
     <View style={sc.card}>
@@ -116,7 +127,7 @@ const StatCard = ({
           <Ionicons
             name={isExpense ? "arrow-up-outline" : "arrow-down-outline"}
             size={20}
-            color="#fff"
+            color={getIconColor(isExpense ? colors.error : colors.success)}
           />
         </View>
         <View style={sc.currencyBadge}>
@@ -158,13 +169,13 @@ const StatCard = ({
         </View>
         <View style={sc.statBox}>
           <Ionicons
-            name="pricetag-outline"
+            name="bookmark-outline"
             size={14}
             color={colors.textSecondary}
           />
-          <Typography variant="h3">0</Typography>
+          <Typography variant="h3">{tagCount}</Typography>
           <Typography variant="caption" color="textSecondary">
-            {t("analytics.tagsCount_other", { count: 0 })}
+            {t("analytics.tagsCount_other", { count: tagCount })}
           </Typography>
         </View>
       </View>
@@ -236,7 +247,15 @@ const CategoryRow = ({
   isLast: boolean;
 }) => {
   const { t } = useTranslation();
-  const name = item.categoryName ?? t("analytics.uncategorised");
+  const name = item.categoryId
+    ? getCategoryDisplayName(
+        {
+          name: item.categoryName ?? "",
+          translationKey: item.categoryTranslationKey,
+        },
+        t,
+      )
+    : t("analytics.uncategorised");
   const bg = item.color ?? colors.iconBlue;
 
   return (
@@ -255,7 +274,7 @@ const CategoryRow = ({
             "pricetag-outline"
           }
           size={18}
-          color="#fff"
+          color={getIconColor(bg)}
         />
       </View>
       <View style={cr.info}>
@@ -308,6 +327,52 @@ const cr = StyleSheet.create({
   right: { alignItems: "flex-end", gap: 2 } as ViewStyle,
   pct: { textAlign: "right" } as TextStyle,
 });
+
+// ─── Tag row ───────────────────────────────────────────────────────────────────
+
+const TagRow = ({
+  item,
+  currency,
+  isFirst,
+  isLast,
+}: {
+  item: TagStat;
+  currency: string;
+  isFirst: boolean;
+  isLast: boolean;
+}) => {
+  const { t } = useTranslation();
+  const bg = item.color ?? colors.iconTeal;
+
+  return (
+    <View
+      style={[
+        cr.row,
+        isFirst && cr.firstRow,
+        isLast && cr.lastRow,
+        !isLast && cr.divider,
+      ]}
+    >
+      <View style={[cr.icon, { backgroundColor: bg }]}>
+        <Ionicons name="bookmark" size={16} color={getIconColor(bg)} />
+      </View>
+      <View style={cr.info}>
+        <Typography variant="label">{item.tagName}</Typography>
+        <Typography variant="caption" color="textSecondary">
+          {t("analytics.transactionsCount", { count: item.count })}
+        </Typography>
+      </View>
+      <View style={cr.right}>
+        <Typography variant="label">
+          {fmtAmount(item.total, currency)}
+        </Typography>
+        <Typography variant="caption" color="textSecondary" style={cr.pct}>
+          {item.percent}%
+        </Typography>
+      </View>
+    </View>
+  );
+};
 
 // ─── Date preset sheet ─────────────────────────────────────────────────────────
 
@@ -425,6 +490,7 @@ const HomeScreen = () => {
     [activePage, stats],
   );
   const categories = activeStat?.byCategory ?? [];
+  const tags = activeStat?.byTag ?? [];
 
   const formatDateRange = useCallback(
     (from?: string, to?: string): string => {
@@ -635,12 +701,26 @@ const HomeScreen = () => {
             >
               <StatCard
                 type="expense"
-                data={stats?.expenses ?? { total: 0, count: 0, byCategory: [] }}
+                data={
+                  stats?.expenses ?? {
+                    total: 0,
+                    count: 0,
+                    byCategory: [],
+                    byTag: [],
+                  }
+                }
                 currency={currency}
               />
               <StatCard
                 type="income"
-                data={stats?.income ?? { total: 0, count: 0, byCategory: [] }}
+                data={
+                  stats?.income ?? {
+                    total: 0,
+                    count: 0,
+                    byCategory: [],
+                    byTag: [],
+                  }
+                }
                 currency={currency}
               />
             </ScrollView>
@@ -689,7 +769,7 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* child 2 — category list (minHeight ensures snap can always reach tabs) */}
+        {/* child 2 — category/tag list (minHeight ensures snap can always reach tabs) */}
         <View
           style={[
             s.catSection,
@@ -698,20 +778,38 @@ const HomeScreen = () => {
         >
           {isLoading ? (
             <CategoryRowsSkeleton count={4} />
-          ) : categories.length === 0 ? (
+          ) : activeTab === "categories" ? (
+            categories.length === 0 ? (
+              <View style={s.empty}>
+                <Typography variant="body" color="textSecondary">
+                  {t("analytics.noData")}
+                </Typography>
+              </View>
+            ) : (
+              categories.map((cat, i) => (
+                <CategoryRow
+                  key={cat.categoryId ?? `cat-${i}`}
+                  item={cat}
+                  currency={currency}
+                  isFirst={i === 0}
+                  isLast={i === categories.length - 1}
+                />
+              ))
+            )
+          ) : tags.length === 0 ? (
             <View style={s.empty}>
               <Typography variant="body" color="textSecondary">
                 {t("analytics.noData")}
               </Typography>
             </View>
           ) : (
-            categories.map((cat, i) => (
-              <CategoryRow
-                key={cat.categoryId ?? `cat-${i}`}
-                item={cat}
+            tags.map((tag, i) => (
+              <TagRow
+                key={tag.tagId}
+                item={tag}
                 currency={currency}
                 isFirst={i === 0}
-                isLast={i === categories.length - 1}
+                isLast={i === tags.length - 1}
               />
             ))
           )}

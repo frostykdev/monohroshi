@@ -38,6 +38,7 @@ export type CreateTransactionData = {
   accountId: string;
   destinationAccountId?: string;
   categoryId?: string;
+  tagIds?: string[];
   description?: string;
   date: string;
   workspaceId?: string;
@@ -58,7 +59,12 @@ const transactionSelect = {
     select: { id: true, name: true, currency: true, icon: true, color: true },
   },
   category: {
-    select: { id: true, name: true, icon: true, color: true },
+    select: { id: true, name: true, icon: true, color: true, translationKey: true },
+  },
+  tags: {
+    select: {
+      tag: { select: { id: true, name: true, color: true } },
+    },
   },
 } as const;
 
@@ -101,6 +107,17 @@ export const createTransaction = async (
   if (isNaN(txDate.getTime()))
     throw new ApiError("Invalid date", HTTP_STATUS.badRequest);
 
+  // Validate tag IDs belong to this workspace
+  if (data.tagIds && data.tagIds.length > 0) {
+    const validTags = await prisma.tag.findMany({
+      where: { id: { in: data.tagIds }, workspaceId: wsId },
+      select: { id: true },
+    });
+    if (validTags.length !== data.tagIds.length) {
+      throw new ApiError("One or more tags not found", HTTP_STATUS.badRequest);
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     const newTx = await tx.transaction.create({
       data: {
@@ -114,6 +131,12 @@ export const createTransaction = async (
         categoryId: data.categoryId ?? null,
         createdById: user.id,
         workspaceId: wsId,
+        tags:
+          data.tagIds && data.tagIds.length > 0
+            ? {
+                create: data.tagIds.map((tagId) => ({ tagId })),
+              }
+            : undefined,
       },
       select: transactionSelect,
     });
@@ -177,7 +200,17 @@ export const getTransactions = async (
 export type CategoryStat = {
   categoryId: string | null;
   categoryName: string | null;
+  categoryTranslationKey: string | null;
   icon: string | null;
+  color: string | null;
+  total: number;
+  count: number;
+  percent: number;
+};
+
+export type TagStat = {
+  tagId: string;
+  tagName: string;
   color: string | null;
   total: number;
   count: number;
@@ -188,6 +221,7 @@ export type TypeStats = {
   total: number;
   count: number;
   byCategory: CategoryStat[];
+  byTag: TagStat[];
 };
 
 export type TransactionStats = {
@@ -215,22 +249,26 @@ export const getTransactionStats = async (
   const from = fromDate ? new Date(fromDate) : undefined;
   const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
 
+  const dateCond = from || to
+    ? {
+        date: {
+          ...(from ? { gte: from } : {}),
+          ...(to ? { lte: to } : {}),
+        },
+      }
+    : {};
+  const accountCond =
+    accountIds && accountIds.length > 0
+      ? { accountId: { in: accountIds } }
+      : {};
+
   const grouped = await prisma.transaction.groupBy({
     by: ["type", "categoryId"],
     where: {
       workspaceId: wsId,
       type: { in: ["expense", "income"] },
-      ...(from || to
-        ? {
-            date: {
-              ...(from ? { gte: from } : {}),
-              ...(to ? { lte: to } : {}),
-            },
-          }
-        : {}),
-      ...(accountIds && accountIds.length > 0
-        ? { accountId: { in: accountIds } }
-        : {}),
+      ...dateCond,
+      ...accountCond,
     },
     _sum: { amount: true },
     _count: { id: true },
@@ -242,29 +280,50 @@ export const getTransactionStats = async (
   ] as string[];
   const categories = await prisma.category.findMany({
     where: { id: { in: catIds } },
-    select: { id: true, name: true, icon: true, color: true },
+    select: { id: true, name: true, icon: true, color: true, translationKey: true },
   });
   const catMap = new Map(categories.map((c) => [c.id, c]));
+
+  // Fetch tag breakdown by querying transactions with tags
+  const transactionsWithTags = await prisma.transaction.findMany({
+    where: {
+      workspaceId: wsId,
+      type: { in: ["expense", "income"] },
+      ...dateCond,
+      ...accountCond,
+      tags: { some: {} },
+    },
+    select: {
+      type: true,
+      amount: true,
+      tags: {
+        select: {
+          tag: { select: { id: true, name: true, color: true } },
+        },
+      },
+    },
+  });
 
   const buildResult = (type: "expense" | "income"): TypeStats => {
     const rows = grouped.filter((g) => g.type === type);
     const totalAmount = rows.reduce(
-      (sum, r) => sum + parseFloat((r._sum.amount ?? 0).toString()),
+      (sum, r) => sum + parseFloat(((r._sum?.amount) ?? 0).toString()),
       0,
     );
-    const count = rows.reduce((sum, r) => sum + r._count.id, 0);
+    const count = rows.reduce((sum, r) => sum + (r._count?.id ?? 0), 0);
 
     const byCategory: CategoryStat[] = rows
       .map((r) => {
         const cat = r.categoryId ? catMap.get(r.categoryId) : null;
-        const rowTotal = parseFloat((r._sum.amount ?? 0).toString());
+        const rowTotal = parseFloat(((r._sum?.amount) ?? 0).toString());
         return {
           categoryId: r.categoryId,
           categoryName: cat?.name ?? null,
+          categoryTranslationKey: cat?.translationKey ?? null,
           icon: cat?.icon ?? null,
           color: cat?.color ?? null,
           total: Math.round(rowTotal * 100) / 100,
-          count: r._count.id,
+          count: r._count?.id ?? 0,
           percent:
             totalAmount > 0
               ? Math.round((rowTotal / totalAmount) * 100)
@@ -273,10 +332,41 @@ export const getTransactionStats = async (
       })
       .sort((a, b) => b.total - a.total);
 
+    // Aggregate tag stats for this type
+    const tagAccumulator = new Map<
+      string,
+      { tag: { id: string; name: string; color: string | null }; total: number; count: number }
+    >();
+    for (const tx of transactionsWithTags) {
+      if (tx.type !== type) continue;
+      const amt = parseFloat(tx.amount.toString());
+      for (const { tag } of tx.tags) {
+        const existing = tagAccumulator.get(tag.id);
+        if (existing) {
+          existing.total += amt;
+          existing.count += 1;
+        } else {
+          tagAccumulator.set(tag.id, { tag, total: amt, count: 1 });
+        }
+      }
+    }
+
+    const byTag: TagStat[] = Array.from(tagAccumulator.values())
+      .map(({ tag, total, count: tagCount }) => ({
+        tagId: tag.id,
+        tagName: tag.name,
+        color: tag.color,
+        total: Math.round(total * 100) / 100,
+        count: tagCount,
+        percent: totalAmount > 0 ? Math.round((total / totalAmount) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
     return {
       total: Math.round(totalAmount * 100) / 100,
       count,
       byCategory,
+      byTag,
     };
   };
 

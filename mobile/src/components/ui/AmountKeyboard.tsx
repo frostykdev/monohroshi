@@ -213,7 +213,7 @@ const ns = StyleSheet.create({
     backgroundColor: colors.backgroundSurface,
   } as ViewStyle,
   keyOperator: {
-    backgroundColor: "rgba(240, 185, 11, 0.12)",
+    backgroundColor: colors.backgroundSurfaceAlt,
   } as ViewStyle,
   equalsKey: {
     width: 72,
@@ -221,7 +221,7 @@ const ns = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.backgroundSurfaceAlt,
   } as ViewStyle,
   keyPressed: {
     opacity: 0.65,
@@ -239,7 +239,7 @@ const ns = StyleSheet.create({
   keyTextEquals: {
     fontSize: 28,
     fontWeight: "500",
-    color: colors.textOnAccent,
+    color: colors.textPrimary,
   } as TextStyle,
   rowPressed: { opacity: 0.6 } as ViewStyle,
 });

@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
+import { getIconColor } from "@constants/icon-list";
 import {
   getAccountTypeConfig,
   getCurrencySymbol,
@@ -63,7 +64,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
       }}
     >
       <View style={[s.accountIcon, { backgroundColor: iconColor }]}>
-        <Ionicons name={iconName} size={20} color="#fff" />
+        <Ionicons name={iconName} size={20} color={getIconColor(iconColor)} />
       </View>
       <View style={s.accountInfo}>
         <Typography variant="body" color="textPrimary">

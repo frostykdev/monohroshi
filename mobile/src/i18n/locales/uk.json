@@ -5,6 +5,7 @@
     "save": "Зберегти",
     "edit": "Редагувати",
     "delete": "Видалити",
+    "done": "Готово",
     "back": "Назад",
     "loading": "Завантаження...",
     "continue": "Продовжити",
@@ -53,6 +54,25 @@
       "showTransactions": "Показати транзакції",
       "delete": "Видалити"
     }
+  },
+  "defaultCategories": {
+    "education": "Освіта",
+    "travel": "Подорожі",
+    "transport": "Транспорт",
+    "health": "Здоров'я",
+    "bills": "Рахунки",
+    "home": "Дім",
+    "clothing": "Одяг",
+    "groceries": "Продукти",
+    "eatingOut": "Кафе та ресторани",
+    "digital": "Цифрове",
+    "entertainment": "Розваги",
+    "gifts": "Подарунки",
+    "salary": "Зарплата",
+    "freelance": "Фріланс",
+    "sale": "Продаж",
+    "otherIncome": "Інші доходи",
+    "refund": "Повернення коштів"
   },
   "icons": {
     "financial": "Фінанси",
@@ -118,15 +138,45 @@
       }
     }
   },
+  "tags": {
+    "title": "Теги",
+    "addTitle": "Новий тег",
+    "editTitle": "Редагувати тег",
+    "namePlaceholder": "Назва тегу",
+    "nameSection": "Загальне",
+    "colorSection": "Колір",
+    "pickerTitle": "Вибрати теги",
+    "searchPlaceholder": "Пошук тегів...",
+    "empty": "Тегів ще немає. Додайте перший тег.",
+    "deleteConfirmTitle": "Видалити тег",
+    "deleteConfirmMessage": "Ви впевнені, що хочете видалити «{{name}}»?",
+    "actions": {
+      "edit": "Редагувати",
+      "delete": "Видалити"
+    },
+    "errors": {
+      "nameRequired": "Назва тегу обов'язкова",
+      "nameMin": "Назва має містити щонайменше {{min}} символ",
+      "saveTitle": "Не вдалося зберегти",
+      "saveMessage": "Щось пішло не так. Спробуйте ще раз.",
+      "deleteFailed": "Не вдалося видалити тег. Спробуйте ще раз."
+    }
+  },
   "addTransaction": {
     "title": "Додати транзакцію",
     "expense": "Витрата",
     "income": "Дохід",
     "transfer": "Переказ",
+    "initialBalance": "Початковий баланс",
+    "balanceCorrection": "Корекція балансу",
+    "transaction": "Транзакція",
+    "uncategorized": "Без категорії",
     "descriptionPlaceholder": "Додайте опис",
     "fromAccount": "З рахунку",
     "toAccount": "На рахунок",
     "category": "Категорія",
+    "tags": "Теги",
+    "noTags": "Без тегів",
     "uncategorisedExpense": "Без категорії (витрата)",
     "uncategorisedIncome": "Без категорії (дохід)",
     "save": "Зберегти",
@@ -181,6 +231,7 @@
       "exportData": "Експорт даних",
       "rateApp": "Оцінити Monohroshi",
       "categories": "Категорії",
+      "tags": "Теги",
       "accounts": "Рахунки",
       "recurringTransactions": "Повторювані транзакції",
       "budgets": "Бюджети",

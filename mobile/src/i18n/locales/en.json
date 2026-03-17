@@ -5,6 +5,7 @@
     "save": "Save",
     "edit": "Edit",
     "delete": "Delete",
+    "done": "Done",
     "back": "Back",
     "loading": "Loading...",
     "continue": "Continue",
@@ -53,6 +54,25 @@
       "showTransactions": "Show transactions",
       "delete": "Delete"
     }
+  },
+  "defaultCategories": {
+    "education": "Education",
+    "travel": "Travel",
+    "transport": "Transport",
+    "health": "Health",
+    "bills": "Bills",
+    "home": "Home",
+    "clothing": "Clothing",
+    "groceries": "Groceries",
+    "eatingOut": "Eating out",
+    "digital": "Digital",
+    "entertainment": "Entertainment",
+    "gifts": "Gifts",
+    "salary": "Salary",
+    "freelance": "Freelance",
+    "sale": "Sale",
+    "otherIncome": "Other income",
+    "refund": "Refund"
   },
   "icons": {
     "financial": "Financial",
@@ -118,15 +138,45 @@
       }
     }
   },
+  "tags": {
+    "title": "Tags",
+    "addTitle": "New Tag",
+    "editTitle": "Edit Tag",
+    "namePlaceholder": "Tag name",
+    "nameSection": "General",
+    "colorSection": "Color",
+    "pickerTitle": "Select Tags",
+    "searchPlaceholder": "Search tags...",
+    "empty": "No tags yet. Add your first tag.",
+    "deleteConfirmTitle": "Delete Tag",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{{name}}\"?",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "errors": {
+      "nameRequired": "Tag name is required",
+      "nameMin": "Name must be at least {{min}} character",
+      "saveTitle": "Couldn't save",
+      "saveMessage": "Something went wrong. Please try again.",
+      "deleteFailed": "Failed to delete tag. Please try again."
+    }
+  },
   "addTransaction": {
     "title": "Add Transaction",
     "expense": "Expense",
     "income": "Income",
     "transfer": "Transfer",
+    "initialBalance": "Initial balance",
+    "balanceCorrection": "Balance correction",
+    "transaction": "Transaction",
+    "uncategorized": "Uncategorised",
     "descriptionPlaceholder": "Add description",
     "fromAccount": "From account",
     "toAccount": "To account",
     "category": "Category",
+    "tags": "Tags",
+    "noTags": "No tags",
     "uncategorisedExpense": "Uncategorised expense",
     "uncategorisedIncome": "Uncategorised income",
     "save": "Save",
@@ -181,6 +231,7 @@
       "exportData": "Export data",
       "rateApp": "Rate Monohroshi",
       "categories": "Categories",
+      "tags": "Tags",
       "accounts": "Accounts",
       "recurringTransactions": "Recurring transactions",
       "budgets": "Budgets",

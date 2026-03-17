@@ -4,6 +4,7 @@ import { asyncHandler } from "../../shared/async-handler";
 import {
   createAccountController,
   deleteAccountController,
+  getAccountBalanceHistoryController,
   getAccountByIdController,
   getAccountsController,
   getAccountTotalsConvertedController,
@@ -24,5 +25,6 @@ accountsRouter.get("/:id", checkAuthenticated, asyncHandler(getAccountByIdContro
 accountsRouter.patch("/:id", checkAuthenticated, asyncHandler(updateAccountController));
 accountsRouter.delete("/:id", checkAuthenticated, asyncHandler(deleteAccountController));
 accountsRouter.get("/:id/transactions", checkAuthenticated, asyncHandler(getAccountTransactionsController));
+accountsRouter.get("/:id/balance-history", checkAuthenticated, asyncHandler(getAccountBalanceHistoryController));
 
 export { accountsRouter };

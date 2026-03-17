@@ -20,7 +20,11 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
-import { DEFAULT_ICON, DEFAULT_ICON_COLOR } from "@constants/icon-list";
+import {
+  DEFAULT_ICON,
+  DEFAULT_ICON_COLOR,
+  getIconColor,
+} from "@constants/icon-list";
 import { BalanceInput } from "@components/ui/BalanceInput";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
 import { Typography } from "@components/ui/Typography";
@@ -169,7 +173,7 @@ const AccountSetupScreen = () => {
                     >["name"]
                   }
                   size={32}
-                  color={colors.textOnAccent}
+                  color={getIconColor(formik.values.iconColor)}
                 />
               </View>
               <View style={s.editBadge}>

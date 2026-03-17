@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+export type PickedTag = { id: string; name: string; color: string | null };
+
 type PickerStore = {
   accountType: string | null;
   currency: string | null;
@@ -10,6 +12,7 @@ type PickerStore = {
   categoryIcon: string | null;
   categoryColor: string | null;
   selectedAccountIds: string[] | null;
+  selectedTags: PickedTag[] | null;
   setAccountType: (v: string) => void;
   setCurrency: (v: string) => void;
   setIcon: (icon: string, color: string) => void;
@@ -20,6 +23,7 @@ type PickerStore = {
     color?: string | null,
   ) => void;
   setSelectedAccountIds: (ids: string[]) => void;
+  setSelectedTags: (tags: PickedTag[]) => void;
   clearAll: () => void;
 };
 
@@ -33,6 +37,7 @@ export const usePickerStore = create<PickerStore>((set) => ({
   categoryIcon: null,
   categoryColor: null,
   selectedAccountIds: null,
+  selectedTags: null,
   setAccountType: (v) => set({ accountType: v }),
   setCurrency: (v) => set({ currency: v }),
   setIcon: (icon, color) => set({ icon, iconColor: color }),
@@ -44,6 +49,7 @@ export const usePickerStore = create<PickerStore>((set) => ({
       categoryColor: color,
     }),
   setSelectedAccountIds: (ids) => set({ selectedAccountIds: ids }),
+  setSelectedTags: (tags) => set({ selectedTags: tags }),
   clearAll: () =>
     set({
       accountType: null,
@@ -55,5 +61,6 @@ export const usePickerStore = create<PickerStore>((set) => ({
       categoryIcon: null,
       categoryColor: null,
       selectedAccountIds: null,
+      selectedTags: null,
     }),
 }));

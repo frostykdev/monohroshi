@@ -33,7 +33,7 @@ export const SegmentedControl = <T extends string = string>({
           >
             <Typography
               variant="bodySmall"
-              color={isActive ? "textPrimary" : "textTertiary"}
+              color={isActive ? "textPrimary" : "textSecondary"}
             >
               {segment.label}
             </Typography>

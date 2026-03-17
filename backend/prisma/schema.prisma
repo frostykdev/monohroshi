@@ -89,17 +89,18 @@ model Account {
 }
 
 model Category {
-  id         String   @id @default(cuid())
-  name       String
-  type       String
-  icon       String?
-  color      String?
-  sortOrder  Int      @default(0)
-  isSystem   Boolean  @default(false)
-  systemCode String?
-  isArchived Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  type           String
+  icon           String?
+  color          String?
+  sortOrder      Int      @default(0)
+  isSystem       Boolean  @default(false)
+  systemCode     String?
+  translationKey String?
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -164,6 +165,7 @@ model TransactionTag {
   tag   Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([transactionId, tagId])
+  @@index([tagId])
 }
 
 model ExchangeRateSnapshot {

@@ -18,6 +18,7 @@ import DraggableFlatList, {
 } from "react-native-draggable-flatlist";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
+import { getCategoryDisplayName } from "@constants/default-categories";
 import type { Category } from "@services/categories/categories.api";
 import {
   useCategories,
@@ -100,8 +101,9 @@ const CategoriesScreen = () => {
   };
 
   const handleEdit = (item: CategoryActionsSheetItem) => {
+    const displayName = getCategoryDisplayName(item, t);
     router.push(
-      `/(modals)/add-category?mode=edit&categoryId=${item.id}&initialName=${encodeURIComponent(item.name)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&workspaceId=${activeWorkspaceId ?? ""}` as never,
+      `/(modals)/add-category?mode=edit&categoryId=${item.id}&initialName=${encodeURIComponent(displayName)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&workspaceId=${activeWorkspaceId ?? ""}` as never,
     );
   };
 
@@ -113,7 +115,7 @@ const CategoriesScreen = () => {
     Alert.alert(
       t("onboarding.categoriesSetup.deleteConfirmTitle"),
       t("onboarding.categoriesSetup.deleteConfirmMessage", {
-        name: item.name,
+        name: getCategoryDisplayName(item, t),
       }),
       [
         { text: t("common.cancel"), style: "cancel" },
@@ -137,7 +139,12 @@ const CategoriesScreen = () => {
 
   const handlePickCategory = (item: Category) => {
     haptic();
-    setCategory(item.id, item.name, item.icon, item.color);
+    setCategory(
+      item.id,
+      getCategoryDisplayName(item, t),
+      item.icon,
+      item.color,
+    );
     router.back();
   };
 
@@ -160,7 +167,7 @@ const CategoriesScreen = () => {
           />
         </View>
         <Typography variant="body" color="textPrimary" style={s.categoryName}>
-          {item.name}
+          {getCategoryDisplayName(item, t)}
         </Typography>
         {isPickerMode ? (
           <Ionicons
@@ -283,7 +290,7 @@ const s = StyleSheet.create({
   } as ViewStyle,
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 140,
   } as ViewStyle,
   categoryRow: {
     flexDirection: "row",

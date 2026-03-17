@@ -17,6 +17,7 @@ import {
   ICON_SECTIONS,
   ICON_PRESET_COLORS,
   DEFAULT_ICON_COLOR,
+  getIconColor,
 } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
@@ -95,13 +96,15 @@ const IconPickerScreen = () => {
                           height: cellSize,
                           borderRadius: cellSize / 2,
                         },
-                        isSelected && s.iconCircleSelected,
+                        isSelected && {
+                          borderColor: getIconColor(activeColor),
+                        },
                       ]}
                     >
                       <Ionicons
                         name={icon}
                         size={cellSize * 0.4}
-                        color={colors.textOnAccent}
+                        color={getIconColor(activeColor)}
                       />
                     </View>
                   </Pressable>
@@ -165,9 +168,7 @@ const s = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: "transparent",
   } as ViewStyle,
-  iconCircleSelected: {
-    borderColor: colors.textOnAccent,
-  } as ViewStyle,
+
   pressed: {
     opacity: 0.7,
   } as ViewStyle,

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createAccount,
   deleteAccount,
+  fetchAccountBalanceHistory,
   fetchAccountById,
   fetchAccounts,
   fetchAccountTotalsConverted,
@@ -16,6 +17,7 @@ export const ACCOUNT_KEYS = {
   byWorkspace: (workspaceId: string) => ["accounts", workspaceId] as const,
   byId: (id: string) => ["accounts", "detail", id] as const,
   transactions: (id: string) => ["accounts", "transactions", id] as const,
+  balanceHistory: (id: string) => ["accounts", "balance-history", id] as const,
   totalsConverted: (workspaceId?: string | null) =>
     ["accounts", "totals-converted", workspaceId ?? "default"] as const,
 };
@@ -40,6 +42,13 @@ export const useAccountTransactions = (accountId?: string | null) =>
   useQuery({
     queryKey: ACCOUNT_KEYS.transactions(accountId!),
     queryFn: () => fetchAccountTransactions(accountId!),
+    enabled: !!accountId,
+  });
+
+export const useAccountBalanceHistory = (accountId?: string | null) =>
+  useQuery({
+    queryKey: ACCOUNT_KEYS.balanceHistory(accountId!),
+    queryFn: () => fetchAccountBalanceHistory(accountId!),
     enabled: !!accountId,
   });
 

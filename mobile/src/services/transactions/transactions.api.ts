@@ -15,6 +15,13 @@ export type TransactionCategory = {
   name: string;
   icon: string | null;
   color: string | null;
+  translationKey: string | null;
+};
+
+export type TransactionTag = {
+  id: string;
+  name: string;
+  color: string | null;
 };
 
 export type Transaction = {
@@ -28,6 +35,7 @@ export type Transaction = {
   account: TransactionAccount;
   destinationAccount: TransactionAccount | null;
   category: TransactionCategory | null;
+  tags: { tag: TransactionTag }[];
 };
 
 export type CreateTransactionPayload = {
@@ -38,6 +46,7 @@ export type CreateTransactionPayload = {
   accountId: string;
   destinationAccountId?: string;
   categoryId?: string;
+  tagIds?: string[];
   description?: string;
   date: string;
   workspaceId?: string;
@@ -56,7 +65,17 @@ export const createTransaction = async (
 export type CategoryStat = {
   categoryId: string | null;
   categoryName: string | null;
+  categoryTranslationKey: string | null;
   icon: string | null;
+  color: string | null;
+  total: number;
+  count: number;
+  percent: number;
+};
+
+export type TagStat = {
+  tagId: string;
+  tagName: string;
   color: string | null;
   total: number;
   count: number;
@@ -67,6 +86,7 @@ export type TypeStats = {
   total: number;
   count: number;
   byCategory: CategoryStat[];
+  byTag: TagStat[];
 };
 
 export type TransactionStats = {

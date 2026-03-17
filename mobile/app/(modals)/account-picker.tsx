@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { colors } from "@constants/colors";
+import { getIconColor } from "@constants/icon-list";
 import {
   getCurrencySymbol,
   getAccountTypeConfig,
@@ -76,7 +77,7 @@ const AccountPickerScreen = () => {
               cfg.icon
             }
             size={18}
-            color="#fff"
+            color={getIconColor(bg)}
           />
         </View>
         <View style={ps.info}>

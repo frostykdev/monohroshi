@@ -19,6 +19,7 @@ export type CategoryActionsSheetItem = {
   type: "expense" | "income";
   isSystem?: boolean;
   localId?: string;
+  translationKey?: string | null;
 };
 
 type Props = {
@@ -81,25 +82,6 @@ export const CategoryActionsSheet = forwardRef<BottomSheetModal, Props>(
         <BottomSheetView
           style={[s.content, { paddingBottom: Math.max(bottom, 24) + 8 }]}
         >
-          {item && (
-            <View style={s.itemHeader}>
-              <View style={s.itemIcon}>
-                <Ionicons
-                  name={
-                    (item.icon ?? "pricetag-outline") as React.ComponentProps<
-                      typeof Ionicons
-                    >["name"]
-                  }
-                  size={20}
-                  color={colors.textPrimary}
-                />
-              </View>
-              <Typography variant="label">{item.name}</Typography>
-            </View>
-          )}
-
-          <View style={s.divider} />
-
           {!item?.isSystem && (
             <Pressable
               style={({ pressed }) => [s.option, pressed && s.pressed]}
@@ -176,25 +158,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
     gap: 4,
-  } as ViewStyle,
-  itemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-  } as ViewStyle,
-  itemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundSurface,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginBottom: 4,
   } as ViewStyle,
   option: {
     flexDirection: "row",

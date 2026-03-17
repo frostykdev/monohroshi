@@ -93,6 +93,7 @@ export const completeOnboardingForCurrentUser = async (input: {
         icon: cat.icon,
         isSystem: cat.isSystem ?? false,
         systemCode: cat.systemCode ?? null,
+        translationKey: cat.translationKey ?? null,
         sortOrder: index,
         workspaceId: workspace.id,
       })),
