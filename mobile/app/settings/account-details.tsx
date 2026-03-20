@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Pressable,
   StyleSheet,
-  TextInput,
   TextStyle,
   View,
   ViewStyle,
@@ -72,8 +71,7 @@ const AccountDetailsScreen = () => {
   const { data: transactions = [], isLoading: txLoading } =
     useAccountTransactions(id);
 
-  const [txSearch, setTxSearch] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const txSearch = "";
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -411,35 +409,18 @@ const AccountDetailsScreen = () => {
             {t("accounts.transactionHistory")}
           </Typography>
           <Pressable
-            style={({ pressed }) => [s.searchBtn, pressed && s.pressed]}
+            style={({ pressed }) => [s.txHeaderBtn, pressed && s.pressed]}
             onPress={() => {
               haptic();
-              setShowSearch((v) => !v);
-              if (showSearch) setTxSearch("");
+              router.push(`/transactions?accountIds=${id}` as never);
             }}
           >
-            <Ionicons
-              name={showSearch ? "close" : "search"}
-              size={20}
-              color={colors.textSecondary}
-            />
+            <Typography variant="caption" style={s.txHeaderBtnLabel}>
+              {t("transactions.seeAll")}
+            </Typography>
+            <Ionicons name="chevron-forward" size={12} color={colors.accent} />
           </Pressable>
         </View>
-
-        {showSearch && (
-          <View style={s.searchRow}>
-            <Ionicons name="search" size={16} color={colors.textTertiary} />
-            <TextInput
-              style={s.searchInput}
-              value={txSearch}
-              onChangeText={setTxSearch}
-              placeholder={t("accounts.searchTransactions")}
-              placeholderTextColor={colors.textTertiary}
-              autoFocus
-              returnKeyType="search"
-            />
-          </View>
-        )}
 
         {/* Grouped transactions */}
         <View style={s.txList}>
@@ -598,26 +579,19 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 16,
   } as ViewStyle,
-  searchBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  searchRow: {
+  txHeaderBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-    gap: 8,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: colors.accent + "18",
   } as ViewStyle,
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
+  txHeaderBtnLabel: {
+    fontSize: 12,
+    color: colors.accent,
+    fontWeight: "600",
   } as TextStyle,
 
   txList: {

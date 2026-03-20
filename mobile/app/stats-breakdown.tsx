@@ -240,12 +240,16 @@ const CategoryRow = ({
   currency,
   isFirst,
   isLast,
+  datePreset,
+  accountIds,
 }: {
   item: CategoryStat;
   index: number;
   currency: string;
   isFirst: boolean;
   isLast: boolean;
+  datePreset: DatePreset;
+  accountIds: string[];
 }) => {
   const { t } = useTranslation();
   const name = item.categoryId
@@ -262,6 +266,8 @@ const CategoryRow = ({
   const handlePress = () => {
     if (!item.categoryId) return;
     const p = new URLSearchParams({ categoryId: item.categoryId });
+    if (datePreset) p.set("datePreset", datePreset);
+    if (accountIds.length > 0) p.set("accountIds", accountIds.join(","));
     router.push(`/transactions?${p.toString()}` as never);
   };
 
@@ -319,12 +325,16 @@ const TagRow = ({
   currency,
   isFirst,
   isLast,
+  datePreset,
+  accountIds,
 }: {
   item: TagStat;
   index: number;
   currency: string;
   isFirst: boolean;
   isLast: boolean;
+  datePreset: DatePreset;
+  accountIds: string[];
 }) => {
   const { t } = useTranslation();
   const bg = item.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
@@ -334,6 +344,8 @@ const TagRow = ({
       activeOpacity={0.6}
       onPress={() => {
         const p = new URLSearchParams({ tagId: item.tagId });
+        if (datePreset) p.set("datePreset", datePreset);
+        if (accountIds.length > 0) p.set("accountIds", accountIds.join(","));
         router.push(`/transactions?${p.toString()}` as never);
       }}
       style={[
@@ -573,6 +585,8 @@ const StatsBreakdownScreen = () => {
                 currency={currency}
                 isFirst={i === 0}
                 isLast={i === categories.length - 1}
+                datePreset={datePreset}
+                accountIds={accountIds}
               />
             ))
           )
@@ -591,6 +605,8 @@ const StatsBreakdownScreen = () => {
               currency={currency}
               isFirst={i === 0}
               isLast={i === tags.length - 1}
+              datePreset={datePreset}
+              accountIds={accountIds}
             />
           ))
         )}

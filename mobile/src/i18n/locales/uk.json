@@ -572,6 +572,7 @@
   "transactions": {
     "title": "Транзакції",
     "seeAll": "Всі",
+    "search": "Пошук",
     "empty": "Транзакцій не знайдено",
     "searchPlaceholder": "Пошук транзакцій…",
     "dateFilter": "Дата",

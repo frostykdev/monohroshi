@@ -658,7 +658,7 @@ const HomeScreen = () => {
               {t("analytics.recentTransactions")}
             </Typography>
             <Pressable
-              style={({ pressed }) => [pressed && s.pressed]}
+              style={({ pressed }) => [s.seeAllBtn, pressed && s.pressed]}
               onPress={() => {
                 const p = new URLSearchParams();
                 if (selectedAccountIds.length > 0)
@@ -667,13 +667,14 @@ const HomeScreen = () => {
               }}
               hitSlop={8}
             >
-              <Typography
-                variant="caption"
-                color="textSecondary"
-                style={s.seeAll}
-              >
+              <Typography variant="caption" style={s.seeAllLabel}>
                 {t("transactions.seeAll")}
               </Typography>
+              <Ionicons
+                name="chevron-forward"
+                size={12}
+                color={colors.accent}
+              />
             </Pressable>
           </View>
 
@@ -843,8 +844,19 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
     fontSize: 11,
   } as TextStyle,
-  seeAll: {
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: colors.accent + "18",
+  } as ViewStyle,
+  seeAllLabel: {
     fontSize: 12,
+    color: colors.accent,
+    fontWeight: "600",
   } as TextStyle,
   txCard: {
     backgroundColor: colors.backgroundElevated,

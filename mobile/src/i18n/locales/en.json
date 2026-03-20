@@ -572,6 +572,7 @@
   "transactions": {
     "title": "Transactions",
     "seeAll": "See all",
+    "search": "Search",
     "empty": "No transactions found",
     "searchPlaceholder": "Search transactions…",
     "dateFilter": "Date",
