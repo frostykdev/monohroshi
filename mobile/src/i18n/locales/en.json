@@ -234,7 +234,7 @@
     "tabs": {
       "home": "Home",
       "accounts": "Accounts",
-      "analytics": "Analytics",
+      "insights": "Insights",
       "settings": "Settings"
     },
     "deleteAccount": {
@@ -583,5 +583,19 @@
     "filterTags": "Filter by tag",
     "categoriesCount": "{{count}} categories",
     "tagsCount": "{{count}} tags"
+  },
+  "insights": {
+    "title": "Insights",
+    "welcome": "Hi! I'm your financial assistant. Ask me anything about your spending, savings, or budgets — I'll help you make smarter decisions.",
+    "inputPlaceholder": "Ask about your finances...",
+    "send": "Send",
+    "errorMessage": "Something went wrong. Please try again.",
+    "clearChat": "New chat",
+    "suggestedQuestions": {
+      "monthOverview": "How am I doing this month?",
+      "saveMoney": "Where can I save money?",
+      "planBudget": "Help me plan a budget",
+      "spendingHabits": "Analyze my spending habits"
+    }
   }
 }

@@ -16,6 +16,7 @@ const envSchema = z.object({
   FX_PROVIDER_KEY: z.string().optional(),
   FX_REFRESH_SECRET: z.string().optional(),
   FX_PIVOT_BASE: z.string().default("USD"),
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

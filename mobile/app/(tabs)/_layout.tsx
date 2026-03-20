@@ -33,7 +33,10 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"];
 const TAB_ICONS: Record<string, { default: IconName; active: IconName }> = {
   index: { default: "home-outline", active: "home" },
   accounts: { default: "wallet-outline", active: "wallet" },
-  analytics: { default: "bar-chart-outline", active: "bar-chart" },
+  analytics: {
+    default: "chatbubble-ellipses-outline",
+    active: "chatbubble-ellipses",
+  },
   settings: { default: "settings-outline", active: "settings" },
 };
 
@@ -115,7 +118,13 @@ const HomeLayout = () => {
       />
       <Tabs.Screen
         name="analytics"
-        options={{ title: t("home.tabs.analytics") }}
+        options={{ title: t("home.tabs.insights") }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push("/insights" as never);
+          },
+        }}
       />
       <Tabs.Screen
         name="settings"
