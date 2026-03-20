@@ -30,6 +30,7 @@
       "title": "Edit Account"
     },
     "empty": "No accounts yet. Add your first account.",
+    "addAccount": "Add Account",
     "currentBalance": "Current balance",
     "transactionHistory": "Transaction history",
     "searchTransactions": "Search transactions...",
@@ -73,7 +74,9 @@
     "freelance": "Freelance",
     "sale": "Sale",
     "otherIncome": "Other income",
-    "refund": "Refund"
+    "refund": "Refund",
+    "refundBannerTitle": "Select the category you got a refund for",
+    "refundBannerSubtitle": "The transaction won't count as income and will be deducted from expenses in the selected category"
   },
   "icons": {
     "financial": "Financial",

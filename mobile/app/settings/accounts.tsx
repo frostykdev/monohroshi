@@ -40,7 +40,7 @@ const formatBalance = (balance: string, currency: string) => {
   if (isNaN(num)) return `0 ${getCurrencySymbol(currency)}`;
   const formatted = num.toLocaleString("en-US", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   });
   return `${formatted} ${getCurrencySymbol(currency)}`;
 };

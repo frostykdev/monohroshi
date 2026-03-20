@@ -19,6 +19,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { DateTime } from "luxon";
 import { LineChart } from "expo-skia-charts";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,8 +52,8 @@ const formatBalance = (balance: string, currency: string): string => {
   const symbol = getCurrencySymbol(currency);
   if (isNaN(num)) return `0 ${symbol}`;
   return `${num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })} ${symbol}`;
 };
 
@@ -129,9 +130,52 @@ const AccountDetailsScreen = () => {
   const { data: balanceHistory = [] } = useAccountBalanceHistory(id);
 
   // x = sequential index so D3 uses a clean linear scale (one tick per month)
-  const chartData = balanceHistory.map((p, i) => ({ x: i, y: p.balance }));
+  const chartData = useMemo(
+    () => balanceHistory.map((p, i) => ({ x: i, y: p.balance })),
+    [balanceHistory],
+  );
   // "YYYY-MM" strings for axis label formatting
-  const chartLabels = balanceHistory.map((p) => p.month);
+  const chartLabels = useMemo(
+    () => balanceHistory.map((p) => p.month),
+    [balanceHistory],
+  );
+
+  const locale = i18n.language.startsWith("uk") ? "uk-UA" : "en-US";
+
+  // Series with a transparent ghost that widens the Y domain so small balance
+  // changes don't fill the entire chart height.
+  const chartSeries = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const yValues = chartData.map((d) => d.y);
+    const maxY = Math.max(...yValues);
+    const minY = Math.min(...yValues);
+    const paddingAmount = maxY * 0.1;
+    const paddedMin = Math.max(0, minY - paddingAmount);
+    const paddedMax = maxY + paddingAmount;
+    const lastX = chartData[chartData.length - 1]!.x;
+    return [
+      {
+        id: "domain",
+        data: [
+          { x: -0.001, y: paddedMin },
+          { x: lastX + 0.001, y: paddedMax },
+        ],
+        colors: { highlightColor: "transparent" },
+      },
+      {
+        id: "data",
+        data: chartData,
+        colors: {
+          highlightColor: colors.iconBlue,
+          areaFill: {
+            type: "gradient" as const,
+            startColor: `${colors.iconBlue}40`,
+            endColor: `${colors.iconBlue}00`,
+          },
+        },
+      },
+    ];
+  }, [chartData]);
 
   const currency = account?.currency ?? "USD";
   const symbol = getCurrencySymbol(currency);
@@ -234,35 +278,24 @@ const AccountDetailsScreen = () => {
           </Typography>
 
           {/* Balance chart */}
-          {chartData.length > 1 && (
+          {chartSeries && (
             <View style={s.chartCard}>
               <View style={s.chartArea}>
                 <LineChart
                   config={{
-                    data: chartData,
-                    colors: {
-                      highlightColor: colors.iconBlue,
-                      areaFill: {
-                        type: "gradient",
-                        startColor: `${colors.iconBlue}40`,
-                        endColor: `${colors.iconBlue}00`,
-                      },
-                    },
+                    series: chartSeries,
                     xAxis: {
                       enabled: true,
                       tickCount: chartData.length,
                       color: colors.textTertiary,
                       fontSize: 11,
                       formatter: (v) => {
-                        // D3 may insert 0.5 ticks between integer indices — suppress them
                         if (!Number.isInteger(v)) return "";
                         const monthKey = chartLabels[v];
                         if (!monthKey) return "";
-                        const [year, month] = monthKey.split("-").map(Number);
-                        return new Date(year, month - 1, 1).toLocaleDateString(
-                          i18n.language.startsWith("uk") ? "uk-UA" : "en-US",
-                          { month: "short" },
-                        );
+                        return DateTime.fromFormat(monthKey, "yyyy-MM")
+                          .setLocale(locale)
+                          .toFormat("MMM");
                       },
                     },
                     yAxis: {

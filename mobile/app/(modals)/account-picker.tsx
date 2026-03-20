@@ -83,7 +83,7 @@ const AccountPickerScreen = () => {
         <View style={ps.info}>
           <Typography variant="label">{item.name}</Typography>
           <Typography variant="caption" color="textSecondary">
-            {parseFloat(item.balance).toFixed(2)}{" "}
+            {Math.round(parseFloat(item.balance)).toLocaleString()}{" "}
             {getCurrencySymbol(item.currency)}
           </Typography>
         </View>

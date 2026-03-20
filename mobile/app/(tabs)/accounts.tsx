@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -7,12 +7,14 @@ import {
   TextStyle,
   View,
   ViewStyle,
+  DimensionValue,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { DateTime } from "luxon";
 import { LineChart } from "expo-skia-charts";
 import { colors } from "@constants/colors";
 import { getIconColor } from "@constants/icon-list";
@@ -22,6 +24,7 @@ import {
   ACCOUNT_TYPES,
 } from "@constants/account-types";
 import { Typography } from "@components/ui/Typography";
+import { Button } from "@components/ui/Button";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import {
   useAccounts,
@@ -43,7 +46,7 @@ const formatBalance = (balance: string | number, currency: string) => {
   return (
     num.toLocaleString("uk-UA", {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }) +
     " " +
     getCurrencySymbol(currency)
@@ -162,6 +165,26 @@ const AccountSection = ({
   );
 };
 
+// ─── Empty chart placeholder ──────────────────────────────────────────────────
+
+const EMPTY_TICK_WIDTHS: DimensionValue[] = ["75%", "55%", "65%"];
+
+const EmptyChart = () => (
+  <View style={s.emptyChartArea}>
+    <View style={s.emptyChartBody}>
+      {EMPTY_TICK_WIDTHS.map((w, i) => (
+        <View key={i} style={[s.emptyChartTick, { width: w }]} />
+      ))}
+      <View style={s.emptyChartLine} />
+    </View>
+    <View style={s.emptyChartXAxis}>
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} style={s.emptyChartXTick} />
+      ))}
+    </View>
+  </View>
+);
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const AccountsScreen = () => {
@@ -178,7 +201,10 @@ const AccountsScreen = () => {
   } = useAccounts(activeWorkspaceId);
   const { data: totalsData, refetch: refetchTotals } =
     useAccountTotalsConverted(activeWorkspaceId);
-  const convertedTotals = totalsData?.accounts ?? [];
+  const convertedTotals = useMemo(
+    () => totalsData?.accounts ?? [],
+    [totalsData],
+  );
   const primaryCurrency = totalsData?.primaryCurrency ?? "USD";
 
   const { data: balanceHistory = [] } =
@@ -198,30 +224,83 @@ const AccountsScreen = () => {
     }))
     .filter((g) => g.accounts.length > 0);
 
-  // Total current balance (converted)
-  const totalBalance = (() => {
-    if (convertedTotals.length > 0) {
-      const all = convertedTotals.filter((ct) => ct.converted);
-      if (all.length === convertedTotals.length) {
-        return all.reduce((s, ct) => s + (ct.balanceInPrimary ?? 0), 0);
-      }
+  // Total current balance (converted) — memoized to avoid recalculating on every render
+  const totalBalance = useMemo(() => {
+    if (convertedTotals.length === 0) return null;
+    const all = convertedTotals.filter((ct) => ct.converted);
+    if (all.length !== convertedTotals.length) return null;
+    return all.reduce((s, ct) => s + (ct.balanceInPrimary ?? 0), 0);
+  }, [convertedTotals]);
+
+  const effectiveBalanceHistory = useMemo(() => {
+    if (totalBalance === null) return balanceHistory;
+
+    const currentMonth = DateTime.now().toFormat("yyyy-MM");
+    const lastPoint = balanceHistory[balanceHistory.length - 1];
+
+    if (lastPoint?.month === currentMonth) {
+      return [
+        ...balanceHistory.slice(0, -1),
+        { ...lastPoint, balance: totalBalance },
+      ];
     }
-    return null;
-  })();
+
+    return [...balanceHistory, { month: currentMonth, balance: totalBalance }];
+  }, [balanceHistory, totalBalance]);
 
   // Percentage change vs previous month
   const percentChange = (() => {
-    if (balanceHistory.length < 2) return null;
-    const prev = balanceHistory[balanceHistory.length - 2].balance;
-    const curr = balanceHistory[balanceHistory.length - 1].balance;
+    if (effectiveBalanceHistory.length < 2) return null;
+    const prev =
+      effectiveBalanceHistory[effectiveBalanceHistory.length - 2].balance;
+    const curr =
+      effectiveBalanceHistory[effectiveBalanceHistory.length - 1].balance;
     if (prev === 0) return null;
     return ((curr - prev) / Math.abs(prev)) * 100;
   })();
 
   // Chart data
-  const chartData = balanceHistory.map((p, i) => ({ x: i, y: p.balance }));
-  const chartLabels = balanceHistory.map((p) => p.month);
+  const chartData = effectiveBalanceHistory.map((p, i) => ({
+    x: i,
+    y: p.balance,
+  }));
+  const chartLabels = effectiveBalanceHistory.map((p) => p.month);
   const locale = i18n.language.startsWith("uk") ? "uk-UA" : "en-US";
+
+  // Series with a transparent ghost that widens the Y domain so small balance
+  // changes don't fill the entire chart height.
+  const chartSeries = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const yValues = chartData.map((d) => d.y);
+    const maxY = Math.max(...yValues);
+    const minY = Math.min(...yValues);
+    const paddingAmount = maxY * 0.1;
+    const paddedMin = Math.max(0, minY - paddingAmount);
+    const paddedMax = maxY + paddingAmount;
+    const lastX = chartData[chartData.length - 1]!.x;
+    return [
+      {
+        id: "domain",
+        data: [
+          { x: -0.001, y: paddedMin },
+          { x: lastX + 0.001, y: paddedMax },
+        ],
+        colors: { highlightColor: "transparent" },
+      },
+      {
+        id: "data",
+        data: chartData,
+        colors: {
+          highlightColor: colors.iconBlue,
+          areaFill: {
+            type: "gradient" as const,
+            startColor: `${colors.iconBlue}40`,
+            endColor: `${colors.iconBlue}00`,
+          },
+        },
+      },
+    ];
+  }, [chartData]);
 
   const handleRefresh = () => {
     haptic();
@@ -342,19 +421,11 @@ const AccountsScreen = () => {
               </View>
             )}
 
-            {chartData.length > 1 && (
+            {chartSeries ? (
               <View style={s.chartArea}>
                 <LineChart
                   config={{
-                    data: chartData,
-                    colors: {
-                      highlightColor: colors.iconBlue,
-                      areaFill: {
-                        type: "gradient",
-                        startColor: `${colors.iconBlue}40`,
-                        endColor: `${colors.iconBlue}00`,
-                      },
-                    },
+                    series: chartSeries,
                     xAxis: {
                       enabled: true,
                       tickCount: chartData.length,
@@ -364,11 +435,9 @@ const AccountsScreen = () => {
                         if (!Number.isInteger(v)) return "";
                         const monthKey = chartLabels[v];
                         if (!monthKey) return "";
-                        const [year, month] = monthKey.split("-").map(Number);
-                        return new Date(year, month - 1, 1).toLocaleDateString(
-                          locale,
-                          { month: "short" },
-                        );
+                        return DateTime.fromFormat(monthKey, "yyyy-MM")
+                          .setLocale(locale)
+                          .toFormat("MMM");
                       },
                     },
                     yAxis: {
@@ -388,6 +457,8 @@ const AccountsScreen = () => {
                   }}
                 />
               </View>
+            ) : (
+              <EmptyChart />
             )}
           </View>
 
@@ -402,6 +473,16 @@ const AccountsScreen = () => {
               <Typography variant="body" color="textTertiary" align="center">
                 {t("accounts.empty")}
               </Typography>
+              <Button
+                variant="secondary"
+                size="sm"
+                i18nKey="accounts.addAccount"
+                onPress={() => {
+                  haptic();
+                  router.push("/(modals)/add-account" as never);
+                }}
+                style={s.emptyAddButton}
+              />
             </View>
           ) : (
             grouped.map(({ type, accounts: typeAccounts }) => (
@@ -474,6 +555,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
     paddingVertical: 40,
   } as ViewStyle,
+  emptyAddButton: {
+    marginTop: 4,
+    alignSelf: "center",
+    paddingHorizontal: 24,
+  } as ViewStyle,
 
   scrollContent: {
     paddingHorizontal: 16,
@@ -513,6 +599,45 @@ const s = StyleSheet.create({
     borderRadius: 20,
   } as ViewStyle,
   chartArea: { height: 160, width: "100%" } as ViewStyle,
+
+  // Empty chart placeholder
+  emptyChartArea: {
+    height: 160,
+    width: "100%",
+    paddingBottom: 20,
+    justifyContent: "flex-end",
+  } as ViewStyle,
+  emptyChartBody: {
+    flex: 1,
+    justifyContent: "space-around",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  } as ViewStyle,
+  emptyChartTick: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+    opacity: 0.5,
+  } as ViewStyle,
+  emptyChartLine: {
+    height: 2,
+    width: "100%",
+    borderRadius: 1,
+    backgroundColor: colors.border,
+    opacity: 0.4,
+  } as ViewStyle,
+  emptyChartXAxis: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+  } as ViewStyle,
+  emptyChartXTick: {
+    height: 8,
+    width: 28,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+    opacity: 0.4,
+  } as ViewStyle,
 
   // Account sections
   section: {

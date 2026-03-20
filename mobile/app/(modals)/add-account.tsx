@@ -42,6 +42,10 @@ const AddAccountScreen = () => {
   }>();
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
   const workspaceId = paramWsId ?? activeWorkspaceId;
+  const workspaceCurrency = useWorkspaceStore((s) => {
+    const id = paramWsId ?? s.id;
+    return s.workspaces.find((w) => w.id === id)?.currency ?? "USD";
+  });
 
   const { mutate: createAccount, isPending: saving } =
     useCreateAccount(workspaceId);
@@ -57,7 +61,7 @@ const AddAccountScreen = () => {
     initialValues: {
       name: "",
       accountType: "bank_account",
-      currency: "USD",
+      currency: workspaceCurrency,
       balance: "",
       isPrimary: false,
       icon: getAccountTypeConfig("bank_account").icon as string,

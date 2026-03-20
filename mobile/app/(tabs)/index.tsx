@@ -80,8 +80,8 @@ const fmtAmount = (n: number, currency: string) => {
   const sym = getCurrencySymbol(currency);
   return (
     Math.abs(n).toLocaleString("uk-UA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }) +
     " " +
     sym

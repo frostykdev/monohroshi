@@ -83,6 +83,12 @@ export const useCreateAccount = (workspaceId?: string | null) => {
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
       });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
+      });
     },
   });
 };
@@ -113,6 +119,12 @@ export const useDeleteAccount = (workspaceId?: string | null) => {
         queryKey: workspaceId
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
       });
     },
   });

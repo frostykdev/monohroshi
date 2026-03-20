@@ -12,8 +12,17 @@ export const bnRound = (v: string | number): string =>
   new BigNumber(v).toFixed(2);
 
 /** Parse a stored string, returning 0 when invalid */
-export const bnParse = (v: string | number | null | undefined): BigNumber =>
-  new BigNumber(v ?? 0).isNaN() ? new BigNumber(0) : new BigNumber(v ?? 0);
+export const bnParse = (v: string | number | null | undefined): BigNumber => {
+  const normalized =
+    typeof v === "string" ? (v.trim() === "" ? "0" : v.trim()) : (v ?? 0);
+
+  try {
+    const n = new BigNumber(normalized);
+    return n.isNaN() ? new BigNumber(0) : n;
+  } catch {
+    return new BigNumber(0);
+  }
+};
 
 /** Absolute value as BigNumber */
 export const bnAbs = (v: string | number) => new BigNumber(v).abs();

@@ -41,6 +41,7 @@ import { usePickerStore, type PickedTag } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import type { Account } from "@services/accounts/accounts.api";
+import { useCategories } from "@services/categories/categories.queries";
 import { useCreateTransaction } from "@services/transactions/transactions.queries";
 import { useFxConvert } from "@services/fx/fx.queries";
 
@@ -262,6 +263,10 @@ const AddTransactionModal = () => {
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [categoryIcon, setCategoryIcon] = useState<string | null>(null);
   const [categoryColor, setCategoryColor] = useState<string | null>(null);
+  const [categorySystemCode, setCategorySystemCode] = useState<string | null>(
+    null,
+  );
+  const [isRefundCategory, setIsRefundCategory] = useState(false);
   const [selectedTags, setSelectedTags] = useState<PickedTag[]>([]);
 
   // ── UI state ────────────────────────────────────────────────────────────────
@@ -288,6 +293,9 @@ const AddTransactionModal = () => {
     },
   });
   const { data: accounts = [] } = useAccounts(activeWorkspaceId);
+  const { data: allCategories = [] } = useCategories(activeWorkspaceId);
+  const refundCategoryId =
+    allCategories.find((c) => c.systemCode === "refund")?.id ?? null;
 
   // Auto-select account once accounts are loaded.
   // If `defaultAccountId` was passed (e.g. from account-details FAB), prefer that account.
@@ -319,22 +327,45 @@ const AddTransactionModal = () => {
         usePickerStore.setState({ currency: null });
       }
       if (store.categoryId && store.categoryName) {
-        setCategoryId(store.categoryId);
-        setCategoryName(store.categoryName);
-        setCategoryIcon(store.categoryIcon ?? null);
-        setCategoryColor(store.categoryColor ?? null);
+        const pickedId = store.categoryId;
+        const pickedIsRefund = store.isRefundCategory;
+        const pickedCategory = allCategories.find((c) => c.id === pickedId);
+        const pickedSystemCode = pickedCategory?.systemCode ?? null;
+
         usePickerStore.setState({
           categoryId: null,
           categoryName: null,
           categoryIcon: null,
           categoryColor: null,
+          isRefundCategory: false,
         });
+
+        if (pickedSystemCode === "refund") {
+          // User picked the "Refund" income category — immediately open the
+          // expense category picker with the refund banner.
+          setCategoryId(pickedId);
+          setCategoryName(store.categoryName);
+          setCategoryIcon(store.categoryIcon ?? null);
+          setCategoryColor(store.categoryColor ?? null);
+          setCategorySystemCode(pickedSystemCode);
+          setIsRefundCategory(false);
+          router.push(
+            `/settings/categories?pickerMode=true&gridMode=true&refundMode=true&tab=expense&fromModal=1` as never,
+          );
+        } else {
+          setCategoryId(pickedId);
+          setCategoryName(store.categoryName);
+          setCategoryIcon(store.categoryIcon ?? null);
+          setCategoryColor(store.categoryColor ?? null);
+          setCategorySystemCode(pickedSystemCode);
+          setIsRefundCategory(pickedIsRefund);
+        }
       }
       if (store.selectedTags !== null) {
         setSelectedTags(store.selectedTags);
         usePickerStore.setState({ selectedTags: null });
       }
-    }, []),
+    }, [allCategories]),
   );
 
   // ── FX conversion preview ────────────────────────────────────────────────────
@@ -439,9 +470,17 @@ const AddTransactionModal = () => {
 
   const handleCategoryPress = () => {
     haptic();
+    // If the currently selected category is "refund", re-open picker in refund
+    // mode (shows expense categories with explanatory banner).
+    if (categorySystemCode === "refund" || categoryId === refundCategoryId) {
+      router.push(
+        `/settings/categories?pickerMode=true&gridMode=true&refundMode=true&tab=expense&fromModal=1` as never,
+      );
+      return;
+    }
     const tab = txType === "income" ? "income" : "expense";
     router.push(
-      `/settings/categories?pickerMode=true&tab=${tab}&fromModal=1` as never,
+      `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&fromModal=1` as never,
     );
   };
 
@@ -624,6 +663,8 @@ const AddTransactionModal = () => {
             setCategoryName(null);
             setCategoryIcon(null);
             setCategoryColor(null);
+            setCategorySystemCode(null);
+            setIsRefundCategory(false);
             setSelectedTags([]);
             setDescription("");
             setDestAccountId(null);
@@ -876,6 +917,18 @@ const AddTransactionModal = () => {
                 >
                   {categoryName ?? defaultCategoryLabel}
                 </Typography>
+                {isRefundCategory && (
+                  <View style={s.refundBadge}>
+                    <Ionicons
+                      name="refresh-outline"
+                      size={11}
+                      color={colors.iconBlue}
+                    />
+                    <Typography variant="caption" style={s.refundBadgeText}>
+                      {t("defaultCategories.refund")}
+                    </Typography>
+                  </View>
+                )}
                 {selectedTags.length > 0 && (
                   <View style={s.inlineTags}>
                     <Ionicons
@@ -1328,6 +1381,15 @@ const s = StyleSheet.create({
     gap: 4,
     marginTop: 3,
   } as ViewStyle,
+  refundBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 3,
+  } as ViewStyle,
+  refundBadgeText: {
+    color: colors.iconBlue,
+  } as TextStyle,
   tagToolbarBtn: {
     flexDirection: "row",
     alignItems: "center",

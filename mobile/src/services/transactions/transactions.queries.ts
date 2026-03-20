@@ -51,11 +51,18 @@ export const useCreateTransaction = (workspaceId?: string | null) => {
           ? TRANSACTION_KEYS.byWorkspace(workspaceId)
           : TRANSACTION_KEYS.all(),
       });
+      // Also invalidate all transaction lists to avoid key drift during startup/hydration.
+      qc.invalidateQueries({
+        queryKey: TRANSACTION_KEYS.all(),
+      });
       // Account list (balances updated)
       qc.invalidateQueries({
         queryKey: workspaceId
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.all(),
       });
       // Account detail (single account balance)
       qc.invalidateQueries({ queryKey: ACCOUNT_KEYS.byId(payload.accountId) });
@@ -76,6 +83,16 @@ export const useCreateTransaction = (workspaceId?: string | null) => {
       // Converted totals (accounts screen summary row)
       qc.invalidateQueries({
         queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ["accounts", "totals-converted"],
+      });
+      // Balance dynamics chart/summary in accounts tab.
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ["accounts", "workspace-balance-history"],
       });
       // Stats
       qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
