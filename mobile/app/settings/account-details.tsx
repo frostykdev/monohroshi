@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -13,6 +13,9 @@ import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -180,8 +183,80 @@ const AccountDetailsScreen = () => {
   const currency = account?.currency ?? "USD";
   const symbol = getCurrencySymbol(currency);
 
+  // ── Skeleton ───────────────────────────────────────────────────────────────
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 750 }),
+        withTiming(1, { duration: 750 }),
+      ),
+      -1,
+      false,
+    );
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+
   if (isLoading || !account) {
-    return <View style={s.root} />;
+    return (
+      <View style={s.root}>
+        {/* nav bar */}
+        <View
+          style={[s.navBar, { height: navBarHeight, paddingTop: insets.top }]}
+        >
+          <Pressable
+            style={({ pressed }) => [s.navBack, pressed && s.pressed]}
+            onPress={() => router.back()}
+            hitSlop={8}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+          <View style={s.navEdit} />
+        </View>
+
+        <Animated.ScrollView
+          scrollEnabled={false}
+          contentContainerStyle={[
+            s.scrollContent,
+            { paddingTop: navBarHeight, paddingBottom: insets.bottom + 32 },
+          ]}
+        >
+          {/* hero */}
+          <Animated.View style={[s.hero, pulseStyle]}>
+            <View style={sk.iconRing} />
+            <View style={sk.nameLine} />
+            <View style={sk.balanceLine} />
+            <View style={sk.chartCard} />
+          </Animated.View>
+
+          {/* tx header */}
+          <Animated.View style={[s.txHeader, pulseStyle]}>
+            <View style={sk.sectionTitle} />
+          </Animated.View>
+
+          {/* tx rows */}
+          <Animated.View style={[sk.listCard, pulseStyle]}>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <View key={i}>
+                <View style={sk.txRow}>
+                  <View style={sk.txIcon} />
+                  <View style={sk.txMeta}>
+                    <View style={sk.txLine1} />
+                    <View style={sk.txLine2} />
+                  </View>
+                  <View style={sk.txAmount} />
+                </View>
+                {i < 6 && <View style={sk.divider} />}
+              </View>
+            ))}
+          </Animated.View>
+        </Animated.ScrollView>
+      </View>
+    );
   }
 
   return (
@@ -223,17 +298,29 @@ const AccountDetailsScreen = () => {
           <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
         </Pressable>
 
-        {/* Right: edit button */}
-        <Pressable
-          style={({ pressed }) => [s.navEdit, pressed && s.pressed]}
-          onPress={() => {
-            haptic();
-            router.push(`/(modals)/edit-account?id=${id}` as never);
-          }}
-          hitSlop={8}
-        >
-          <Typography variant="label">{t("common.edit")}</Typography>
-        </Pressable>
+        {/* Right: search + edit */}
+        <View style={s.navRight}>
+          <Pressable
+            style={({ pressed }) => [s.navIconBtn, pressed && s.pressed]}
+            onPress={() => {
+              haptic();
+              router.push(`/transactions?accountIds=${id}` as never);
+            }}
+            hitSlop={8}
+          >
+            <Ionicons name="search" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.navEdit, pressed && s.pressed]}
+            onPress={() => {
+              haptic();
+              router.push(`/(modals)/edit-account?id=${id}` as never);
+            }}
+            hitSlop={8}
+          >
+            <Typography variant="label">{t("common.edit")}</Typography>
+          </Pressable>
+        </View>
 
         {/* Center: small account icon – absolutely positioned for true centering */}
         <Animated.View
@@ -419,6 +506,19 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  navRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  } as ViewStyle,
+  navIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
   navEdit: {
     height: 36,
     paddingHorizontal: 16,
@@ -542,6 +642,88 @@ const s = StyleSheet.create({
   fabPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.95 }],
+  } as ViewStyle,
+});
+
+const SKEL = colors.backgroundSurface;
+
+const sk = StyleSheet.create({
+  iconRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: SKEL,
+    marginTop: 20,
+    marginBottom: 4,
+  } as ViewStyle,
+  nameLine: {
+    width: 120,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  balanceLine: {
+    width: 180,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: SKEL,
+    marginTop: 4,
+    marginBottom: 8,
+  } as ViewStyle,
+  chartCard: {
+    width: "100%",
+    height: 196,
+    borderRadius: 16,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  sectionTitle: {
+    width: 140,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  listCard: {
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    overflow: "hidden",
+  } as ViewStyle,
+  txRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  } as ViewStyle,
+  txIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txMeta: { flex: 1, gap: 6 } as ViewStyle,
+  txLine1: {
+    height: 13,
+    width: "55%",
+    borderRadius: 6,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txLine2: {
+    height: 11,
+    width: "35%",
+    borderRadius: 5,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txAmount: {
+    width: 64,
+    height: 13,
+    borderRadius: 6,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  divider: {
+    height: 0.5,
+    backgroundColor: colors.borderStrong,
+    marginLeft: 66,
   } as ViewStyle,
 });
 

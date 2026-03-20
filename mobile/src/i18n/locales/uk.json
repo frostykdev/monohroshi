@@ -191,6 +191,17 @@
     },
     "autoConverted": "авто"
   },
+  "editTransaction": {
+    "title": "Редагувати транзакцію",
+    "save": "Зберегти зміни",
+    "deleteTitle": "Видалити транзакцію",
+    "deleteMessage": "Ви впевнені, що хочете видалити цю транзакцію? Це неможливо скасувати.",
+    "deleteConfirm": "Видалити",
+    "errors": {
+      "saveFailed": "Не вдалося оновити транзакцію. Спробуйте ще раз.",
+      "deleteFailed": "Не вдалося видалити транзакцію. Спробуйте ще раз."
+    }
+  },
   "analytics": {
     "title": "Статистика",
     "allAccounts": "Усі рахунки",
@@ -557,5 +568,19 @@
       "suggested": "Пропоновані",
       "allCurrencies": "Всі валюти"
     }
+  },
+  "transactions": {
+    "title": "Транзакції",
+    "seeAll": "Всі",
+    "empty": "Транзакцій не знайдено",
+    "searchPlaceholder": "Пошук транзакцій…",
+    "dateFilter": "Дата",
+    "accounts": "Рахунки",
+    "accountsCount": "{{count}} рахунки",
+    "filterAccounts": "Фільтр за рахунком",
+    "filterCategories": "Фільтр за категорією",
+    "filterTags": "Фільтр за тегом",
+    "categoriesCount": "{{count}} категорії",
+    "tagsCount": "{{count}} теги"
   }
 }

@@ -191,6 +191,17 @@
       "destinationRequired": "Please select a destination account for the transfer"
     }
   },
+  "editTransaction": {
+    "title": "Edit Transaction",
+    "save": "Save changes",
+    "deleteTitle": "Delete transaction",
+    "deleteMessage": "Are you sure you want to delete this transaction? This cannot be undone.",
+    "deleteConfirm": "Delete",
+    "errors": {
+      "saveFailed": "Failed to update transaction. Please try again.",
+      "deleteFailed": "Failed to delete transaction. Please try again."
+    }
+  },
   "analytics": {
     "title": "Statistics",
     "allAccounts": "All accounts",
@@ -557,5 +568,19 @@
       "suggested": "Suggested",
       "allCurrencies": "All currencies"
     }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "seeAll": "See all",
+    "empty": "No transactions found",
+    "searchPlaceholder": "Search transactions…",
+    "dateFilter": "Date",
+    "accounts": "Accounts",
+    "accountsCount": "{{count}} accounts",
+    "filterAccounts": "Filter by account",
+    "filterCategories": "Filter by category",
+    "filterTags": "Filter by tag",
+    "categoriesCount": "{{count}} categories",
+    "tagsCount": "{{count}} tags"
   }
 }

@@ -25,6 +25,10 @@ const ModalsLayout = () => {
           name="add-transaction"
           options={{ presentation: "modal" }}
         />
+        <Stack.Screen
+          name="edit-transaction"
+          options={{ presentation: "modal" }}
+        />
       </Stack>
     </BottomSheetModalProvider>
   );

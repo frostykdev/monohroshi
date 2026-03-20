@@ -114,18 +114,78 @@ export const fetchTransactionStats = async (
   return res.data.data;
 };
 
-export const fetchTransactions = async (
-  workspaceId?: string | null,
+export const fetchTransactionById = async (
+  id: string,
+): Promise<Transaction> => {
+  const res = await apiClient.get<ApiResponse<{ transaction: Transaction }>>(
+    `/v1/transactions/${id}`,
+  );
+  return res.data.data.transaction;
+};
+
+export type UpdateTransactionPayload = {
+  type?: "expense" | "income" | "transfer";
+  amount?: string;
+  currency?: string;
+  accountId?: string;
+  destinationAccountId?: string | null;
+  destinationAmount?: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
+  description?: string | null;
+  date?: string;
+};
+
+export const updateTransaction = async (
+  id: string,
+  payload: UpdateTransactionPayload,
+): Promise<Transaction> => {
+  const res = await apiClient.patch<ApiResponse<{ transaction: Transaction }>>(
+    `/v1/transactions/${id}`,
+    payload,
+  );
+  return res.data.data.transaction;
+};
+
+export const deleteTransaction = async (id: string): Promise<void> => {
+  await apiClient.delete(`/v1/transactions/${id}`);
+};
+
+export type FetchTransactionsParams = {
+  workspaceId?: string | null;
+  limit?: number;
+  offset?: number;
+  accountIds?: string[];
+  categoryIds?: string[];
+  tagIds?: string[];
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+export const fetchTransactions = async ({
+  workspaceId,
   limit = 50,
   offset = 0,
-  accountIds?: string[],
-): Promise<Transaction[]> => {
+  accountIds,
+  categoryIds,
+  tagIds,
+  search,
+  fromDate,
+  toDate,
+}: FetchTransactionsParams): Promise<Transaction[]> => {
   const params = new URLSearchParams();
   if (workspaceId) params.set("workspaceId", workspaceId);
   params.set("limit", String(limit));
   params.set("offset", String(offset));
   if (accountIds && accountIds.length > 0)
     params.set("accountIds", accountIds.join(","));
+  if (categoryIds && categoryIds.length > 0)
+    params.set("categoryIds", categoryIds.join(","));
+  if (tagIds && tagIds.length > 0) params.set("tagIds", tagIds.join(","));
+  if (search) params.set("search", search);
+  if (fromDate) params.set("fromDate", fromDate);
+  if (toDate) params.set("toDate", toDate);
   const res = await apiClient.get<ApiResponse<{ transactions: Transaction[] }>>(
     `/v1/transactions?${params.toString()}`,
   );

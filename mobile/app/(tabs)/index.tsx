@@ -53,41 +53,13 @@ import {
   StatCardSkeleton,
   CategoryRowsSkeleton,
 } from "@components/ui/Skeleton";
+import {
+  type DatePreset,
+  DATE_PRESETS,
+  getDateRange,
+} from "@utils/date-presets";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// ─── Date helpers ──────────────────────────────────────────────────────────────
-
-type DatePreset =
-  | "thisMonth"
-  | "lastMonth"
-  | "last3Months"
-  | "thisYear"
-  | "allTime";
-
-const getDateRange = (preset: DatePreset) => {
-  const now = DateTime.now();
-  switch (preset) {
-    case "thisMonth":
-      return { from: now.startOf("month").toISODate()!, to: now.toISODate()! };
-    case "lastMonth": {
-      const lastMonth = now.minus({ months: 1 });
-      return {
-        from: lastMonth.startOf("month").toISODate()!,
-        to: lastMonth.endOf("month").toISODate()!,
-      };
-    }
-    case "last3Months":
-      return {
-        from: now.minus({ months: 2 }).startOf("month").toISODate()!,
-        to: now.toISODate()!,
-      };
-    case "thisYear":
-      return { from: now.startOf("year").toISODate()!, to: now.toISODate()! };
-    case "allTime":
-      return { from: undefined, to: undefined };
-  }
-};
 
 const fmtAmount = (n: number, currency: string) => {
   const sym = getCurrencySymbol(currency);
@@ -260,14 +232,6 @@ const sc = StyleSheet.create({
 });
 
 // ─── Date preset sheet ─────────────────────────────────────────────────────────
-
-const DATE_PRESETS: DatePreset[] = [
-  "thisMonth",
-  "lastMonth",
-  "last3Months",
-  "thisYear",
-  "allTime",
-];
 
 const DateSheet = ({
   selected,
@@ -685,13 +649,33 @@ const HomeScreen = () => {
 
         {/* ── Recent transactions section ── */}
         <View style={s.recentSection}>
-          <Typography
-            variant="label"
-            color="textSecondary"
-            style={s.recentTitle}
-          >
-            {t("analytics.recentTransactions")}
-          </Typography>
+          <View style={s.recentHeader}>
+            <Typography
+              variant="label"
+              color="textSecondary"
+              style={s.recentTitle}
+            >
+              {t("analytics.recentTransactions")}
+            </Typography>
+            <Pressable
+              style={({ pressed }) => [pressed && s.pressed]}
+              onPress={() => {
+                const p = new URLSearchParams();
+                if (selectedAccountIds.length > 0)
+                  p.set("accountIds", selectedAccountIds.join(","));
+                router.push(`/transactions?${p.toString()}` as never);
+              }}
+              hitSlop={8}
+            >
+              <Typography
+                variant="caption"
+                color="textSecondary"
+                style={s.seeAll}
+              >
+                {t("transactions.seeAll")}
+              </Typography>
+            </Pressable>
+          </View>
 
           {isRecentLoading ? (
             <CategoryRowsSkeleton count={3} />
@@ -849,10 +833,18 @@ const s = StyleSheet.create({
     marginTop: 8,
     gap: 10,
   } as ViewStyle,
+  recentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } as ViewStyle,
   recentTitle: {
     textTransform: "uppercase",
     letterSpacing: 0.5,
     fontSize: 11,
+  } as TextStyle,
+  seeAll: {
+    fontSize: 12,
   } as TextStyle,
   txCard: {
     backgroundColor: colors.backgroundElevated,

@@ -189,17 +189,350 @@ export const createTransaction = async (
   });
 };
 
+export const getTransactionById = async (
+  firebaseUid: string,
+  transactionId: string,
+) => {
+  const user = await getUser(firebaseUid);
+  const transaction = await prisma.transaction.findFirst({
+    where: {
+      id: transactionId,
+      workspace: { members: { some: { userId: user.id } } },
+    },
+    select: transactionSelect,
+  });
+  if (!transaction)
+    throw new ApiError("Transaction not found", HTTP_STATUS.notFound);
+  return transaction;
+};
+
+export type UpdateTransactionData = {
+  type?: string;
+  amount?: string;
+  currency?: string;
+  accountId?: string;
+  destinationAccountId?: string | null;
+  destinationAmount?: string | null;
+  categoryId?: string | null;
+  tagIds?: string[];
+  description?: string | null;
+  date?: string;
+};
+
+export const updateTransaction = async (
+  firebaseUid: string,
+  transactionId: string,
+  data: UpdateTransactionData,
+) => {
+  const user = await getUser(firebaseUid);
+
+  const existing = await prisma.transaction.findFirst({
+    where: {
+      id: transactionId,
+      workspace: { members: { some: { userId: user.id } } },
+    },
+    select: {
+      id: true,
+      type: true,
+      amount: true,
+      destinationAmount: true,
+      accountId: true,
+      destinationAccountId: true,
+      workspaceId: true,
+    },
+  });
+  if (!existing)
+    throw new ApiError("Transaction not found", HTTP_STATUS.notFound);
+
+  const newAccountId = data.accountId ?? existing.accountId;
+  const newType = data.type ?? existing.type;
+
+  // Validate tag IDs belong to this workspace
+  if (data.tagIds && data.tagIds.length > 0) {
+    const validTags = await prisma.tag.findMany({
+      where: { id: { in: data.tagIds }, workspaceId: existing.workspaceId },
+      select: { id: true },
+    });
+    if (validTags.length !== data.tagIds.length)
+      throw new ApiError("One or more tags not found", HTTP_STATUS.badRequest);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // ── Revert old balance effects ────────────────────────────────────────────
+    const oldAccount = await tx.account.findUnique({
+      where: { id: existing.accountId },
+      select: { balance: true },
+    });
+    if (!oldAccount)
+      throw new ApiError("Source account not found", HTTP_STATUS.notFound);
+
+    const oldAmount = bnParse(existing.amount);
+    const oldRevertedBalance =
+      existing.type === TRANSACTION_TYPES.INCOME
+        ? bnParse(oldAccount.balance).minus(oldAmount)
+        : bnParse(oldAccount.balance).plus(oldAmount);
+
+    await tx.account.update({
+      where: { id: existing.accountId },
+      data: { balance: bnRound(oldRevertedBalance) },
+    });
+
+    if (
+      existing.type === TRANSACTION_TYPES.TRANSFER &&
+      existing.destinationAccountId
+    ) {
+      const oldDest = await tx.account.findUnique({
+        where: { id: existing.destinationAccountId },
+        select: { balance: true },
+      });
+      if (oldDest) {
+        const oldDestAmount = existing.destinationAmount
+          ? bnParse(existing.destinationAmount)
+          : oldAmount;
+        await tx.account.update({
+          where: { id: existing.destinationAccountId },
+          data: {
+            balance: bnRound(bnParse(oldDest.balance).minus(oldDestAmount)),
+          },
+        });
+      }
+    }
+
+    // ── Compute new amount ────────────────────────────────────────────────────
+    const newAccount = await tx.account.findFirst({
+      where: { id: newAccountId, workspaceId: existing.workspaceId },
+      select: { balance: true, currency: true },
+    });
+    if (!newAccount)
+      throw new ApiError("Account not found", HTTP_STATUS.notFound);
+
+    let newAmount = data.amount ? bnParse(data.amount) : bnParse(existing.amount);
+    if (newAmount.isLessThanOrEqualTo(0))
+      throw new ApiError("Amount must be positive", HTTP_STATUS.badRequest);
+
+    if (data.amount && data.currency) {
+      const entryCurrency = data.currency.toUpperCase();
+      if (entryCurrency !== newAccount.currency) {
+        const dateStr = data.date
+          ? new Date(data.date).toISOString().slice(0, 10)
+          : todayUTC();
+        const converted = await convertAmount(
+          newAmount.toNumber(),
+          entryCurrency,
+          newAccount.currency,
+          dateStr,
+        );
+        newAmount = bn(converted);
+      }
+    }
+
+    // ── Apply new balance effects ─────────────────────────────────────────────
+    const srcNewBalance =
+      newType === TRANSACTION_TYPES.INCOME
+        ? bnParse(newAccount.balance).plus(newAmount)
+        : bnParse(newAccount.balance).minus(newAmount);
+
+    await tx.account.update({
+      where: { id: newAccountId },
+      data: { balance: bnRound(srcNewBalance) },
+    });
+
+    const newDestAccountId =
+      "destinationAccountId" in data
+        ? data.destinationAccountId
+        : existing.destinationAccountId;
+
+    if (newType === TRANSACTION_TYPES.TRANSFER && newDestAccountId) {
+      const newDest = await tx.account.findFirst({
+        where: { id: newDestAccountId, workspaceId: existing.workspaceId },
+        select: { balance: true },
+      });
+      if (!newDest)
+        throw new ApiError(
+          "Destination account not found",
+          HTTP_STATUS.notFound,
+        );
+
+      const newDestAmount =
+        "destinationAmount" in data && data.destinationAmount
+          ? bnParse(data.destinationAmount).abs()
+          : newAmount;
+
+      await tx.account.update({
+        where: { id: newDestAccountId },
+        data: {
+          balance: bnRound(bnParse(newDest.balance).plus(newDestAmount)),
+        },
+      });
+    }
+
+    // ── Persist the updated transaction ──────────────────────────────────────
+    const resolvedDestAmount =
+      newType === TRANSACTION_TYPES.TRANSFER
+        ? "destinationAmount" in data && data.destinationAmount !== undefined
+          ? data.destinationAmount
+            ? bnRound(bnParse(data.destinationAmount).abs())
+            : null
+          : existing.destinationAmount
+            ? bnRound(bnParse(existing.destinationAmount))
+            : null
+        : null;
+
+    const updated = await tx.transaction.update({
+      where: { id: transactionId },
+      data: {
+        type: newType,
+        amount: bnRound(newAmount),
+        destinationAmount: resolvedDestAmount,
+        description:
+          "description" in data ? (data.description ?? null) : undefined,
+        date: data.date ? new Date(data.date) : undefined,
+        accountId: newAccountId,
+        destinationAccountId:
+          "destinationAccountId" in data
+            ? (data.destinationAccountId ?? null)
+            : undefined,
+        categoryId:
+          "categoryId" in data ? (data.categoryId ?? null) : undefined,
+        tags:
+          data.tagIds !== undefined
+            ? {
+                deleteMany: {},
+                ...(data.tagIds.length > 0
+                  ? {
+                      createMany: {
+                        data: data.tagIds.map((tagId) => ({ tagId })),
+                      },
+                    }
+                  : {}),
+              }
+            : undefined,
+      },
+      select: transactionSelect,
+    });
+
+    return updated;
+  });
+};
+
+export const deleteTransaction = async (
+  firebaseUid: string,
+  transactionId: string,
+) => {
+  const user = await getUser(firebaseUid);
+
+  const existing = await prisma.transaction.findFirst({
+    where: {
+      id: transactionId,
+      workspace: { members: { some: { userId: user.id } } },
+    },
+    select: {
+      id: true,
+      type: true,
+      amount: true,
+      destinationAmount: true,
+      accountId: true,
+      destinationAccountId: true,
+    },
+  });
+  if (!existing)
+    throw new ApiError("Transaction not found", HTTP_STATUS.notFound);
+
+  await prisma.$transaction(async (tx) => {
+    const account = await tx.account.findUnique({
+      where: { id: existing.accountId },
+      select: { balance: true },
+    });
+    if (!account)
+      throw new ApiError("Account not found", HTTP_STATUS.notFound);
+
+    const amount = bnParse(existing.amount);
+    const revertedBalance =
+      existing.type === TRANSACTION_TYPES.INCOME
+        ? bnParse(account.balance).minus(amount)
+        : bnParse(account.balance).plus(amount);
+
+    await tx.account.update({
+      where: { id: existing.accountId },
+      data: { balance: bnRound(revertedBalance) },
+    });
+
+    if (
+      existing.type === TRANSACTION_TYPES.TRANSFER &&
+      existing.destinationAccountId
+    ) {
+      const destAccount = await tx.account.findUnique({
+        where: { id: existing.destinationAccountId },
+        select: { balance: true },
+      });
+      if (destAccount) {
+        const destAmount = existing.destinationAmount
+          ? bnParse(existing.destinationAmount)
+          : amount;
+        await tx.account.update({
+          where: { id: existing.destinationAccountId },
+          data: {
+            balance: bnRound(bnParse(destAccount.balance).minus(destAmount)),
+          },
+        });
+      }
+    }
+
+    await tx.transaction.delete({ where: { id: existing.id } });
+  });
+};
+
 export const getTransactions = async (
   firebaseUid: string,
   workspaceId?: string,
   limit = 50,
   offset = 0,
+  accountIds?: string[],
+  categoryIds?: string[],
+  tagIds?: string[],
+  search?: string,
+  fromDate?: string,
+  toDate?: string,
 ) => {
   const user = await getUser(firebaseUid);
   const wsId = await resolveWorkspaceId(user.id, workspaceId);
 
+  const from = fromDate ? new Date(fromDate) : undefined;
+  const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
+
   return prisma.transaction.findMany({
-    where: { workspaceId: wsId },
+    where: {
+      workspaceId: wsId,
+      ...(accountIds && accountIds.length > 0
+        ? { accountId: { in: accountIds } }
+        : {}),
+      ...(categoryIds && categoryIds.length > 0
+        ? { categoryId: { in: categoryIds } }
+        : {}),
+      ...(tagIds && tagIds.length > 0
+        ? { tags: { some: { tagId: { in: tagIds } } } }
+        : {}),
+      ...(from || to
+        ? {
+            date: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { description: { contains: search, mode: "insensitive" } },
+              {
+                category: {
+                  name: { contains: search, mode: "insensitive" },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
     orderBy: { date: "desc" },
     take: limit,
     skip: offset,

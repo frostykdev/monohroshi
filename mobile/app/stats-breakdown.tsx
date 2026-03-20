@@ -2,6 +2,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
   ViewStyle,
   TextStyle,
@@ -39,46 +40,11 @@ import type {
   TagStat,
 } from "@services/transactions/transactions.api";
 
-// ─── Date helpers ──────────────────────────────────────────────────────────────
-
-type DatePreset =
-  | "thisMonth"
-  | "lastMonth"
-  | "last3Months"
-  | "thisYear"
-  | "allTime";
-
-const DATE_PRESETS: DatePreset[] = [
-  "thisMonth",
-  "lastMonth",
-  "last3Months",
-  "thisYear",
-  "allTime",
-];
-
-const getDateRange = (preset: DatePreset) => {
-  const now = DateTime.now();
-  switch (preset) {
-    case "thisMonth":
-      return { from: now.startOf("month").toISODate()!, to: now.toISODate()! };
-    case "lastMonth": {
-      const lastMonth = now.minus({ months: 1 });
-      return {
-        from: lastMonth.startOf("month").toISODate()!,
-        to: lastMonth.endOf("month").toISODate()!,
-      };
-    }
-    case "last3Months":
-      return {
-        from: now.minus({ months: 2 }).startOf("month").toISODate()!,
-        to: now.toISODate()!,
-      };
-    case "thisYear":
-      return { from: now.startOf("year").toISODate()!, to: now.toISODate()! };
-    case "allTime":
-      return { from: undefined, to: undefined };
-  }
-};
+import {
+  type DatePreset,
+  DATE_PRESETS,
+  getDateRange,
+} from "@utils/date-presets";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -293,8 +259,16 @@ const CategoryRow = ({
     : t("analytics.uncategorised");
   const bg = item.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 
+  const handlePress = () => {
+    if (!item.categoryId) return;
+    const p = new URLSearchParams({ categoryId: item.categoryId });
+    router.push(`/transactions?${p.toString()}` as never);
+  };
+
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={item.categoryId ? 0.6 : 1}
+      onPress={handlePress}
       style={[
         cr.row,
         isFirst && cr.firstRow,
@@ -326,7 +300,14 @@ const CategoryRow = ({
           {item.percent}%
         </Typography>
       </View>
-    </View>
+      {item.categoryId && (
+        <Ionicons
+          name="chevron-forward"
+          size={14}
+          color={colors.textTertiary}
+        />
+      )}
+    </TouchableOpacity>
   );
 };
 
@@ -349,7 +330,12 @@ const TagRow = ({
   const bg = item.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.6}
+      onPress={() => {
+        const p = new URLSearchParams({ tagId: item.tagId });
+        router.push(`/transactions?${p.toString()}` as never);
+      }}
       style={[
         cr.row,
         isFirst && cr.firstRow,
@@ -374,7 +360,8 @@ const TagRow = ({
           {item.percent}%
         </Typography>
       </View>
-    </View>
+      <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+    </TouchableOpacity>
   );
 };
 

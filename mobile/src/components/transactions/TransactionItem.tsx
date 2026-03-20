@@ -1,4 +1,6 @@
-import { StyleSheet, View, ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
@@ -7,6 +9,8 @@ import { getCategoryDisplayName } from "@constants/default-categories";
 import { Typography } from "@components/ui/Typography";
 import { bnParse } from "@utils/bn";
 import type { AccountTransaction } from "@services/accounts/accounts.api";
+import type { Transaction } from "@services/transactions/transactions.api";
+import { TRANSACTION_KEYS } from "@services/transactions/transactions.queries";
 
 type AmountResult = { text: string; color: string };
 
@@ -90,9 +94,31 @@ export const TransactionItem = ({ tx, accountId, isLast }: Props) => {
               ? t("addTransaction.uncategorized")
               : t("addTransaction.transaction")))));
 
+  const canEdit = !isSpecial;
+  const queryClient = useQueryClient();
+
+  const handlePress = () => {
+    if (!canEdit) return;
+    // Pre-populate the query cache so the edit screen opens with no loading delay.
+    // If the caller passed a full Transaction (e.g. from recent-transactions list),
+    // its tags are already present; otherwise we fall back to an empty array which
+    // the background refetch will fill in shortly.
+    const full = tx as unknown as Transaction;
+    queryClient.setQueryData<Transaction>(TRANSACTION_KEYS.byId(tx.id), {
+      ...tx,
+      tags: full.tags ?? [],
+      createdAt: full.createdAt ?? tx.date,
+    });
+    router.push(`/(modals)/edit-transaction?id=${tx.id}` as never);
+  };
+
   return (
     <View>
-      <View style={s.row}>
+      <Pressable
+        style={({ pressed }) => [s.row, pressed && canEdit && s.pressed]}
+        onPress={handlePress}
+        disabled={!canEdit}
+      >
         <View style={s.iconWrap}>
           <Ionicons name={iconName} size={18} color={colors.textPrimary} />
           {isUncategorized && <View style={s.uncatDot} />}
@@ -115,7 +141,7 @@ export const TransactionItem = ({ tx, accountId, isLast }: Props) => {
         <Typography variant="body" style={{ color }}>
           {text}
         </Typography>
-      </View>
+      </Pressable>
       {!isLast && <View style={s.divider} />}
     </View>
   );
@@ -157,4 +183,5 @@ const s = StyleSheet.create({
     backgroundColor: colors.borderStrong,
     marginLeft: 66,
   } as ViewStyle,
+  pressed: { opacity: 0.6 } as ViewStyle,
 });
