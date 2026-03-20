@@ -207,6 +207,10 @@
     "tagsCount_other": "{{count}} Tags",
     "noData": "No transactions for this period",
     "uncategorised": "Uncategorised",
+    "recentTransactions": "Recent transactions",
+    "noRecentTransactions": "No recent transactions",
+    "breakdown": "Breakdown",
+    "total": "Total",
     "datePresets": {
       "thisMonth": "This month",
       "lastMonth": "Last month",

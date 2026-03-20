@@ -15,6 +15,8 @@ type PickerStore = {
   isRefundCategory: boolean;
   selectedAccountIds: string[] | null;
   selectedTags: PickedTag[] | null;
+  /** ID of the most recently created transaction — used to animate it on the home screen */
+  newTransactionId: string | null;
   setAccountType: (v: string) => void;
   setCurrency: (v: string) => void;
   setIcon: (icon: string, color: string) => void;
@@ -42,6 +44,7 @@ export const usePickerStore = create<PickerStore>((set) => ({
   isRefundCategory: false,
   selectedAccountIds: null,
   selectedTags: null,
+  newTransactionId: null,
   setAccountType: (v) => set({ accountType: v }),
   setCurrency: (v) => set({ currency: v }),
   setIcon: (icon, color) => set({ icon, iconColor: color }),
@@ -68,5 +71,6 @@ export const usePickerStore = create<PickerStore>((set) => ({
       isRefundCategory: false,
       selectedAccountIds: null,
       selectedTags: null,
+      newTransactionId: null,
     }),
 }));

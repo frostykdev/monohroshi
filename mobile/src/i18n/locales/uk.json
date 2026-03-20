@@ -207,6 +207,10 @@
     "tagsCount_other": "{{count}} Тегів",
     "noData": "Немає транзакцій за цей період",
     "uncategorised": "Без категорії",
+    "recentTransactions": "Останні транзакції",
+    "noRecentTransactions": "Немає нещодавніх транзакцій",
+    "breakdown": "Розбивка",
+    "total": "Всього",
     "datePresets": {
       "thisMonth": "Цей місяць",
       "lastMonth": "Минулий місяць",

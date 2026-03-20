@@ -118,11 +118,14 @@ export const fetchTransactions = async (
   workspaceId?: string | null,
   limit = 50,
   offset = 0,
+  accountIds?: string[],
 ): Promise<Transaction[]> => {
   const params = new URLSearchParams();
   if (workspaceId) params.set("workspaceId", workspaceId);
   params.set("limit", String(limit));
   params.set("offset", String(offset));
+  if (accountIds && accountIds.length > 0)
+    params.set("accountIds", accountIds.join(","));
   const res = await apiClient.get<ApiResponse<{ transactions: Transaction[] }>>(
     `/v1/transactions?${params.toString()}`,
   );

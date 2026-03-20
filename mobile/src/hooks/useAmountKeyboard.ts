@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import * as Haptics from "expo-haptics";
-import { bn } from "@utils/bn";
+import { bn, bnParse } from "@utils/bn";
 
 export const OPERATOR_KEYS = ["+", "−", "×", "÷"] as const;
 export type OperatorKey = (typeof OPERATOR_KEYS)[number];
@@ -125,7 +125,7 @@ export const useAmountKeyboard = ({
   );
 
   const reset = useCallback((value?: string, negative?: boolean) => {
-    const num = bn(value ?? 0);
+    const num = bnParse(value ?? 0);
     setInput(!num.isZero() ? num.abs().toString() : "");
     setPendingOp(null);
     setPendingValue("");

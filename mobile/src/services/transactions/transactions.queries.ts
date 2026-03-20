@@ -24,6 +24,13 @@ export const TRANSACTION_KEYS = {
       toDate ?? "",
       accountIds?.join(",") ?? "",
     ] as const,
+  recent: (workspaceId?: string | null, accountIds?: string[]) =>
+    [
+      "transactions",
+      "recent",
+      workspaceId ?? "default",
+      accountIds?.join(",") ?? "",
+    ] as const,
 };
 
 export const useTransactions = (
@@ -36,6 +43,22 @@ export const useTransactions = (
       ? TRANSACTION_KEYS.byWorkspace(workspaceId)
       : TRANSACTION_KEYS.all(),
     queryFn: () => fetchTransactions(workspaceId, limit, offset),
+    enabled: workspaceId !== undefined,
+  });
+
+export const useRecentTransactions = (
+  workspaceId?: string | null,
+  accountIds?: string[],
+) =>
+  useQuery({
+    queryKey: TRANSACTION_KEYS.recent(workspaceId, accountIds),
+    queryFn: () =>
+      fetchTransactions(
+        workspaceId,
+        15,
+        0,
+        accountIds && accountIds.length > 0 ? accountIds : undefined,
+      ),
     enabled: workspaceId !== undefined,
   });
 
@@ -96,6 +119,8 @@ export const useCreateTransaction = (workspaceId?: string | null) => {
       });
       // Stats
       qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
+      // Recent transactions (home screen)
+      qc.invalidateQueries({ queryKey: ["transactions", "recent"] });
     },
   });
 };

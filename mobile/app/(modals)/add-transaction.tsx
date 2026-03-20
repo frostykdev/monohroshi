@@ -579,7 +579,10 @@ const AddTransactionModal = () => {
         workspaceId: activeWorkspaceId ?? undefined,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: (created) => {
+          usePickerStore.setState({ newTransactionId: created.id });
+          router.back();
+        },
         onError: () =>
           Alert.alert(
             t("addTransaction.title"),
