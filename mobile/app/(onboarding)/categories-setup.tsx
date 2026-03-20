@@ -11,7 +11,10 @@ import DraggableFlatList, {
 } from "react-native-draggable-flatlist";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
-import { CategoryItem } from "@constants/default-categories";
+import {
+  CategoryItem,
+  getCategoryDisplayName,
+} from "@constants/default-categories";
 import { Typography } from "@components/ui/Typography";
 import { SegmentedControl, Segment } from "@components/ui/SegmentedControl";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
@@ -86,13 +89,15 @@ const CategoriesSetupScreen = () => {
       type: item.type,
       isSystem: item.isSystem,
       localId: item.id,
+      translationKey: item.translationKey,
     });
     actionsSheetRef.current?.present();
   };
 
   const handleEdit = (item: CategoryActionsSheetItem) => {
+    const displayName = getCategoryDisplayName(item, t);
     router.push(
-      `/(modals)/add-category?mode=edit-local&localId=${item.id}&initialName=${encodeURIComponent(item.name)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&tab=${activeTab}` as never,
+      `/(modals)/add-category?mode=edit-local&localId=${item.id}&initialName=${encodeURIComponent(displayName)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&tab=${activeTab}` as never,
     );
   };
 
@@ -105,7 +110,7 @@ const CategoriesSetupScreen = () => {
     Alert.alert(
       t("onboarding.categoriesSetup.deleteConfirmTitle"),
       t("onboarding.categoriesSetup.deleteConfirmMessage", {
-        name: item.name,
+        name: getCategoryDisplayName(item, t),
       }),
       [
         { text: t("common.cancel"), style: "cancel" },
@@ -137,7 +142,7 @@ const CategoriesSetupScreen = () => {
           <Ionicons name={item.icon} size={20} color={colors.textPrimary} />
         </View>
         <Typography variant="body" color="textPrimary" style={s.categoryName}>
-          {item.name}
+          {getCategoryDisplayName(item, t)}
         </Typography>
         {item.isSystem ? (
           <Ionicons

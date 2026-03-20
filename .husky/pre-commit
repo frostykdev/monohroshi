@@ -1,1 +1,2 @@
 npm run lint
+cd backend && npm run typecheck

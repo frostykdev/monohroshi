@@ -3,6 +3,7 @@ export const colors = {
   background: "#1B1F2E",
   backgroundElevated: "#252A3A",
   backgroundSurface: "#2E3447",
+  backgroundSurfaceAlt: "#363E57",
 
   // Brand
   accent: "#F0B90B",
@@ -10,10 +11,11 @@ export const colors = {
 
   // Text
   textPrimary: "#FFFFFF",
-  textSecondary: "rgba(255, 255, 255, 0.55)",
-  textTertiary: "rgba(255, 255, 255, 0.35)",
-  textDisabled: "rgba(255, 255, 255, 0.25)",
+  textSecondary: "rgba(255, 255, 255, 0.70)",
+  textTertiary: "rgba(255, 255, 255, 0.50)",
+  textDisabled: "rgba(255, 255, 255, 0.28)",
   textOnAccent: "#1B1F2E",
+  white: "#FFFFFF",
 
   // Borders
   border: "rgba(255, 255, 255, 0.1)",

@@ -10,7 +10,16 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from "react-native";
-import { useRef, useState, useCallback, useMemo } from "react";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  withSequence,
+  interpolateColor,
+} from "react-native-reanimated";
+import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
@@ -25,58 +34,39 @@ import {
 } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
+import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
+import { TransactionItem } from "@components/transactions/TransactionItem";
 import { useAccounts } from "@services/accounts/accounts.queries";
-import { useTransactionStats } from "@services/transactions/transactions.queries";
+import {
+  useTransactionStats,
+  useRecentTransactions,
+} from "@services/transactions/transactions.queries";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { usePickerStore } from "@stores/usePickerStore";
-import type { CategoryStat } from "@services/transactions/transactions.api";
+import type {
+  CategoryStat,
+  TagStat,
+  Transaction,
+} from "@services/transactions/transactions.api";
 import {
   StatCardSkeleton,
   CategoryRowsSkeleton,
 } from "@components/ui/Skeleton";
+import {
+  type DatePreset,
+  DATE_PRESETS,
+  getDateRange,
+} from "@utils/date-presets";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// ─── Date helpers ──────────────────────────────────────────────────────────────
-
-type DatePreset =
-  | "thisMonth"
-  | "lastMonth"
-  | "last3Months"
-  | "thisYear"
-  | "allTime";
-
-const getDateRange = (preset: DatePreset) => {
-  const now = DateTime.now();
-  switch (preset) {
-    case "thisMonth":
-      return { from: now.startOf("month").toISODate()!, to: now.toISODate()! };
-    case "lastMonth": {
-      const lastMonth = now.minus({ months: 1 });
-      return {
-        from: lastMonth.startOf("month").toISODate()!,
-        to: lastMonth.endOf("month").toISODate()!,
-      };
-    }
-    case "last3Months":
-      return {
-        from: now.minus({ months: 2 }).startOf("month").toISODate()!,
-        to: now.toISODate()!,
-      };
-    case "thisYear":
-      return { from: now.startOf("year").toISODate()!, to: now.toISODate()! };
-    case "allTime":
-      return { from: undefined, to: undefined };
-  }
-};
 
 const fmtAmount = (n: number, currency: string) => {
   const sym = getCurrencySymbol(currency);
   return (
     Math.abs(n).toLocaleString("uk-UA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }) +
     " " +
     sym
@@ -94,15 +84,25 @@ const StatCard = ({
   type,
   data,
   currency,
+  onCategoryPress,
+  onTagPress,
 }: {
   type: "expense" | "income";
-  data: { total: number; count: number; byCategory: CategoryStat[] };
+  data: {
+    total: number;
+    count: number;
+    byCategory: CategoryStat[];
+    byTag: TagStat[];
+  };
   currency: string;
+  onCategoryPress?: () => void;
+  onTagPress?: () => void;
 }) => {
   const { t } = useTranslation();
   const isExpense = type === "expense";
   const emoji = EMOJIS[type][data.count % EMOJIS[type].length];
   const catCount = data.byCategory.length;
+  const tagCount = data.byTag.length;
 
   return (
     <View style={sc.card}>
@@ -116,7 +116,7 @@ const StatCard = ({
           <Ionicons
             name={isExpense ? "arrow-up-outline" : "arrow-down-outline"}
             size={20}
-            color="#fff"
+            color={getIconColor(isExpense ? colors.error : colors.success)}
           />
         </View>
         <View style={sc.currencyBadge}>
@@ -145,7 +145,10 @@ const StatCard = ({
       </View>
 
       <View style={sc.statsRow}>
-        <View style={sc.statBox}>
+        <Pressable
+          style={({ pressed }) => [sc.statBox, pressed && sc.statBoxPressed]}
+          onPress={onCategoryPress}
+        >
           <Ionicons
             name="grid-outline"
             size={14}
@@ -155,18 +158,21 @@ const StatCard = ({
           <Typography variant="caption" color="textSecondary">
             {t("analytics.categoriesCount_other", { count: catCount })}
           </Typography>
-        </View>
-        <View style={sc.statBox}>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [sc.statBox, pressed && sc.statBoxPressed]}
+          onPress={onTagPress}
+        >
           <Ionicons
-            name="pricetag-outline"
+            name="bookmark-outline"
             size={14}
             color={colors.textSecondary}
           />
-          <Typography variant="h3">0</Typography>
+          <Typography variant="h3">{tagCount}</Typography>
           <Typography variant="caption" color="textSecondary">
-            {t("analytics.tagsCount_other", { count: 0 })}
+            {t("analytics.tagsCount_other", { count: tagCount })}
           </Typography>
-        </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -220,104 +226,12 @@ const sc = StyleSheet.create({
     padding: 12,
     gap: 4,
   } as ViewStyle,
-});
-
-// ─── Category row ──────────────────────────────────────────────────────────────
-
-const CategoryRow = ({
-  item,
-  currency,
-  isFirst,
-  isLast,
-}: {
-  item: CategoryStat;
-  currency: string;
-  isFirst: boolean;
-  isLast: boolean;
-}) => {
-  const { t } = useTranslation();
-  const name = item.categoryName ?? t("analytics.uncategorised");
-  const bg = item.color ?? colors.iconBlue;
-
-  return (
-    <View
-      style={[
-        cr.row,
-        isFirst && cr.firstRow,
-        isLast && cr.lastRow,
-        !isLast && cr.divider,
-      ]}
-    >
-      <View style={[cr.icon, { backgroundColor: bg }]}>
-        <Ionicons
-          name={
-            (item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
-            "pricetag-outline"
-          }
-          size={18}
-          color="#fff"
-        />
-      </View>
-      <View style={cr.info}>
-        <Typography variant="label">{name}</Typography>
-        <Typography variant="caption" color="textSecondary">
-          {item.count} {item.count === 1 ? "транзакція" : "транзакцій"}
-        </Typography>
-      </View>
-      <View style={cr.right}>
-        <Typography variant="label">
-          {fmtAmount(item.total, currency)}
-        </Typography>
-        <Typography variant="caption" color="textSecondary" style={cr.pct}>
-          {item.percent}%
-        </Typography>
-      </View>
-    </View>
-  );
-};
-
-const cr = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 12,
-    backgroundColor: colors.backgroundElevated,
+  statBoxPressed: {
+    opacity: 0.6,
   } as ViewStyle,
-  firstRow: {
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-  } as ViewStyle,
-  lastRow: {
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-  } as ViewStyle,
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  } as ViewStyle,
-  icon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  info: { flex: 1, gap: 2 } as ViewStyle,
-  right: { alignItems: "flex-end", gap: 2 } as ViewStyle,
-  pct: { textAlign: "right" } as TextStyle,
 });
 
 // ─── Date preset sheet ─────────────────────────────────────────────────────────
-
-const DATE_PRESETS: DatePreset[] = [
-  "thisMonth",
-  "lastMonth",
-  "last3Months",
-  "thisYear",
-  "allTime",
-];
 
 const DateSheet = ({
   selected,
@@ -371,6 +285,51 @@ const ds = StyleSheet.create({
   pressed: { opacity: 0.6 } as ViewStyle,
 });
 
+// ─── Animated transaction row ──────────────────────────────────────────────────
+
+const AnimatedTxRow = ({
+  tx,
+  isLast,
+  isNew,
+}: {
+  tx: Transaction;
+  isLast: boolean;
+  isNew: boolean;
+}) => {
+  const translateY = useSharedValue(isNew ? -12 : 0);
+  const highlightProgress = useSharedValue(0);
+
+  useEffect(() => {
+    if (isNew) {
+      translateY.value = withSpring(0, { damping: 16, stiffness: 220 });
+      highlightProgress.value = withSequence(
+        withTiming(1, { duration: 50 }),
+        withDelay(300, withTiming(0, { duration: 900 })),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const rowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    backgroundColor: interpolateColor(
+      highlightProgress.value,
+      [0, 1],
+      [colors.backgroundElevated, colors.backgroundSurfaceAlt],
+    ),
+  }));
+
+  return (
+    <Animated.View style={rowStyle}>
+      <TransactionItem
+        tx={tx as never}
+        accountId={tx.account.id}
+        isLast={isLast}
+      />
+    </Animated.View>
+  );
+};
+
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 const HomeScreen = () => {
@@ -388,12 +347,8 @@ const HomeScreen = () => {
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [activePage, setActivePage] = useState(0);
-  const [activeTab, setActiveTab] = useState<"categories" | "tags">(
-    "categories",
-  );
   const [cardsHeight, setCardsHeight] = useState(0);
-  const [scrollViewHeight, setScrollViewHeight] = useState(0);
-  const [stickyTabHeight, setStickyTabHeight] = useState(0);
+  const [highlightedTxId, setHighlightedTxId] = useState<string | null>(null);
 
   const dateSheetRef = useRef<BottomSheetModal>(null);
 
@@ -403,6 +358,10 @@ const HomeScreen = () => {
       if (store.selectedAccountIds !== null) {
         setSelectedAccountIds(store.selectedAccountIds);
         usePickerStore.setState({ selectedAccountIds: null });
+      }
+      if (store.newTransactionId !== null) {
+        setHighlightedTxId(store.newTransactionId);
+        usePickerStore.setState({ newTransactionId: null });
       }
     }, []),
   );
@@ -418,13 +377,13 @@ const HomeScreen = () => {
     selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
   );
 
-  const currency = stats?.currency ?? "UAH";
+  const { data: recentTxs = [], isLoading: isRecentLoading } =
+    useRecentTransactions(
+      workspaceId,
+      selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
+    );
 
-  const activeStat = useMemo(
-    () => (activePage === 0 ? stats?.expenses : stats?.income),
-    [activePage, stats],
-  );
-  const categories = activeStat?.byCategory ?? [];
+  const currency = stats?.currency ?? "UAH";
 
   const formatDateRange = useCallback(
     (from?: string, to?: string): string => {
@@ -454,19 +413,7 @@ const HomeScreen = () => {
     setCardsHeight(e.nativeEvent.layout.height);
   }, []);
 
-  const onScrollViewLayout = useCallback((e: LayoutChangeEvent) => {
-    setScrollViewHeight(e.nativeEvent.layout.height);
-  }, []);
-
-  const onStickyTabLayout = useCallback((e: LayoutChangeEvent) => {
-    setStickyTabHeight(e.nativeEvent.layout.height);
-  }, []);
-
   const bottomPadding = insets.bottom + 110;
-  const catMinHeight =
-    scrollViewHeight > 0
-      ? scrollViewHeight - stickyTabHeight - bottomPadding
-      : 0;
 
   const snapTo = useCallback((target: number) => {
     isSnapping.current = true;
@@ -530,11 +477,31 @@ const HomeScreen = () => {
     router.push("/(modals)/add-transaction" as never);
   };
 
+  const openBreakdown = useCallback(
+    (initialType: "expense" | "income", initialTab: "categories" | "tags") => {
+      const params = new URLSearchParams();
+      params.set("datePreset", datePreset);
+      if (selectedAccountIds.length > 0)
+        params.set("accountIds", selectedAccountIds.join(","));
+      params.set("initialType", initialType);
+      params.set("initialTab", initialTab);
+      router.push(`/stats-breakdown?${params.toString()}` as never);
+    },
+    [datePreset, selectedAccountIds],
+  );
+
   return (
     <View style={[s.screen, { paddingTop: insets.top }]}>
       {/* ── Header ─────────────────────────────────────── */}
       <View style={s.header}>
-        <View style={s.workspacePill}>
+        <Pressable
+          style={({ pressed }) => [s.workspacePill, pressed && s.pressed]}
+          onPress={() =>
+            router.push(
+              `/settings/workspace-details?id=${workspaceId}` as never,
+            )
+          }
+        >
           <View style={s.wsCircle}>
             <Typography
               variant="caption"
@@ -545,7 +512,7 @@ const HomeScreen = () => {
             </Typography>
           </View>
           <Typography variant="label">{workspaceName}</Typography>
-        </View>
+        </Pressable>
         <View style={s.headerIcon}>
           <Ionicons
             name="layers-outline"
@@ -574,14 +541,12 @@ const HomeScreen = () => {
       <ScrollView
         ref={scrollRef}
         style={s.scroll}
-        stickyHeaderIndices={[1]}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding }}
-        onLayout={onScrollViewLayout}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleMomentumEnd}
       >
-        {/* child 0 — collapsible pager section */}
+        {/* ── Collapsible pager section ── */}
         <View onLayout={onCardsLayout}>
           {/* Account card */}
           <Pressable
@@ -635,13 +600,31 @@ const HomeScreen = () => {
             >
               <StatCard
                 type="expense"
-                data={stats?.expenses ?? { total: 0, count: 0, byCategory: [] }}
+                data={
+                  stats?.expenses ?? {
+                    total: 0,
+                    count: 0,
+                    byCategory: [],
+                    byTag: [],
+                  }
+                }
                 currency={currency}
+                onCategoryPress={() => openBreakdown("expense", "categories")}
+                onTagPress={() => openBreakdown("expense", "tags")}
               />
               <StatCard
                 type="income"
-                data={stats?.income ?? { total: 0, count: 0, byCategory: [] }}
+                data={
+                  stats?.income ?? {
+                    total: 0,
+                    count: 0,
+                    byCategory: [],
+                    byTag: [],
+                  }
+                }
                 currency={currency}
+                onCategoryPress={() => openBreakdown("income", "categories")}
+                onTagPress={() => openBreakdown("income", "tags")}
               />
             </ScrollView>
           )}
@@ -664,56 +647,56 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* child 1 — STICKY tab bar
-             The outer wrapper spans the full scroll width and carries the
-             screen background, so category rows can't bleed through the sides
-             or the gap below when the bar is stuck to the top. */}
-        <View style={s.tabBarWrapper} onLayout={onStickyTabLayout}>
-          <View style={s.tabBar}>
-            {(["categories", "tags"] as const).map((tab) => (
-              <Pressable
-                key={tab}
-                style={[s.tab, activeTab === tab && s.tabActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Typography
-                  variant="label"
-                  color={activeTab === tab ? "textPrimary" : "textSecondary"}
-                >
-                  {tab === "categories"
-                    ? t("analytics.categories")
-                    : t("analytics.tags")}
-                </Typography>
-              </Pressable>
-            ))}
+        {/* ── Recent transactions section ── */}
+        <View style={s.recentSection}>
+          <View style={s.recentHeader}>
+            <Typography
+              variant="label"
+              color="textSecondary"
+              style={s.recentTitle}
+            >
+              {t("analytics.recentTransactions")}
+            </Typography>
+            <Pressable
+              style={({ pressed }) => [s.seeAllBtn, pressed && s.pressed]}
+              onPress={() => {
+                const p = new URLSearchParams();
+                if (selectedAccountIds.length > 0)
+                  p.set("accountIds", selectedAccountIds.join(","));
+                router.push(`/transactions?${p.toString()}` as never);
+              }}
+              hitSlop={8}
+            >
+              <Typography variant="caption" style={s.seeAllLabel}>
+                {t("transactions.seeAll")}
+              </Typography>
+              <Ionicons
+                name="chevron-forward"
+                size={12}
+                color={colors.accent}
+              />
+            </Pressable>
           </View>
-        </View>
 
-        {/* child 2 — category list (minHeight ensures snap can always reach tabs) */}
-        <View
-          style={[
-            s.catSection,
-            catMinHeight > 0 && { minHeight: catMinHeight },
-          ]}
-        >
-          {isLoading ? (
-            <CategoryRowsSkeleton count={4} />
-          ) : categories.length === 0 ? (
-            <View style={s.empty}>
+          {isRecentLoading ? (
+            <CategoryRowsSkeleton count={3} />
+          ) : recentTxs.length === 0 ? (
+            <View style={s.emptyCard}>
               <Typography variant="body" color="textSecondary">
-                {t("analytics.noData")}
+                {t("analytics.noRecentTransactions")}
               </Typography>
             </View>
           ) : (
-            categories.map((cat, i) => (
-              <CategoryRow
-                key={cat.categoryId ?? `cat-${i}`}
-                item={cat}
-                currency={currency}
-                isFirst={i === 0}
-                isLast={i === categories.length - 1}
-              />
-            ))
+            <View style={s.txCard}>
+              {recentTxs.map((tx, i) => (
+                <AnimatedTxRow
+                  key={tx.id}
+                  tx={tx}
+                  isLast={i === recentTxs.length - 1}
+                  isNew={tx.id === highlightedTxId}
+                />
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -845,41 +828,48 @@ const s = StyleSheet.create({
     width: 20,
     backgroundColor: colors.textPrimary,
   } as ViewStyle,
-  // Sticky tab bar
-  tabBarWrapper: {
-    // Full-width background covers any content scrolling behind the sticky bar
-    backgroundColor: colors.background,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    paddingTop: 2,
-  } as ViewStyle,
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: 10,
-    borderCurve: "continuous",
-    padding: 3,
-  } as ViewStyle,
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-    borderRadius: 8,
-  } as ViewStyle,
-  tabActive: {
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  // Categories
-  catSection: {
+  // Recent transactions
+  recentSection: {
     marginHorizontal: 16,
+    marginTop: 8,
+    gap: 10,
+  } as ViewStyle,
+  recentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } as ViewStyle,
+  recentTitle: {
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontSize: 11,
+  } as TextStyle,
+  seeAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: colors.accent + "18",
+  } as ViewStyle,
+  seeAllLabel: {
+    fontSize: 12,
+    color: colors.accent,
+    fontWeight: "600",
+  } as TextStyle,
+  txCard: {
+    backgroundColor: colors.backgroundElevated,
     borderRadius: 14,
     borderCurve: "continuous",
     overflow: "hidden",
   } as ViewStyle,
-  empty: {
+  emptyCard: {
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 14,
+    borderCurve: "continuous",
     padding: 24,
     alignItems: "center",
-    backgroundColor: colors.backgroundElevated,
   } as ViewStyle,
   // FAB
   fab: {
@@ -891,7 +881,6 @@ const s = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
-    // Accent-coloured glow
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.65,

@@ -13,13 +13,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetScrollView,
+  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import type { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types";
 import { colors } from "@constants/colors";
@@ -27,6 +28,8 @@ import {
   getCurrencySymbol,
   getAccountTypeConfig,
 } from "@constants/account-types";
+import { bnParse } from "@utils/bn";
+import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import {
   SegmentedControl,
@@ -34,10 +37,11 @@ import {
 } from "@components/ui/SegmentedControl";
 import { AmountKeyboard } from "@components/ui/AmountKeyboard";
 import { useAmountKeyboard } from "@hooks/useAmountKeyboard";
-import { usePickerStore } from "@stores/usePickerStore";
+import { usePickerStore, type PickedTag } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import type { Account } from "@services/accounts/accounts.api";
+import { useCategories } from "@services/categories/categories.queries";
 import { useCreateTransaction } from "@services/transactions/transactions.queries";
 import { useFxConvert } from "@services/fx/fx.queries";
 
@@ -59,14 +63,9 @@ const formatDateLocale = (date: Date, language: string): string =>
   });
 
 const formatAmount = (value: string, currency: string): string => {
-  const num = parseFloat(value);
-  if (!value || isNaN(num) || num === 0)
-    return `0 ${getCurrencySymbol(currency)}`;
-  const abs = Math.abs(num).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-  return `${num < 0 ? "−" : ""}${abs} ${getCurrencySymbol(currency)}`;
+  const num = bnParse(value);
+  if (!value || num.isZero()) return `0 ${getCurrencySymbol(currency)}`;
+  return `${num.isNegative() ? "−" : ""}${num.abs().toFormat(2)} ${getCurrencySymbol(currency)}`;
 };
 
 // ─── Mini Calendar ────────────────────────────────────────────────────────────
@@ -235,6 +234,9 @@ const AddTransactionModal = () => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkspaceId = useWorkspaceStore((s) => s.id);
+  const { defaultAccountId } = useLocalSearchParams<{
+    defaultAccountId?: string;
+  }>();
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [txType, setTxType] = useState<TransactionType>("expense");
@@ -250,10 +252,22 @@ const AddTransactionModal = () => {
   const [accountColor, setAccountColor] = useState<string | null>(null);
   const [destAccountId, setDestAccountId] = useState<string | null>(null);
   const [destAccountName, setDestAccountName] = useState<string | null>(null);
+  const [destAccountIcon, setDestAccountIcon] = useState<string | null>(null);
+  const [destAccountColor, setDestAccountColor] = useState<string | null>(null);
+  const [destAccountCurrency, setDestAccountCurrency] = useState<string | null>(
+    null,
+  );
+  /** null = use auto FX, string = manually overridden */
+  const [destAmount, setDestAmount] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [categoryIcon, setCategoryIcon] = useState<string | null>(null);
   const [categoryColor, setCategoryColor] = useState<string | null>(null);
+  const [categorySystemCode, setCategorySystemCode] = useState<string | null>(
+    null,
+  );
+  const [isRefundCategory, setIsRefundCategory] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<PickedTag[]>([]);
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [showKeyboard, setShowKeyboard] = useState(true);
@@ -270,19 +284,33 @@ const AddTransactionModal = () => {
   // ── Account picker sheet ─────────────────────────────────────────────────────
   const accountSheetRef = useRef<BottomSheetModal>(null);
   const destAccountSheetRef = useRef<BottomSheetModal>(null);
+  const destAmountSheetRef = useRef<BottomSheetModal>(null);
+  const destAmountKeyboard = useAmountKeyboard({
+    showSignToggle: false,
+    onDone: (v) => {
+      setDestAmount(v === "0" || v === "" ? null : v);
+      destAmountSheetRef.current?.dismiss();
+    },
+  });
   const { data: accounts = [] } = useAccounts(activeWorkspaceId);
+  const { data: allCategories = [] } = useCategories(activeWorkspaceId);
+  const refundCategoryId =
+    allCategories.find((c) => c.systemCode === "refund")?.id ?? null;
 
-  // Auto-select default account once accounts are loaded
+  // Auto-select account once accounts are loaded.
+  // If `defaultAccountId` was passed (e.g. from account-details FAB), prefer that account.
   useEffect(() => {
     if (accounts.length === 0 || accountId) return;
-    const primary = accounts.find((a) => a.isPrimary) ?? accounts[0];
-    setAccountId(primary.id);
-    setAccountName(primary.name);
-    setAccountIcon(primary.icon ?? null);
-    setAccountColor(primary.color ?? null);
-    setCurrency(primary.currency);
-    setAccountCurrency(primary.currency);
-    // Only run when accounts first become available
+    const preset = defaultAccountId
+      ? accounts.find((a) => a.id === defaultAccountId)
+      : null;
+    const selected = preset ?? accounts.find((a) => a.isPrimary) ?? accounts[0];
+    setAccountId(selected.id);
+    setAccountName(selected.name);
+    setAccountIcon(selected.icon ?? null);
+    setAccountColor(selected.color ?? null);
+    setCurrency(selected.currency);
+    setAccountCurrency(selected.currency);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts]);
 
@@ -299,18 +327,45 @@ const AddTransactionModal = () => {
         usePickerStore.setState({ currency: null });
       }
       if (store.categoryId && store.categoryName) {
-        setCategoryId(store.categoryId);
-        setCategoryName(store.categoryName);
-        setCategoryIcon(store.categoryIcon ?? null);
-        setCategoryColor(store.categoryColor ?? null);
+        const pickedId = store.categoryId;
+        const pickedIsRefund = store.isRefundCategory;
+        const pickedCategory = allCategories.find((c) => c.id === pickedId);
+        const pickedSystemCode = pickedCategory?.systemCode ?? null;
+
         usePickerStore.setState({
           categoryId: null,
           categoryName: null,
           categoryIcon: null,
           categoryColor: null,
+          isRefundCategory: false,
         });
+
+        if (pickedSystemCode === "refund") {
+          // User picked the "Refund" income category — immediately open the
+          // expense category picker with the refund banner.
+          setCategoryId(pickedId);
+          setCategoryName(store.categoryName);
+          setCategoryIcon(store.categoryIcon ?? null);
+          setCategoryColor(store.categoryColor ?? null);
+          setCategorySystemCode(pickedSystemCode);
+          setIsRefundCategory(false);
+          router.push(
+            `/settings/categories?pickerMode=true&gridMode=true&refundMode=true&tab=expense&fromModal=1` as never,
+          );
+        } else {
+          setCategoryId(pickedId);
+          setCategoryName(store.categoryName);
+          setCategoryIcon(store.categoryIcon ?? null);
+          setCategoryColor(store.categoryColor ?? null);
+          setCategorySystemCode(pickedSystemCode);
+          setIsRefundCategory(pickedIsRefund);
+        }
       }
-    }, []),
+      if (store.selectedTags !== null) {
+        setSelectedTags(store.selectedTags);
+        usePickerStore.setState({ selectedTags: null });
+      }
+    }, [allCategories]),
   );
 
   // ── FX conversion preview ────────────────────────────────────────────────────
@@ -321,6 +376,25 @@ const AddTransactionModal = () => {
     accountCurrency,
   );
   const convertedAmount = isCrossRate ? (fxData?.converted ?? null) : null;
+
+  // FX for transfer destination (source currency → dest account currency)
+  const isTransferCrossRate =
+    txType === "transfer" &&
+    destAccountCurrency !== null &&
+    currency !== destAccountCurrency;
+  const { data: destFxData } = useFxConvert(
+    Math.abs(keyboard.evaluate()),
+    currency,
+    destAccountCurrency ?? currency,
+  );
+  const autoDestAmount =
+    isTransferCrossRate && destFxData?.converted != null
+      ? String(destFxData.converted)
+      : txType === "transfer" && destAccountCurrency !== null
+        ? String(Math.abs(keyboard.evaluate()))
+        : null;
+  /** The effective destination amount to send to the backend and display */
+  const effectiveDestAmount = destAmount ?? autoDestAmount;
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const symbol = getCurrencySymbol(currency);
@@ -396,10 +470,36 @@ const AddTransactionModal = () => {
 
   const handleCategoryPress = () => {
     haptic();
+    // If the currently selected category is "refund", re-open picker in refund
+    // mode (shows expense categories with explanatory banner).
+    if (categorySystemCode === "refund" || categoryId === refundCategoryId) {
+      router.push(
+        `/settings/categories?pickerMode=true&gridMode=true&refundMode=true&tab=expense&fromModal=1` as never,
+      );
+      return;
+    }
     const tab = txType === "income" ? "income" : "expense";
     router.push(
-      `/settings/categories?pickerMode=true&tab=${tab}&fromModal=1` as never,
+      `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&fromModal=1` as never,
     );
+  };
+
+  const handleTagsPress = () => {
+    haptic();
+    const selected = selectedTags.map((t) => t.id).join(",");
+    const params = new URLSearchParams({ fromModal: "1" });
+    if (selected) params.set("selected", selected);
+    router.push(`/(modals)/tag-picker?${params.toString()}` as never);
+  };
+
+  const handleDestAmountPress = () => {
+    haptic();
+    Keyboard.dismiss();
+    setShowKeyboard(false);
+    setShowCalendar(false);
+    const currentVal = effectiveDestAmount ?? "0";
+    destAmountKeyboard.reset(currentVal, false);
+    destAmountSheetRef.current?.present();
   };
 
   const handleCurrencyPress = () => {
@@ -422,6 +522,10 @@ const AddTransactionModal = () => {
   const handleSelectDestAccount = (account: Account) => {
     setDestAccountId(account.id);
     setDestAccountName(account.name);
+    setDestAccountIcon(account.icon ?? null);
+    setDestAccountColor(account.color ?? null);
+    setDestAccountCurrency(account.currency);
+    setDestAmount(null); // reset manual override when account changes
     destAccountSheetRef.current?.dismiss();
   };
 
@@ -430,6 +534,14 @@ const AddTransactionModal = () => {
       Alert.alert(
         t("addTransaction.title"),
         t("addTransaction.errors.accountRequired"),
+      );
+      return;
+    }
+
+    if (txType === "transfer" && !destAccountId) {
+      Alert.alert(
+        t("addTransaction.title"),
+        t("addTransaction.errors.destinationRequired"),
       );
       return;
     }
@@ -455,13 +567,22 @@ const AddTransactionModal = () => {
         accountId,
         destinationAccountId:
           txType === "transfer" ? (destAccountId ?? undefined) : undefined,
+        destinationAmount:
+          txType === "transfer" && effectiveDestAmount
+            ? effectiveDestAmount
+            : undefined,
         categoryId: categoryId ?? undefined,
+        tagIds:
+          selectedTags.length > 0 ? selectedTags.map((t) => t.id) : undefined,
         description: description.trim() || undefined,
         date: date.toISOString(),
         workspaceId: activeWorkspaceId ?? undefined,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: (created) => {
+          usePickerStore.setState({ newTransactionId: created.id });
+          router.back();
+        },
         onError: () =>
           Alert.alert(
             t("addTransaction.title"),
@@ -502,7 +623,7 @@ const AddTransactionModal = () => {
         onPress={() => onPress(account)}
       >
         <View style={[s.accountIcon, { backgroundColor: iconBg }]}>
-          <Ionicons name={iconName} size={18} color="#fff" />
+          <Ionicons name={iconName} size={18} color={getIconColor(iconBg)} />
         </View>
         <View style={s.flex}>
           <Typography variant="body">{account.name}</Typography>
@@ -541,6 +662,20 @@ const AddTransactionModal = () => {
           onPress={(k) => {
             haptic();
             setTxType(k);
+            setCategoryId(null);
+            setCategoryName(null);
+            setCategoryIcon(null);
+            setCategoryColor(null);
+            setCategorySystemCode(null);
+            setIsRefundCategory(false);
+            setSelectedTags([]);
+            setDescription("");
+            setDestAccountId(null);
+            setDestAccountName(null);
+            setDestAccountIcon(null);
+            setDestAccountColor(null);
+            setDestAccountCurrency(null);
+            setDestAmount(null);
           }}
           style={s.segmentedControl}
         />
@@ -581,33 +716,26 @@ const AddTransactionModal = () => {
           </View>
 
           {/* Description */}
-          <Pressable style={s.descRow} onPress={handleDescPress}>
-            {isDescFocused ? (
-              <TextInput
-                ref={descRef}
-                style={s.descInput}
-                placeholder={t("addTransaction.descriptionPlaceholder")}
-                placeholderTextColor={colors.textTertiary}
-                value={description}
-                onChangeText={setDescription}
-                onFocus={() => setIsDescFocused(true)}
-                onBlur={() => setIsDescFocused(false)}
-                returnKeyType="done"
-                onSubmitEditing={() => {
-                  setIsDescFocused(false);
-                  setShowKeyboard(true);
-                }}
-                autoFocus
-              />
-            ) : (
-              <Typography
-                variant="body"
-                color={description ? "textPrimary" : "textTertiary"}
-              >
-                {description || t("addTransaction.descriptionPlaceholder")}
-              </Typography>
-            )}
-          </Pressable>
+          <TextInput
+            ref={descRef}
+            style={s.descInput}
+            placeholder={t("addTransaction.descriptionPlaceholder")}
+            placeholderTextColor={colors.textTertiary}
+            value={description}
+            onChangeText={setDescription}
+            onFocus={() => {
+              setIsDescFocused(true);
+              setShowKeyboard(false);
+              setShowCalendar(false);
+            }}
+            onBlur={() => setIsDescFocused(false)}
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              setIsDescFocused(false);
+              setShowKeyboard(true);
+            }}
+            onPress={handleDescPress}
+          />
         </Pressable>
 
         {/* Date row */}
@@ -656,7 +784,9 @@ const AddTransactionModal = () => {
               <Ionicons
                 name={accountId ? accountIconName : "wallet-outline"}
                 size={18}
-                color={accountId ? "#fff" : colors.textTertiary}
+                color={
+                  accountId ? getIconColor(accountIconBg) : colors.textTertiary
+                }
               />
             </View>
             <View style={s.flex}>
@@ -671,42 +801,91 @@ const AddTransactionModal = () => {
               </Typography>
             </View>
           </Pressable>
-
-          {/* To account (transfer only) */}
-          {txType === "transfer" && (
-            <>
-              <View style={s.rowDivider} />
-              <Pressable
-                style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
-                onPress={() => handleAccountPress(true)}
-              >
-                <View
-                  style={[
-                    s.rowIconCircle,
-                    { backgroundColor: colors.backgroundSurface },
-                  ]}
-                >
-                  <Ionicons
-                    name="arrow-forward"
-                    size={18}
-                    color={colors.textTertiary}
-                  />
-                </View>
-                <View style={s.flex}>
-                  <Typography variant="caption" color="textTertiary">
-                    {t("addTransaction.toAccount")}
-                  </Typography>
-                  <Typography
-                    variant="body"
-                    color={destAccountId ? "textPrimary" : "textSecondary"}
-                  >
-                    {destAccountName ?? t("addTransaction.toAccount")}
-                  </Typography>
-                </View>
-              </Pressable>
-            </>
-          )}
         </View>
+
+        {/* To account (transfer only) */}
+        {txType === "transfer" && (
+          <View style={s.card}>
+            <Pressable
+              style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
+              onPress={() => handleAccountPress(true)}
+            >
+              {(() => {
+                const destCfg = destAccountId
+                  ? getAccountTypeConfig(
+                      accounts.find((a) => a.id === destAccountId)?.type ??
+                        "bank_account",
+                    )
+                  : null;
+                const destIconName = (destAccountIcon ??
+                  destCfg?.icon ??
+                  "wallet-outline") as React.ComponentProps<
+                  typeof Ionicons
+                >["name"];
+                const destIconBg =
+                  destAccountColor ??
+                  destCfg?.color ??
+                  colors.backgroundSurface;
+                return (
+                  <View
+                    style={[
+                      s.rowIconCircle,
+                      {
+                        backgroundColor: destAccountId
+                          ? destIconBg
+                          : colors.backgroundElevated,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={destAccountId ? destIconName : "arrow-forward"}
+                      size={18}
+                      color={
+                        destAccountId
+                          ? getIconColor(destIconBg)
+                          : colors.textTertiary
+                      }
+                    />
+                  </View>
+                );
+              })()}
+              <View style={s.flex}>
+                <Typography variant="caption" color="textTertiary">
+                  {t("addTransaction.toAccount")}
+                </Typography>
+                <Typography
+                  variant="body"
+                  color={destAccountId ? "textPrimary" : "textSecondary"}
+                >
+                  {destAccountName ?? t("addTransaction.toAccount")}
+                </Typography>
+              </View>
+              {destAccountId && amountValue !== 0 && (
+                <Pressable
+                  style={({ pressed }) => [
+                    s.destAmountBtn,
+                    pressed && s.pressed,
+                  ]}
+                  onPress={handleDestAmountPress}
+                >
+                  <View style={s.categoryAmountCol}>
+                    <Typography variant="body" color="textSecondary">
+                      {formatAmount(
+                        effectiveDestAmount ?? "0",
+                        destAccountCurrency ?? currency,
+                      )}
+                    </Typography>
+                    {isTransferCrossRate && destAmount === null && (
+                      <Typography variant="caption" color="textTertiary">
+                        {t("addTransaction.autoConverted")}
+                      </Typography>
+                    )}
+                  </View>
+                </Pressable>
+              )}
+            </Pressable>
+          </View>
+        )}
 
         {/* Category (expense / income only) */}
         {txType !== "transfer" && (
@@ -720,15 +899,15 @@ const AddTransactionModal = () => {
                   s.rowIconCircle,
                   {
                     backgroundColor: categoryId
-                      ? (categoryColor ?? colors.backgroundSurface)
-                      : colors.backgroundSurface,
+                      ? (categoryColor ?? colors.backgroundElevated)
+                      : colors.backgroundElevated,
                   },
                 ]}
               >
                 <Ionicons
                   name={categoryId ? categoryIconName : "help"}
                   size={18}
-                  color={categoryId ? "#fff" : colors.textTertiary}
+                  color={"#fff"}
                 />
               </View>
               <View style={s.flex}>
@@ -741,6 +920,30 @@ const AddTransactionModal = () => {
                 >
                   {categoryName ?? defaultCategoryLabel}
                 </Typography>
+                {isRefundCategory && (
+                  <View style={s.refundBadge}>
+                    <Ionicons
+                      name="refresh-outline"
+                      size={11}
+                      color={colors.iconBlue}
+                    />
+                    <Typography variant="caption" style={s.refundBadgeText}>
+                      {t("defaultCategories.refund")}
+                    </Typography>
+                  </View>
+                )}
+                {selectedTags.length > 0 && (
+                  <View style={s.inlineTags}>
+                    <Ionicons
+                      name="pricetag"
+                      size={12}
+                      color={colors.textTertiary}
+                    />
+                    <Typography variant="caption" color="textTertiary">
+                      {selectedTags.map((tag) => tag.name).join(", ")}
+                    </Typography>
+                  </View>
+                )}
               </View>
               {amountValue !== 0 && (
                 <View style={s.categoryAmountCol}>
@@ -769,7 +972,25 @@ const AddTransactionModal = () => {
       {showKeyboard ? (
         <View style={s.keyboardArea}>
           <View style={s.keyboardToolbar}>
-            <View style={s.toolbarLeft} />
+            {txType !== "transfer" ? (
+              <Pressable
+                style={({ pressed }) => [s.tagToolbarBtn, pressed && s.pressed]}
+                onPress={handleTagsPress}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="pricetag"
+                  size={20}
+                  color={
+                    selectedTags.length > 0
+                      ? colors.accent
+                      : colors.textSecondary
+                  }
+                />
+              </Pressable>
+            ) : (
+              <View />
+            )}
             <Pressable
               style={({ pressed }) => [
                 s.saveBtn,
@@ -847,6 +1068,61 @@ const AddTransactionModal = () => {
             .map((a) => renderAccountItem(a, handleSelectDestAccount))}
         </BottomSheetScrollView>
       </BottomSheetModal>
+
+      {/* ── Destination amount sheet ─────────────────────────────────────────── */}
+      <BottomSheetModal
+        ref={destAmountSheetRef}
+        enableDynamicSizing
+        backdropComponent={renderBackdrop}
+        backgroundStyle={s.sheetBg}
+        handleComponent={() => null}
+      >
+        <BottomSheetView>
+          <View style={s.destAmountSheetHeader}>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderBtn,
+                pressed && s.pressed,
+              ]}
+              onPress={() => destAmountSheetRef.current?.dismiss()}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={18} color={colors.textPrimary} />
+            </Pressable>
+            <View style={s.destAmountHeaderCenter} pointerEvents="none">
+              <Typography variant="label" style={s.destAmountHeaderTitle}>
+                {getCurrencySymbol(destAccountCurrency ?? currency)}{" "}
+                {destAccountName ?? t("addTransaction.toAccount")}
+              </Typography>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderDone,
+                pressed && s.pressed,
+              ]}
+              onPress={() => destAmountKeyboard.handleKey("done")}
+              hitSlop={8}
+            >
+              <Typography style={s.destAmountDoneLabel}>
+                {t("common.done")}
+              </Typography>
+            </Pressable>
+          </View>
+          <View style={s.destAmountDivider} />
+          <View style={s.destAmountArea}>
+            <View style={s.destAmountUnderline}>
+              <Typography style={s.destAmountText}>
+                {getCurrencySymbol(destAccountCurrency ?? currency)}
+                {destAmountKeyboard.displayStr}
+              </Typography>
+            </View>
+          </View>
+          <AmountKeyboard
+            onKey={destAmountKeyboard.handleKey}
+            showSignToggle={false}
+          />
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 };
@@ -914,14 +1190,11 @@ const s = StyleSheet.create({
     backgroundColor: colors.backgroundSurface,
     marginBottom: 8,
   } as ViewStyle,
-  descRow: {
-    marginTop: 6,
-    paddingVertical: 4,
-  } as ViewStyle,
   descInput: {
     fontSize: 16,
     color: colors.textPrimary,
-    paddingVertical: 0,
+    marginTop: 6,
+    paddingVertical: 4,
   } as TextStyle,
 
   formRow: {
@@ -955,6 +1228,13 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  rowIconSquare: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
@@ -962,33 +1242,31 @@ const s = StyleSheet.create({
   } as ViewStyle,
 
   keyboardArea: {
-    backgroundColor: colors.backgroundElevated,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   } as ViewStyle,
   keyboardToolbar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    justifyContent: "flex-end",
+    paddingLeft: 6,
+    paddingRight: 10,
+    paddingTop: 12,
+    paddingBottom: 0,
   } as ViewStyle,
-  toolbarLeft: { flexDirection: "row", gap: 12 } as ViewStyle,
   saveBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 7,
-    borderRadius: 8,
+    minHeight: 40,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: colors.backgroundSurface,
+    backgroundColor: colors.accent,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: "center",
   } as ViewStyle,
   saveBtnDisabled: { opacity: 0.5 } as ViewStyle,
   saveBtnLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: colors.textOnAccent,
   } as TextStyle,
 
   bottomSaveBtn: {
@@ -996,14 +1274,14 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: colors.backgroundSurface,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
   bottomSaveBtnLabel: {
     fontSize: 17,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: colors.textOnAccent,
   } as TextStyle,
 
   sheetBg: { backgroundColor: colors.backgroundElevated } as ViewStyle,
@@ -1034,6 +1312,109 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
+  destAmountBtn: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingLeft: 8,
+  } as ViewStyle,
+  destAmountSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  } as ViewStyle,
+  destAmountHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  destAmountHeaderCenter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  } as ViewStyle,
+  destAmountHeaderTitle: {
+    fontWeight: "700",
+    textAlign: "center",
+  } as TextStyle,
+  destAmountHeaderDone: {
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderCurve: "continuous",
+    backgroundColor: colors.backgroundSurface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+  } as ViewStyle,
+  destAmountDoneLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  } as TextStyle,
+  destAmountDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  } as ViewStyle,
+  destAmountArea: {
+    alignItems: "center",
+    paddingVertical: 16,
+  } as ViewStyle,
+  destAmountUnderline: {
+    borderBottomWidth: 2,
+    borderBottomColor: colors.accent,
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingHorizontal: 8,
+  } as ViewStyle,
+  destAmountText: {
+    fontSize: 40,
+    lineHeight: 46,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  } as TextStyle,
+  inlineTags: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 3,
+  } as ViewStyle,
+  refundBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 3,
+  } as ViewStyle,
+  refundBadgeText: {
+    color: colors.iconBlue,
+  } as TextStyle,
+  tagToolbarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: "auto",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  } as ViewStyle,
+  tagBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  } as ViewStyle,
+  tagBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.textOnAccent,
+  } as TextStyle,
 });
 
 export default AddTransactionModal;

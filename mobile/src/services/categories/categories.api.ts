@@ -13,6 +13,7 @@ export type Category = {
   color: string | null;
   isSystem: boolean;
   systemCode: string | null;
+  translationKey: string | null;
   sortOrder: number;
 };
 

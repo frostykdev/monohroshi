@@ -5,6 +5,7 @@
     "save": "Зберегти",
     "edit": "Редагувати",
     "delete": "Видалити",
+    "done": "Готово",
     "back": "Назад",
     "loading": "Завантаження...",
     "continue": "Продовжити",
@@ -21,6 +22,7 @@
   },
   "accounts": {
     "title": "Рахунки",
+    "balanceDynamics": "Динаміка загального балансу",
     "add": {
       "title": "Новий рахунок"
     },
@@ -28,6 +30,7 @@
       "title": "Редагувати рахунок"
     },
     "empty": "Рахунків ще немає. Додайте перший рахунок.",
+    "addAccount": "Додати рахунок",
     "currentBalance": "Поточний баланс",
     "transactionHistory": "Історія транзакцій",
     "searchTransactions": "Пошук транзакцій...",
@@ -53,6 +56,27 @@
       "showTransactions": "Показати транзакції",
       "delete": "Видалити"
     }
+  },
+  "defaultCategories": {
+    "education": "Освіта",
+    "travel": "Подорожі",
+    "transport": "Транспорт",
+    "health": "Здоров'я",
+    "bills": "Рахунки",
+    "home": "Дім",
+    "clothing": "Одяг",
+    "groceries": "Продукти",
+    "eatingOut": "Кафе та ресторани",
+    "digital": "Цифрове",
+    "entertainment": "Розваги",
+    "gifts": "Подарунки",
+    "salary": "Зарплата",
+    "freelance": "Фріланс",
+    "sale": "Продаж",
+    "otherIncome": "Інші доходи",
+    "refund": "Повернення коштів",
+    "refundBannerTitle": "Оберіть категорію, за яку вам повернули гроші",
+    "refundBannerSubtitle": "Транзакція не буде врахована в доходах і буде вирахована з витрат по обраній категорії"
   },
   "icons": {
     "financial": "Фінанси",
@@ -118,21 +142,64 @@
       }
     }
   },
+  "tags": {
+    "title": "Теги",
+    "addTitle": "Новий тег",
+    "editTitle": "Редагувати тег",
+    "namePlaceholder": "Назва тегу",
+    "nameSection": "Загальне",
+    "colorSection": "Колір",
+    "pickerTitle": "Вибрати теги",
+    "searchPlaceholder": "Пошук тегів...",
+    "empty": "Тегів ще немає. Додайте перший тег.",
+    "deleteConfirmTitle": "Видалити тег",
+    "deleteConfirmMessage": "Ви впевнені, що хочете видалити «{{name}}»?",
+    "actions": {
+      "edit": "Редагувати",
+      "delete": "Видалити"
+    },
+    "errors": {
+      "nameRequired": "Назва тегу обов'язкова",
+      "nameMin": "Назва має містити щонайменше {{min}} символ",
+      "saveTitle": "Не вдалося зберегти",
+      "saveMessage": "Щось пішло не так. Спробуйте ще раз.",
+      "deleteFailed": "Не вдалося видалити тег. Спробуйте ще раз."
+    }
+  },
   "addTransaction": {
     "title": "Додати транзакцію",
     "expense": "Витрата",
     "income": "Дохід",
     "transfer": "Переказ",
+    "initialBalance": "Початковий баланс",
+    "balanceCorrection": "Корекція балансу",
+    "transaction": "Транзакція",
+    "uncategorized": "Без категорії",
     "descriptionPlaceholder": "Додайте опис",
     "fromAccount": "З рахунку",
     "toAccount": "На рахунок",
     "category": "Категорія",
+    "tags": "Теги",
+    "noTags": "Без тегів",
     "uncategorisedExpense": "Без категорії (витрата)",
     "uncategorisedIncome": "Без категорії (дохід)",
     "save": "Зберегти",
     "errors": {
       "saveFailed": "Не вдалося зберегти транзакцію. Спробуйте ще раз.",
-      "accountRequired": "Рахунок обов'язковий"
+      "accountRequired": "Рахунок обов'язковий",
+      "destinationRequired": "Будь ласка, оберіть рахунок призначення для переказу"
+    },
+    "autoConverted": "авто"
+  },
+  "editTransaction": {
+    "title": "Редагувати транзакцію",
+    "save": "Зберегти зміни",
+    "deleteTitle": "Видалити транзакцію",
+    "deleteMessage": "Ви впевнені, що хочете видалити цю транзакцію? Це неможливо скасувати.",
+    "deleteConfirm": "Видалити",
+    "errors": {
+      "saveFailed": "Не вдалося оновити транзакцію. Спробуйте ще раз.",
+      "deleteFailed": "Не вдалося видалити транзакцію. Спробуйте ще раз."
     }
   },
   "analytics": {
@@ -151,6 +218,10 @@
     "tagsCount_other": "{{count}} Тегів",
     "noData": "Немає транзакцій за цей період",
     "uncategorised": "Без категорії",
+    "recentTransactions": "Останні транзакції",
+    "noRecentTransactions": "Немає нещодавніх транзакцій",
+    "breakdown": "Розбивка",
+    "total": "Всього",
     "datePresets": {
       "thisMonth": "Цей місяць",
       "lastMonth": "Минулий місяць",
@@ -163,7 +234,7 @@
     "tabs": {
       "home": "Головна",
       "accounts": "Рахунки",
-      "analytics": "Аналітика",
+      "insights": "Інсайти",
       "settings": "Налаштування"
     },
     "deleteAccount": {
@@ -181,6 +252,7 @@
       "exportData": "Експорт даних",
       "rateApp": "Оцінити Monohroshi",
       "categories": "Категорії",
+      "tags": "Теги",
       "accounts": "Рахунки",
       "recurringTransactions": "Повторювані транзакції",
       "budgets": "Бюджети",
@@ -495,6 +567,35 @@
       "search": "Пошук",
       "suggested": "Пропоновані",
       "allCurrencies": "Всі валюти"
+    }
+  },
+  "transactions": {
+    "title": "Транзакції",
+    "seeAll": "Всі",
+    "search": "Пошук",
+    "empty": "Транзакцій не знайдено",
+    "searchPlaceholder": "Пошук транзакцій…",
+    "dateFilter": "Дата",
+    "accounts": "Рахунки",
+    "accountsCount": "{{count}} рахунки",
+    "filterAccounts": "Фільтр за рахунком",
+    "filterCategories": "Фільтр за категорією",
+    "filterTags": "Фільтр за тегом",
+    "categoriesCount": "{{count}} категорії",
+    "tagsCount": "{{count}} теги"
+  },
+  "insights": {
+    "title": "Інсайти",
+    "welcome": "Привіт! Я твій фінансовий помічник. Запитай мене про витрати, заощадження або бюджети — я допоможу приймати кращі рішення.",
+    "inputPlaceholder": "Запитай про свої фінанси...",
+    "send": "Надіслати",
+    "errorMessage": "Щось пішло не так. Спробуйте ще раз.",
+    "clearChat": "Новий чат",
+    "suggestedQuestions": {
+      "monthOverview": "Як у мене справи цього місяця?",
+      "saveMoney": "Де я можу зекономити?",
+      "planBudget": "Допоможи спланувати бюджет",
+      "spendingHabits": "Проаналізуй мої витрати"
     }
   }
 }

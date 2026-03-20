@@ -330,3 +330,24 @@ const formik = useFormik({
   </Typography>
 )}
 ```
+
+## 12. Use Luxon for Date Logic
+
+Use `luxon` for all date parsing, formatting, comparisons, and arithmetic in mobile code.
+Avoid native `Date` for app/business logic.
+
+```tsx
+// ❌ BAD
+const month = new Date().toISOString().slice(0, 7);
+const label = new Date(year, month - 1, 1).toLocaleDateString("uk-UA", {
+  month: "short",
+});
+
+// ✅ GOOD
+import { DateTime } from "luxon";
+
+const month = DateTime.now().toFormat("yyyy-MM");
+const label = DateTime.fromFormat(monthKey, "yyyy-MM")
+  .setLocale("uk-UA")
+  .toFormat("MMM");
+```

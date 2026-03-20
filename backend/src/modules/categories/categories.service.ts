@@ -10,6 +10,7 @@ const categorySelect = {
   color: true,
   isSystem: true,
   systemCode: true,
+  translationKey: true,
   sortOrder: true,
 } as const;
 
@@ -108,7 +109,7 @@ export const updateCategoryForUser = async (
   return prisma.category.update({
     where: { id: categoryId },
     data: {
-      ...(data.name !== undefined && { name: data.name }),
+      ...(data.name !== undefined && { name: data.name, translationKey: null }),
       ...(data.icon !== undefined && { icon: data.icon }),
     },
     select: categorySelect,

@@ -44,6 +44,7 @@ export const TRANSACTION_TYPES = {
   INCOME: "income",
   TRANSFER: "transfer",
   BALANCE_CORRECTION: "balance_correction",
+  INITIAL_BALANCE: "initial_balance",
 } as const;
 
 export type TransactionType =

@@ -166,6 +166,20 @@ export const ICON_SECTIONS: IconSection[] = [
 export const DEFAULT_ICON: IoniconsName = "wallet-outline";
 export const DEFAULT_ICON_COLOR = "#3E4358";
 
+/**
+ * Returns the highest-contrast icon/text color (#FFFFFF or #1B1F2E)
+ * for a given hex background, using the Rec. 601 perceived-luminance formula.
+ */
+export const getIconColor = (bgHex: string): string => {
+  const hex = bgHex.replace("#", "");
+  if (hex.length !== 6) return "#FFFFFF";
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#1B1F2E" : "#FFFFFF";
+};
+
 export const ICON_PRESET_COLORS = [
   "#3E4358",
   "#34C759",

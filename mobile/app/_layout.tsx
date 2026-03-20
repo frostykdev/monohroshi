@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { colors } from "@constants/colors";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -39,21 +40,23 @@ const RootLayout = () => {
     <GestureHandlerRootView
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <QueryClientProvider client={queryClient}>
-        <BottomSheetModalProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen
-              name="(modals)"
-              options={{ presentation: "fullScreenModal" }}
-            />
-          </Stack>
-        </BottomSheetModalProvider>
-      </QueryClientProvider>
+      <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+        <QueryClientProvider client={queryClient}>
+          <BottomSheetModalProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen
+                name="(modals)"
+                options={{ presentation: "fullScreenModal" }}
+              />
+            </Stack>
+          </BottomSheetModalProvider>
+        </QueryClientProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 };

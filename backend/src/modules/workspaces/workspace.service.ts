@@ -303,6 +303,7 @@ export const createWorkspaceForUser = async (
         icon: cat.icon,
         isSystem: cat.isSystem ?? false,
         systemCode: cat.systemCode ?? null,
+        translationKey: cat.translationKey ?? null,
         sortOrder: index,
         workspaceId: newWorkspace.id,
       })),

@@ -1,0 +1,34 @@
+---
+description: Prisma migration conventions — always use the CLI, never write migration SQL manually
+globs: backend/prisma/**
+alwaysApply: false
+---
+
+# Prisma Migrations
+
+**Never write migration SQL files by hand.** Always generate them through the Prisma CLI.
+
+## Creating a migration
+
+```bash
+# Generate SQL without applying (preferred during development)
+npx prisma migrate dev --name <descriptive_name> --create-only
+
+# Generate and apply immediately
+npx prisma migrate dev --name <descriptive_name>
+```
+
+Run these commands from the `backend/` directory.
+
+## Workflow
+
+1. Edit `backend/prisma/schema.prisma` with the desired model changes.
+2. Run `npx prisma migrate dev --name <name> --create-only` to generate the migration file.
+3. Review the generated SQL in `backend/prisma/migrations/`.
+4. Apply with `npx prisma migrate dev` when ready.
+
+## Rules
+
+- ❌ Never create or edit files inside `prisma/migrations/` manually.
+- ✅ All schema changes must go through `prisma migrate dev`.
+- Migration names should be `snake_case` and describe the change (e.g. `add_transaction_tag_index`, `add_user_email_field`).

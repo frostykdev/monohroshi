@@ -3,7 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
+  TextStyle,
   View,
   ViewStyle,
 } from "react-native";
@@ -18,6 +20,7 @@ import DraggableFlatList, {
 } from "react-native-draggable-flatlist";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
+import { getCategoryDisplayName } from "@constants/default-categories";
 import type { Category } from "@services/categories/categories.api";
 import {
   useCategories,
@@ -42,15 +45,21 @@ const CategoriesScreen = () => {
   const {
     tab: initialTab,
     pickerMode,
+    gridMode,
+    refundMode,
     fromModal,
     excludedCategoryIds,
   } = useLocalSearchParams<{
     tab?: string;
     pickerMode?: string;
+    gridMode?: string;
+    refundMode?: string;
     fromModal?: string;
     excludedCategoryIds?: string;
   }>();
   const isPickerMode = pickerMode === "true";
+  const isGridMode = gridMode === "true";
+  const isRefundMode = refundMode === "true";
   const excludedIds = excludedCategoryIds
     ? excludedCategoryIds.split(",").filter(Boolean)
     : [];
@@ -100,8 +109,9 @@ const CategoriesScreen = () => {
   };
 
   const handleEdit = (item: CategoryActionsSheetItem) => {
+    const displayName = getCategoryDisplayName(item, t);
     router.push(
-      `/(modals)/add-category?mode=edit&categoryId=${item.id}&initialName=${encodeURIComponent(item.name)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&workspaceId=${activeWorkspaceId ?? ""}` as never,
+      `/(modals)/add-category?mode=edit&categoryId=${item.id}&initialName=${encodeURIComponent(displayName)}&initialIcon=${encodeURIComponent(item.icon ?? "")}&workspaceId=${activeWorkspaceId ?? ""}` as never,
     );
   };
 
@@ -113,7 +123,7 @@ const CategoriesScreen = () => {
     Alert.alert(
       t("onboarding.categoriesSetup.deleteConfirmTitle"),
       t("onboarding.categoriesSetup.deleteConfirmMessage", {
-        name: item.name,
+        name: getCategoryDisplayName(item, t),
       }),
       [
         { text: t("common.cancel"), style: "cancel" },
@@ -137,7 +147,13 @@ const CategoriesScreen = () => {
 
   const handlePickCategory = (item: Category) => {
     haptic();
-    setCategory(item.id, item.name, item.icon, item.color);
+    setCategory(
+      item.id,
+      getCategoryDisplayName(item, t),
+      item.icon,
+      item.color,
+      isRefundMode,
+    );
     router.back();
   };
 
@@ -160,7 +176,7 @@ const CategoriesScreen = () => {
           />
         </View>
         <Typography variant="body" color="textPrimary" style={s.categoryName}>
-          {item.name}
+          {getCategoryDisplayName(item, t)}
         </Typography>
         {isPickerMode ? (
           <Ionicons
@@ -189,6 +205,33 @@ const CategoriesScreen = () => {
         )}
       </Pressable>
     </ScaleDecorator>
+  );
+
+  const renderGridCell = (item: Category) => (
+    <Pressable
+      key={item.id}
+      style={({ pressed }) => [s.gridCell, pressed && s.pressed]}
+      onPress={() => handlePickCategory(item)}
+    >
+      <View style={s.gridIcon}>
+        <Ionicons
+          name={
+            (item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
+            "pricetag-outline"
+          }
+          size={26}
+          color={colors.textPrimary}
+        />
+      </View>
+      <Typography
+        variant="caption"
+        color="textSecondary"
+        style={s.gridLabel}
+        numberOfLines={2}
+      >
+        {getCategoryDisplayName(item, t)}
+      </Typography>
+    </Pressable>
   );
 
   return (
@@ -224,20 +267,45 @@ const CategoriesScreen = () => {
         }
       />
 
-      <SegmentedControl
-        segments={segments}
-        activeKey={activeTab}
-        onPress={(tab) => {
-          haptic();
-          setActiveTab(tab);
-        }}
-        style={s.tabs}
-      />
+      {!isRefundMode && (
+        <SegmentedControl
+          segments={segments}
+          activeKey={activeTab}
+          onPress={(tab) => {
+            haptic();
+            setActiveTab(tab);
+          }}
+          style={s.tabs}
+        />
+      )}
+
+      {isRefundMode && (
+        <View style={s.refundBanner}>
+          <Typography variant="h3" color="textPrimary" align="center">
+            {t("defaultCategories.refundBannerTitle")}
+          </Typography>
+          <Typography
+            variant="bodySmall"
+            color="textSecondary"
+            align="center"
+            style={s.refundBannerSubtitle}
+          >
+            {t("defaultCategories.refundBannerSubtitle")}
+          </Typography>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={s.loader}>
           <ActivityIndicator color={colors.accent} />
         </View>
+      ) : isGridMode ? (
+        <ScrollView
+          contentContainerStyle={s.gridContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={s.gridWrap}>{categories.map(renderGridCell)}</View>
+        </ScrollView>
       ) : (
         <DraggableFlatList
           data={categories}
@@ -283,7 +351,7 @@ const s = StyleSheet.create({
   } as ViewStyle,
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 140,
   } as ViewStyle,
   categoryRow: {
     flexDirection: "row",
@@ -311,6 +379,48 @@ const s = StyleSheet.create({
   pressed: {
     opacity: 0.6,
   } as ViewStyle,
+
+  // Refund banner
+  refundBanner: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 6,
+    alignItems: "center",
+  } as ViewStyle,
+  refundBannerSubtitle: {
+    textAlign: "center",
+  } as TextStyle,
+
+  // Grid mode
+  gridContent: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 140,
+  } as ViewStyle,
+  gridWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  } as ViewStyle,
+  gridCell: {
+    width: "25%",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    gap: 6,
+  } as ViewStyle,
+  gridIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.backgroundElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  gridLabel: {
+    textAlign: "center",
+    lineHeight: 15,
+  } as TextStyle,
 });
 
 export default CategoriesScreen;

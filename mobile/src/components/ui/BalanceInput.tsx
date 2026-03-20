@@ -18,6 +18,7 @@ import type { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/t
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
 import { getCurrencySymbol } from "@constants/account-types";
+import { bnParse } from "@utils/bn";
 import { Typography } from "./Typography";
 import { AmountKeyboard } from "./AmountKeyboard";
 import { useAmountKeyboard } from "@hooks/useAmountKeyboard";
@@ -54,19 +55,15 @@ export const BalanceInput = ({
 
   const openSheet = () => {
     Keyboard.dismiss();
-    const num = parseFloat(value) || 0;
-    keyboard.reset(value, showSignToggle && num < 0);
+    const num = bnParse(value);
+    keyboard.reset(value, showSignToggle && num.isNegative());
     sheetRef.current?.present();
   };
 
   const formattedRow = useMemo(() => {
-    const num = parseFloat(value);
-    if (!value || isNaN(num) || num === 0) return `0.00 ${symbol}`;
-    const abs = Math.abs(num).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${num < 0 ? "−" : ""}${abs} ${symbol}`;
+    const num = bnParse(value);
+    if (!value || num.isZero()) return `0.00 ${symbol}`;
+    return `${num.isNegative() ? "−" : ""}${num.abs().toFormat(2)} ${symbol}`;
   }, [value, symbol]);
 
   const rowLabel =
@@ -103,9 +100,9 @@ export const BalanceInput = ({
         <Typography
           variant="body"
           color={
-            parseFloat(value) < 0
+            bnParse(value).isNegative()
               ? "error"
-              : parseFloat(value) > 0
+              : bnParse(value).isGreaterThan(0)
                 ? "textPrimary"
                 : "textTertiary"
           }

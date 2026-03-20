@@ -35,7 +35,7 @@ const getCurrentMonth = () => {
 const formatAmount = (value: number, symbol: string) => {
   const formatted = value.toLocaleString("en-US", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   });
   return `${symbol}${formatted}`;
 };

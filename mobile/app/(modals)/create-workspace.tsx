@@ -64,7 +64,7 @@ const CreateWorkspaceScreen = () => {
       {
         onSuccess: (data) => {
           setWorkspace(data.id, data.name);
-          router.replace("/settings/workspace-list" as never);
+          router.back();
         },
         onError: () => {
           Alert.alert(

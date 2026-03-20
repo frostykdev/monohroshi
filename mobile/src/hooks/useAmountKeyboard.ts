@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import * as Haptics from "expo-haptics";
+import { bn, bnParse } from "@utils/bn";
 
 export const OPERATOR_KEYS = ["+", "−", "×", "÷"] as const;
 export type OperatorKey = (typeof OPERATOR_KEYS)[number];
@@ -39,20 +40,22 @@ export const useAmountKeyboard = ({
   const [isNegative, setIsNegative] = useState(false);
 
   const evaluate = useCallback((): number => {
-    const current = parseFloat(input) || 0;
-    if (!pendingOp || !pendingValue) return current;
-    const prev = parseFloat(pendingValue) || 0;
+    const current = bn(input || 0);
+    if (!pendingOp || !pendingValue) return current.toNumber();
+    const prev = bn(pendingValue || 0);
     switch (pendingOp) {
       case "+":
-        return prev + current;
+        return prev.plus(current).toNumber();
       case "−":
-        return prev - current;
+        return prev.minus(current).toNumber();
       case "×":
-        return prev * current;
+        return prev.multipliedBy(current).toNumber();
       case "÷":
-        return current !== 0 ? prev / current : prev;
+        return !current.isZero()
+          ? prev.dividedBy(current).toNumber()
+          : prev.toNumber();
       default:
-        return current;
+        return current.toNumber();
     }
   }, [input, pendingOp, pendingValue]);
 
@@ -61,31 +64,31 @@ export const useAmountKeyboard = ({
       haptic();
       if (key === "done") {
         const result = evaluate();
-        const final = showSignToggle
+        const bnResult = bn(result);
+        const signed = showSignToggle
           ? isNegative
-            ? -Math.abs(result)
-            : Math.abs(result)
-          : result;
-        const rounded = parseFloat(final.toFixed(10));
-        const strValue = String(rounded === 0 ? 0 : rounded);
+            ? bnResult.abs().negated()
+            : bnResult.abs()
+          : bnResult;
+        const strValue = signed.isZero() ? "0" : signed.toFixed(2);
         onChange?.(strValue);
         onDone?.(strValue);
         return;
       }
       if (key === "=") {
-        const result = evaluate();
-        setInput(String(parseFloat(result.toFixed(10))));
+        const result = bn(evaluate());
+        setInput(result.isZero() ? "" : result.toFixed(2));
         setPendingOp(null);
         setPendingValue("");
         return;
       }
       if (OPERATOR_KEYS.includes(key as OperatorKey)) {
         if (pendingOp && pendingValue && input) {
-          const result = evaluate();
-          setPendingValue(String(parseFloat(result.toFixed(10))));
+          const result = bn(evaluate());
+          setPendingValue(result.isZero() ? "" : result.toFixed(2));
         } else {
-          const currentNum = parseFloat(input) || parseFloat(pendingValue) || 0;
-          setPendingValue(String(currentNum));
+          const currentNum = bn(input || pendingValue || 0);
+          setPendingValue(currentNum.isZero() ? "" : currentNum.toFixed(2));
         }
         setPendingOp(key);
         setInput("");
@@ -122,8 +125,8 @@ export const useAmountKeyboard = ({
   );
 
   const reset = useCallback((value?: string, negative?: boolean) => {
-    const num = parseFloat(value ?? "") || 0;
-    setInput(num !== 0 ? String(Math.abs(num)) : "");
+    const num = bnParse(value ?? 0);
+    setInput(!num.isZero() ? num.abs().toString() : "");
     setPendingOp(null);
     setPendingValue("");
     setIsNegative(negative ?? false);

@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { colors } from "@constants/colors";
+import { getIconColor } from "@constants/icon-list";
 
 interface IconPickerButtonProps {
   icon: string;
@@ -31,7 +32,7 @@ export const IconPickerButton = ({
           <Ionicons
             name={icon as React.ComponentProps<typeof Ionicons>["name"]}
             size={32}
-            color="#ffffff"
+            color={getIconColor(color)}
           />
         </View>
         <View style={s.badge}>

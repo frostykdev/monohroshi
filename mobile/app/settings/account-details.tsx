@@ -1,20 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
-  ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
-  TextInput,
   TextStyle,
   View,
   ViewStyle,
 } from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { DateTime } from "luxon";
+import { LineChart } from "expo-skia-charts";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@constants/colors";
+import { getIconColor } from "@constants/icon-list";
 import {
   getAccountTypeConfig,
   getCurrencySymbol,
@@ -22,146 +34,81 @@ import {
 import { Typography } from "@components/ui/Typography";
 import {
   useAccount,
+  useAccountBalanceHistory,
   useAccountTransactions,
 } from "@services/accounts/accounts.queries";
-import type { AccountTransaction } from "@services/accounts/accounts.api";
+import { TransactionList } from "@components/transactions/TransactionList";
 
 const haptic = () => {
   if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
 };
 
+const NAV_HEIGHT = 56;
+// Icon is positioned with marginTop = 20; it starts scrolling behind the nav bar
+// at scroll ≈ 20 and is fully hidden at scroll ≈ 20 + 84 = 104.
+const ICON_FADE_START = 20;
+const ICON_FADE_END = 104;
+
 const formatBalance = (balance: string, currency: string): string => {
   const num = parseFloat(balance);
   const symbol = getCurrencySymbol(currency);
   if (isNaN(num)) return `0 ${symbol}`;
-  const formatted = num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `${formatted} ${symbol}`;
+  return `${num.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })} ${symbol}`;
 };
-
-type AmountResult = { text: string; color: string };
-
-const formatTxAmount = (
-  tx: AccountTransaction,
-  accountId: string,
-): AmountResult => {
-  const isDestination =
-    tx.destinationAccount?.id === accountId && tx.type === "transfer";
-  const raw =
-    isDestination && tx.destinationAmount
-      ? parseFloat(tx.destinationAmount)
-      : parseFloat(tx.amount);
-  const currency = isDestination
-    ? (tx.destinationAccount?.currency ?? tx.account.currency)
-    : tx.account.currency;
-  const symbol = getCurrencySymbol(currency);
-  const abs = Math.abs(raw).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  if (tx.type === "income" || isDestination) {
-    return { text: `+${abs} ${symbol}`, color: colors.success };
-  }
-  if (tx.type === "expense") {
-    return { text: `-${abs} ${symbol}`, color: colors.error };
-  }
-  return { text: `${abs} ${symbol}`, color: colors.textPrimary };
-};
-
-const formatDate = (dateStr: string): string =>
-  new Date(dateStr).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-const groupByDate = (transactions: AccountTransaction[]) => {
-  const groups: { date: string; items: AccountTransaction[] }[] = [];
-  for (const tx of transactions) {
-    const key = tx.date.slice(0, 10);
-    const existing = groups.find((g) => g.date === key);
-    if (existing) {
-      existing.items.push(tx);
-    } else {
-      groups.push({ date: key, items: [tx] });
-    }
-  }
-  return groups;
-};
-
-type TxRowProps = { tx: AccountTransaction; accountId: string };
-
-const TxRow = ({ tx, accountId }: TxRowProps) => {
-  const { text, color } = formatTxAmount(tx, accountId);
-  const isTransfer = tx.type === "transfer";
-
-  const iconName = (
-    isTransfer ? "swap-horizontal" : (tx.category?.icon ?? "receipt-outline")
-  ) as React.ComponentProps<typeof Ionicons>["name"];
-
-  const subtitle = isTransfer
-    ? tx.destinationAccount
-      ? `${tx.account.name} → ${tx.destinationAccount.name}`
-      : tx.account.name
-    : (tx.category?.name ?? tx.account.name);
-
-  const title =
-    tx.description ??
-    (isTransfer ? "Transfer" : (tx.category?.name ?? "Transaction"));
-
-  return (
-    <View style={ts.row}>
-      <View style={ts.iconWrap}>
-        <Ionicons name={iconName} size={18} color={colors.textPrimary} />
-      </View>
-      <View style={ts.info}>
-        <Typography variant="body" color="textPrimary">
-          {title}
-        </Typography>
-        <Typography variant="caption" color="textTertiary">
-          {subtitle}
-        </Typography>
-      </View>
-      <Typography variant="body" style={{ color }}>
-        {text}
-      </Typography>
-    </View>
-  );
-};
-
-const ts = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  } as ViewStyle,
-  iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.backgroundSurface,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  info: { flex: 1, gap: 2 } as ViewStyle,
-});
 
 const AccountDetailsScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  // Computed early so animated worklets can capture it in their closures
+  const navBarHeight = insets.top + NAV_HEIGHT;
 
   const { data: account, isLoading } = useAccount(id);
   const { data: transactions = [], isLoading: txLoading } =
     useAccountTransactions(id);
 
-  const [txSearch, setTxSearch] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const txSearch = "";
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Soft ambient glow fades away as the user scrolls into the content
+  const heroBgStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [0, ICON_FADE_END],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  // Small icon in nav bar fades in as the big hero icon scrolls behind the header
+  const navIconStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [ICON_FADE_START, ICON_FADE_END],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  // BlurView background for the nav bar fades in as content scrolls under it
+  const navBlurStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [ICON_FADE_START, ICON_FADE_END],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+  }));
 
   const cfg = getAccountTypeConfig(account?.type ?? "bank_account");
   const iconName = (account?.icon ?? cfg.icon) as React.ComponentProps<
@@ -181,24 +128,82 @@ const AccountDetailsScreen = () => {
     );
   }, [transactions, txSearch]);
 
-  const grouped = groupByDate(filteredTx);
+  const { data: balanceHistory = [] } = useAccountBalanceHistory(id);
+
+  // x = sequential index so D3 uses a clean linear scale (one tick per month)
+  const chartData = useMemo(
+    () => balanceHistory.map((p, i) => ({ x: i, y: p.balance })),
+    [balanceHistory],
+  );
+  // "YYYY-MM" strings for axis label formatting
+  const chartLabels = useMemo(
+    () => balanceHistory.map((p) => p.month),
+    [balanceHistory],
+  );
+
+  const locale = i18n.language.startsWith("uk") ? "uk-UA" : "en-US";
+
+  // Series with a transparent ghost that widens the Y domain so small balance
+  // changes don't fill the entire chart height.
+  const chartSeries = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const yValues = chartData.map((d) => d.y);
+    const maxY = Math.max(...yValues);
+    const minY = Math.min(...yValues);
+    const paddingAmount = maxY * 0.1;
+    const paddedMin = Math.max(0, minY - paddingAmount);
+    const paddedMax = maxY + paddingAmount;
+    const lastX = chartData[chartData.length - 1]!.x;
+    return [
+      {
+        id: "domain",
+        data: [
+          { x: -0.001, y: paddedMin },
+          { x: lastX + 0.001, y: paddedMax },
+        ],
+        colors: { highlightColor: "transparent" },
+      },
+      {
+        id: "data",
+        data: chartData,
+        colors: {
+          highlightColor: colors.iconBlue,
+          areaFill: {
+            type: "gradient" as const,
+            startColor: `${colors.iconBlue}40`,
+            endColor: `${colors.iconBlue}00`,
+          },
+        },
+      },
+    ];
+  }, [chartData]);
+
+  const currency = account?.currency ?? "USD";
+  const symbol = getCurrencySymbol(currency);
+
+  // ── Skeleton ───────────────────────────────────────────────────────────────
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 750 }),
+        withTiming(1, { duration: 750 }),
+      ),
+      -1,
+      false,
+    );
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   if (isLoading || !account) {
     return (
-      <View style={[s.container, s.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={colors.accent} />
-      </View>
-    );
-  }
-
-  const isNegative = parseFloat(account.balance) < 0;
-
-  return (
-    <View style={[s.container, { paddingBottom: insets.bottom }]}>
-      <View style={[s.headerArea, { paddingTop: insets.top + 8 }]}>
-        <View style={s.headerButtons}>
+      <View style={s.root}>
+        {/* nav bar */}
+        <View
+          style={[s.navBar, { height: navBarHeight, paddingTop: insets.top }]}
+        >
           <Pressable
-            style={({ pressed }) => [s.circleButton, pressed && s.pressed]}
+            style={({ pressed }) => [s.navBack, pressed && s.pressed]}
             onPress={() => router.back()}
             hitSlop={8}
           >
@@ -208,8 +213,103 @@ const AccountDetailsScreen = () => {
               color={colors.textPrimary}
             />
           </Pressable>
+          <View style={s.navEdit} />
+        </View>
+
+        <Animated.ScrollView
+          scrollEnabled={false}
+          contentContainerStyle={[
+            s.scrollContent,
+            { paddingTop: navBarHeight, paddingBottom: insets.bottom + 32 },
+          ]}
+        >
+          {/* hero */}
+          <Animated.View style={[s.hero, pulseStyle]}>
+            <View style={sk.iconRing} />
+            <View style={sk.nameLine} />
+            <View style={sk.balanceLine} />
+            <View style={sk.chartCard} />
+          </Animated.View>
+
+          {/* tx header */}
+          <Animated.View style={[s.txHeader, pulseStyle]}>
+            <View style={sk.sectionTitle} />
+          </Animated.View>
+
+          {/* tx rows */}
+          <Animated.View style={[sk.listCard, pulseStyle]}>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <View key={i}>
+                <View style={sk.txRow}>
+                  <View style={sk.txIcon} />
+                  <View style={sk.txMeta}>
+                    <View style={sk.txLine1} />
+                    <View style={sk.txLine2} />
+                  </View>
+                  <View style={sk.txAmount} />
+                </View>
+                {i < 6 && <View style={sk.divider} />}
+              </View>
+            ))}
+          </Animated.View>
+        </Animated.ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.root}>
+      {/* ── Soft ambient accent glow – fades out as user scrolls ── */}
+      <Animated.View
+        style={[s.heroBgLayer, { height: navBarHeight + 240 }, heroBgStyle]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[`${iconColor}70`, `${iconColor}30`, `${iconColor}00`]}
+          locations={[0, 0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
+      {/* ── Fixed nav bar – transparent, BlurView fades in on scroll ── */}
+      <View
+        style={[s.navBar, { height: navBarHeight, paddingTop: insets.top }]}
+      >
+        {/* Frosted glass background – fades in as content scrolls under nav bar */}
+        <Animated.View
+          style={[StyleSheet.absoluteFill, navBlurStyle]}
+          pointerEvents="none"
+        >
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            intensity={80}
+            tint="dark"
+          />
+        </Animated.View>
+
+        {/* Left: back button */}
+        <Pressable
+          style={({ pressed }) => [s.navBack, pressed && s.pressed]}
+          onPress={() => router.back()}
+          hitSlop={8}
+        >
+          <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+        </Pressable>
+
+        {/* Right: search + edit */}
+        <View style={s.navRight}>
           <Pressable
-            style={({ pressed }) => [s.pillButton, pressed && s.pressed]}
+            style={({ pressed }) => [s.navIconBtn, pressed && s.pressed]}
+            onPress={() => {
+              haptic();
+              router.push(`/transactions?accountIds=${id}` as never);
+            }}
+            hitSlop={8}
+          >
+            <Ionicons name="search" size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.navEdit, pressed && s.pressed]}
             onPress={() => {
               haptic();
               router.push(`/(modals)/edit-account?id=${id}` as never);
@@ -220,116 +320,166 @@ const AccountDetailsScreen = () => {
           </Pressable>
         </View>
 
-        <View style={s.accountHero}>
-          <View style={[s.heroIcon, { backgroundColor: iconColor }]}>
-            <Ionicons name={iconName} size={32} color="#fff" />
+        {/* Center: small account icon – absolutely positioned for true centering */}
+        <Animated.View
+          style={[s.navCenterIcon, navIconStyle]}
+          pointerEvents="none"
+        >
+          <View style={[s.navIconCircle, { backgroundColor: iconColor }]}>
+            <Ionicons
+              name={iconName}
+              size={18}
+              color={getIconColor(iconColor)}
+            />
           </View>
-          <Typography variant="h2">{account.name}</Typography>
-          <Typography variant="caption" color="textSecondary">
-            {t("accounts.currentBalance")}
-          </Typography>
-          <Typography
-            variant="h1"
-            color={isNegative ? "error" : "textPrimary"}
-            style={s.balanceText}
-          >
-            {formatBalance(account.balance, account.currency)}
-          </Typography>
-        </View>
+        </Animated.View>
       </View>
 
-      <View style={s.historySection}>
-        <View style={s.historyHeader}>
+      {/* ── Scrollable content ── */}
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingTop: navBarHeight, paddingBottom: insets.bottom + 32 },
+        ]}
+      >
+        {/* Hero – scrolls naturally behind the fixed nav bar */}
+        <View style={s.hero}>
+          {/* Outer ring – semi-transparent accent circle acting as a visible border */}
+          <View style={[s.heroIconRing, { borderColor: iconColor }]}>
+            <View style={[s.heroIcon, { backgroundColor: iconColor }]}>
+              <Ionicons
+                name={iconName}
+                size={32}
+                color={getIconColor(iconColor)}
+              />
+            </View>
+          </View>
+          <Typography variant="h2">{account.name}</Typography>
+          <Typography variant="h1" color="textPrimary" style={s.balanceText}>
+            {formatBalance(account.balance, currency)}
+          </Typography>
+
+          {/* Balance chart */}
+          {chartSeries && (
+            <View style={s.chartCard}>
+              <View style={s.chartArea}>
+                <LineChart
+                  config={{
+                    series: chartSeries,
+                    xAxis: {
+                      enabled: true,
+                      tickCount: chartData.length,
+                      color: colors.textTertiary,
+                      fontSize: 11,
+                      formatter: (v) => {
+                        if (!Number.isInteger(v)) return "";
+                        const monthKey = chartLabels[v];
+                        if (!monthKey) return "";
+                        return DateTime.fromFormat(monthKey, "yyyy-MM")
+                          .setLocale(locale)
+                          .toFormat("MMM");
+                      },
+                    },
+                    yAxis: {
+                      enabled: true,
+                      tickCount: 3,
+                      color: colors.textTertiary,
+                      fontSize: 11,
+                      formatter: (v) => {
+                        if (Math.abs(v) >= 1000)
+                          return `${(v / 1000).toFixed(0)}K ${symbol}`;
+                        return `${v.toFixed(0)} ${symbol}`;
+                      },
+                    },
+                    smoothing: 0.15,
+                    animationDuration: 800,
+                  }}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Transaction history header */}
+        <View style={s.txHeader}>
           <Typography variant="label">
             {t("accounts.transactionHistory")}
           </Typography>
           <Pressable
-            style={({ pressed }) => [s.searchIconBtn, pressed && s.pressed]}
+            style={({ pressed }) => [s.txHeaderBtn, pressed && s.pressed]}
             onPress={() => {
               haptic();
-              setShowSearch((v) => !v);
-              if (showSearch) setTxSearch("");
+              router.push(`/transactions?accountIds=${id}` as never);
             }}
           >
-            <Ionicons
-              name={showSearch ? "close" : "search"}
-              size={20}
-              color={colors.textSecondary}
-            />
+            <Typography variant="caption" style={s.txHeaderBtnLabel}>
+              {t("transactions.seeAll")}
+            </Typography>
+            <Ionicons name="chevron-forward" size={12} color={colors.accent} />
           </Pressable>
         </View>
 
-        {showSearch && (
-          <View style={s.searchRow}>
-            <Ionicons name="search" size={16} color={colors.textTertiary} />
-            <TextInput
-              style={s.searchInput}
-              value={txSearch}
-              onChangeText={setTxSearch}
-              placeholder={t("accounts.searchTransactions")}
-              placeholderTextColor={colors.textTertiary}
-              autoFocus
-              returnKeyType="search"
-            />
-          </View>
-        )}
-      </View>
+        {/* Grouped transactions */}
+        <View style={s.txList}>
+          <TransactionList
+            transactions={filteredTx}
+            accountId={id ?? ""}
+            isLoading={txLoading}
+          />
+        </View>
+      </Animated.ScrollView>
 
-      <ScrollView
-        style={s.flex}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
+      {/* FAB – add transaction pre-selected to this account */}
+      <Pressable
+        style={({ pressed }) => [
+          s.fab,
+          { bottom: insets.bottom + 20 },
+          pressed && s.fabPressed,
+        ]}
+        onPress={() => {
+          haptic();
+          router.push(
+            `/(modals)/add-transaction?defaultAccountId=${id}` as never,
+          );
+        }}
       >
-        {txLoading ? (
-          <View style={s.txLoader}>
-            <ActivityIndicator color={colors.accent} />
-          </View>
-        ) : grouped.length === 0 ? (
-          <View style={s.emptyTx}>
-            <Typography variant="body" color="textTertiary" align="center">
-              {t("accounts.noTransactions")}
-            </Typography>
-          </View>
-        ) : (
-          grouped.map((group) => (
-            <View key={group.date} style={s.dateGroup}>
-              <View style={s.dateHeader}>
-                <Typography variant="caption" color="textSecondary">
-                  {formatDate(group.date)}
-                </Typography>
-              </View>
-              <View style={s.txCard}>
-                {group.items.map((tx, idx) => (
-                  <View key={tx.id}>
-                    {idx > 0 && <View style={s.txDivider} />}
-                    <TxRow tx={tx} accountId={id!} />
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+        <Ionicons name="add" size={28} color={colors.textOnAccent} />
+      </Pressable>
     </View>
   );
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
-  flex: { flex: 1 } as ViewStyle,
-  centered: { alignItems: "center", justifyContent: "center" } as ViewStyle,
-  headerArea: {
-    backgroundColor: colors.backgroundElevated,
-    paddingBottom: 24,
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
   } as ViewStyle,
-  headerButtons: {
+
+  heroBgLayer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+  } as ViewStyle,
+
+  // Nav bar: transparent – BlurView inside handles the background when scrolled
+  navBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    height: 56,
+    paddingBottom: 8,
+    overflow: "hidden",
   } as ViewStyle,
-  circleButton: {
+  navBack: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -337,7 +487,20 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
-  pillButton: {
+  navRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  } as ViewStyle,
+  navIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.backgroundSurface,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+  navEdit: {
     height: 36,
     paddingHorizontal: 16,
     borderRadius: 18,
@@ -345,11 +508,43 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   } as ViewStyle,
-  pressed: { opacity: 0.6 } as ViewStyle,
-  accountHero: {
+  // Absolute overlay spanning full width → truly centers the icon regardless of side-button widths
+  navCenterIcon: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 10,
     alignItems: "center",
-    paddingTop: 8,
+    justifyContent: "center",
+  } as ViewStyle,
+  navIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  } as ViewStyle,
+
+  pressed: { opacity: 0.6 } as ViewStyle,
+
+  scrollContent: {
+    paddingHorizontal: 16,
+  } as ViewStyle,
+
+  hero: {
+    alignItems: "center",
+    paddingBottom: 24,
     gap: 6,
+  } as ViewStyle,
+  heroIconRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    marginBottom: 4,
   } as ViewStyle,
   heroIcon: {
     width: 72,
@@ -357,59 +552,151 @@ const s = StyleSheet.create({
     borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
   } as ViewStyle,
-  balanceText: { marginTop: 2 } as TextStyle,
-  historySection: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+  balanceText: {
+    marginTop: 2,
+    marginBottom: 8,
+  } as TextStyle,
+
+  chartCard: {
+    width: "100%",
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    paddingTop: 8,
+    paddingHorizontal: 8,
     paddingBottom: 4,
   } as ViewStyle,
-  historyHeader: {
+  chartArea: {
+    height: 180,
+    width: "100%",
+  } as ViewStyle,
+
+  txHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 16,
   } as ViewStyle,
-  searchIconBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  } as ViewStyle,
-  searchRow: {
+  txHeaderBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 8,
-    gap: 8,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: colors.accent + "18",
   } as ViewStyle,
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
+  txHeaderBtnLabel: {
+    fontSize: 12,
+    color: colors.accent,
+    fontWeight: "600",
   } as TextStyle,
-  scrollContent: {
-    paddingBottom: 40,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+
+  txList: {
     gap: 12,
   } as ViewStyle,
-  txLoader: { paddingVertical: 40, alignItems: "center" } as ViewStyle,
-  emptyTx: { paddingVertical: 40, alignItems: "center" } as ViewStyle,
-  dateGroup: { gap: 6 } as ViewStyle,
-  dateHeader: { paddingHorizontal: 4 } as ViewStyle,
-  txCard: {
+
+  fab: {
+    position: "absolute",
+    right: 24,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.65,
+    shadowRadius: 18,
+    elevation: 12,
+  } as ViewStyle,
+  fabPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.95 }],
+  } as ViewStyle,
+});
+
+const SKEL = colors.backgroundSurface;
+
+const sk = StyleSheet.create({
+  iconRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: SKEL,
+    marginTop: 20,
+    marginBottom: 4,
+  } as ViewStyle,
+  nameLine: {
+    width: 120,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  balanceLine: {
+    width: 180,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: SKEL,
+    marginTop: 4,
+    marginBottom: 8,
+  } as ViewStyle,
+  chartCard: {
+    width: "100%",
+    height: 196,
+    borderRadius: 16,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  sectionTitle: {
+    width: 140,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  listCard: {
     backgroundColor: colors.backgroundElevated,
-    borderRadius: 14,
+    borderRadius: 16,
     borderCurve: "continuous",
     overflow: "hidden",
   } as ViewStyle,
-  txDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+  txRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  } as ViewStyle,
+  txIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txMeta: { flex: 1, gap: 6 } as ViewStyle,
+  txLine1: {
+    height: 13,
+    width: "55%",
+    borderRadius: 6,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txLine2: {
+    height: 11,
+    width: "35%",
+    borderRadius: 5,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  txAmount: {
+    width: 64,
+    height: 13,
+    borderRadius: 6,
+    backgroundColor: SKEL,
+  } as ViewStyle,
+  divider: {
+    height: 0.5,
+    backgroundColor: colors.borderStrong,
     marginLeft: 66,
   } as ViewStyle,
 });

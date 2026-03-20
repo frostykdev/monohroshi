@@ -3,8 +3,11 @@ import { checkAuthenticated } from "../../middlewares/check-authenticated";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   createTransactionController,
+  getTransactionByIdController,
   getTransactionsController,
   getTransactionStatsController,
+  updateTransactionController,
+  deleteTransactionController,
 } from "./transactions.controller";
 
 const transactionsRouter = Router();
@@ -23,6 +26,21 @@ transactionsRouter.get(
   "/stats",
   checkAuthenticated,
   asyncHandler(getTransactionStatsController),
+);
+transactionsRouter.get(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(getTransactionByIdController),
+);
+transactionsRouter.patch(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(updateTransactionController),
+);
+transactionsRouter.delete(
+  "/:id",
+  checkAuthenticated,
+  asyncHandler(deleteTransactionController),
 );
 
 export { transactionsRouter };

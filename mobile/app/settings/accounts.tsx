@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
+import { getIconColor } from "@constants/icon-list";
 import {
   getAccountTypeConfig,
   getCurrencySymbol,
@@ -39,7 +40,7 @@ const formatBalance = (balance: string, currency: string) => {
   if (isNaN(num)) return `0 ${getCurrencySymbol(currency)}`;
   const formatted = num.toLocaleString("en-US", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   });
   return `${formatted} ${getCurrencySymbol(currency)}`;
 };
@@ -52,8 +53,6 @@ const AccountRow = ({ account }: AccountRowProps) => {
     typeof Ionicons
   >["name"];
   const iconColor = account.color ?? cfg.color;
-  const isNegative = parseFloat(account.balance) < 0;
-
   return (
     <Pressable
       style={({ pressed }) => [s.accountRow, pressed && s.pressed]}
@@ -63,7 +62,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
       }}
     >
       <View style={[s.accountIcon, { backgroundColor: iconColor }]}>
-        <Ionicons name={iconName} size={20} color="#fff" />
+        <Ionicons name={iconName} size={20} color={getIconColor(iconColor)} />
       </View>
       <View style={s.accountInfo}>
         <Typography variant="body" color="textPrimary">
@@ -75,11 +74,7 @@ const AccountRow = ({ account }: AccountRowProps) => {
           </Typography>
         )}
       </View>
-      <Typography
-        variant="body"
-        color={isNegative ? "error" : "textPrimary"}
-        style={s.accountBalance}
-      >
+      <Typography variant="body" color="textPrimary" style={s.accountBalance}>
         {formatBalance(account.balance, account.currency)}
       </Typography>
     </Pressable>

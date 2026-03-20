@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createAccount,
   deleteAccount,
+  fetchAccountBalanceHistory,
   fetchAccountById,
   fetchAccounts,
   fetchAccountTotalsConverted,
   fetchAccountTransactions,
+  fetchWorkspaceBalanceHistory,
   updateAccount,
   type CreateAccountPayload,
   type UpdateAccountPayload,
@@ -16,6 +18,13 @@ export const ACCOUNT_KEYS = {
   byWorkspace: (workspaceId: string) => ["accounts", workspaceId] as const,
   byId: (id: string) => ["accounts", "detail", id] as const,
   transactions: (id: string) => ["accounts", "transactions", id] as const,
+  balanceHistory: (id: string) => ["accounts", "balance-history", id] as const,
+  workspaceBalanceHistory: (workspaceId?: string | null) =>
+    [
+      "accounts",
+      "workspace-balance-history",
+      workspaceId ?? "default",
+    ] as const,
   totalsConverted: (workspaceId?: string | null) =>
     ["accounts", "totals-converted", workspaceId ?? "default"] as const,
 };
@@ -43,6 +52,20 @@ export const useAccountTransactions = (accountId?: string | null) =>
     enabled: !!accountId,
   });
 
+export const useAccountBalanceHistory = (accountId?: string | null) =>
+  useQuery({
+    queryKey: ACCOUNT_KEYS.balanceHistory(accountId!),
+    queryFn: () => fetchAccountBalanceHistory(accountId!),
+    enabled: !!accountId,
+  });
+
+export const useWorkspaceBalanceHistory = (workspaceId?: string | null) =>
+  useQuery({
+    queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
+    queryFn: () => fetchWorkspaceBalanceHistory(workspaceId),
+    enabled: workspaceId !== undefined,
+  });
+
 export const useAccountTotalsConverted = (workspaceId?: string | null) =>
   useQuery({
     queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
@@ -59,6 +82,12 @@ export const useCreateAccount = (workspaceId?: string | null) => {
         queryKey: workspaceId
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
       });
     },
   });
@@ -90,6 +119,12 @@ export const useDeleteAccount = (workspaceId?: string | null) => {
         queryKey: workspaceId
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
       });
     },
   });
