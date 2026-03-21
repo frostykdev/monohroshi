@@ -2,12 +2,16 @@ import { apiClient } from "@services/api";
 
 type ApiResponse<TData> = { success: boolean; data: TData };
 
+export type AccountBalance = {
+  currency: string;
+  balance: string;
+};
+
 export type Account = {
   id: string;
   name: string;
   type: string;
-  balance: string;
-  currency: string;
+  balances: AccountBalance[];
   icon: string | null;
   color: string | null;
   isPrimary: boolean;
@@ -19,20 +23,19 @@ export type AccountTransaction = {
   id: string;
   type: string;
   amount: string;
+  currency: string;
   destinationAmount: string | null;
   description: string | null;
   date: string;
   account: {
     id: string;
     name: string;
-    currency: string;
     icon: string | null;
     color: string | null;
   };
   destinationAccount: {
     id: string;
     name: string;
-    currency: string;
     icon: string | null;
     color: string | null;
   } | null;
@@ -59,12 +62,11 @@ export type CreateAccountPayload = {
 export type UpdateAccountPayload = {
   name?: string;
   type?: string;
-  currency?: string;
-  balance?: string;
   icon?: string | null;
   color?: string | null;
   isPrimary?: boolean;
   isArchived?: boolean;
+  balances?: { currency: string; balance: string }[];
 };
 
 export const fetchAccounts = async (
@@ -112,12 +114,10 @@ export const deleteAccount = async (id: string): Promise<void> => {
 export type ConvertedAccountTotal = {
   accountId: string;
   accountName: string;
-  accountCurrency: string;
-  balance: number;
-  /** Null when FX conversion was not available. */
-  balanceInPrimary: number | null;
-  /** True when the balance was actually converted (or currencies already matched). */
-  converted: boolean;
+  /** Total of all currency balances converted to workspace primary currency. Null if conversion failed. */
+  totalInPrimary: number | null;
+  /** Per-currency balances on this account. */
+  balances: { currency: string; balance: number }[];
   primaryCurrency: string;
   conversionDate: string;
 };

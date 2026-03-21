@@ -104,6 +104,8 @@ export const useUpdateAccount = (workspaceId?: string | null) => {
       updateAccount(id, payload),
     onSuccess: (data) => {
       qc.setQueryData(ACCOUNT_KEYS.byId(data.id), data);
+      // Also invalidate to force a fresh server fetch for the detail screen
+      qc.invalidateQueries({ queryKey: ACCOUNT_KEYS.byId(data.id) });
       qc.invalidateQueries({
         queryKey: workspaceId
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)

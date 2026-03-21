@@ -71,8 +71,6 @@ model Account {
   id         String   @id @default(cuid())
   name       String
   type       String
-  balance    Decimal  @default(0) @db.Decimal(19, 4)
-  currency   String
   icon       String?
   color      String?
   isPrimary  Boolean  @default(false)
@@ -84,8 +82,23 @@ model Account {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
+  balances                AccountBalance[]
   transactions            Transaction[] @relation("TransactionAccount")
   destinationTransactions Transaction[] @relation("TransactionDestinationAccount")
+}
+
+model AccountBalance {
+  id        String   @id @default(cuid())
+  currency  String
+  balance   Decimal  @default(0) @db.Decimal(19, 4)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, currency])
+  @@index([accountId])
 }
 
 model Category {
@@ -115,6 +128,7 @@ model Transaction {
   id                String   @id @default(cuid())
   type              String
   amount            Decimal  @db.Decimal(19, 4)
+  currency          String   @default("USD")
   destinationAmount Decimal? @db.Decimal(19, 4)
   description       String?
   date              DateTime

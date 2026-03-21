@@ -31,6 +31,8 @@
     },
     "empty": "Рахунків ще немає. Додайте перший рахунок.",
     "addAccount": "Додати рахунок",
+    "addCurrency": "Додати валюту",
+    "currencies": "валюти",
     "currentBalance": "Поточний баланс",
     "transactionHistory": "Історія транзакцій",
     "searchTransactions": "Пошук транзакцій...",

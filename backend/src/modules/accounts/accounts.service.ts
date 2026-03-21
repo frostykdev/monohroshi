@@ -9,13 +9,15 @@ const accountSelect = {
   id: true,
   name: true,
   type: true,
-  balance: true,
-  currency: true,
   icon: true,
   color: true,
   isPrimary: true,
   isArchived: true,
   sortOrder: true,
+  balances: {
+    select: { currency: true, balance: true },
+    orderBy: { createdAt: "asc" as const },
+  },
 } as const;
 
 const getUser = async (firebaseUid: string) => {
@@ -109,21 +111,29 @@ export const createAccountForUser = async (
       data: {
         name: data.name,
         type: data.type,
-        currency: data.currency,
-        balance: initialBalance,
         icon: data.icon ?? null,
         color: data.color ?? null,
         isPrimary: data.isPrimary ?? false,
         workspaceId: wsId,
       },
-      select: accountSelect,
+      select: { id: true },
     });
 
+    // Create the initial AccountBalance for this currency
+    await tx.accountBalance.create({
+      data: {
+        accountId: account.id,
+        currency: data.currency.toUpperCase(),
+        balance: initialBalance,
+      },
+    });
+
+    // Record the initial balance as a transaction
     await tx.transaction.create({
       data: {
         type: TRANSACTION_TYPES.INITIAL_BALANCE,
-        // Store the signed initial balance (may be 0 or negative for debt accounts)
         amount: initialBalance,
+        currency: data.currency.toUpperCase(),
         date: new Date(),
         accountId: account.id,
         createdById: user.id,
@@ -131,7 +141,11 @@ export const createAccountForUser = async (
       },
     });
 
-    return account;
+    // Use tx so the read sees the uncommitted writes in this transaction
+    return tx.account.findUnique({
+      where: { id: account.id },
+      select: accountSelect,
+    });
   });
 };
 
@@ -141,68 +155,101 @@ export const updateAccountForUser = async (
   data: {
     name?: string;
     type?: string;
-    currency?: string;
-    balance?: string;
-    icon?: string;
-    color?: string;
+    icon?: string | null;
+    color?: string | null;
     isPrimary?: boolean;
     isArchived?: boolean;
+    /** Updated currency balances. Each entry upserts the AccountBalance for that currency. */
+    balances?: { currency: string; balance: string }[];
   },
 ) => {
   const user = await getUser(firebaseUid);
   await verifyAccountAccess(user.id, accountId);
 
+  const accountMeta = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { workspaceId: true },
+  });
+  if (!accountMeta)
+    throw new ApiError("Account not found", HTTP_STATUS.notFound);
+
   const updateData = {
     ...(data.name !== undefined && { name: data.name }),
     ...(data.type !== undefined && { type: data.type }),
-    ...(data.currency !== undefined && { currency: data.currency }),
-    ...(data.balance !== undefined && { balance: data.balance }),
     ...(data.icon !== undefined && { icon: data.icon }),
     ...(data.color !== undefined && { color: data.color }),
     ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
     ...(data.isArchived !== undefined && { isArchived: data.isArchived }),
   };
 
-  if (data.balance !== undefined) {
-    const current = await prisma.account.findUnique({
-      where: { id: accountId },
-      select: { balance: true, workspaceId: true },
-    });
+  return prisma.$transaction(async (tx) => {
+    // Update scalar fields
+    if (Object.keys(updateData).length > 0) {
+      await tx.account.update({
+        where: { id: accountId },
+        data: updateData,
+      });
+    }
 
-    if (current) {
-      const oldBalance = bnParse(current.balance);
-      const newBalance = bnParse(data.balance);
-      const delta = newBalance.minus(oldBalance);
+    // Process balance updates
+    if (data.balances && data.balances.length > 0) {
+      for (const entry of data.balances) {
+        const currency = entry.currency.toUpperCase();
+        const newBalance = bnParse(entry.balance);
 
-      if (delta.abs().isGreaterThan("0.00001")) {
-        return prisma.$transaction(async (tx) => {
+        const existing = await tx.accountBalance.findUnique({
+          where: { accountId_currency: { accountId, currency } },
+          select: { balance: true },
+        });
+
+        if (existing) {
+          const oldBalance = bnParse(existing.balance);
+          const delta = newBalance.minus(oldBalance);
+
+          if (delta.abs().isGreaterThan("0.00001")) {
+            await tx.transaction.create({
+              data: {
+                type: TRANSACTION_TYPES.BALANCE_CORRECTION,
+                amount: bnRound(delta),
+                currency,
+                date: new Date(),
+                accountId,
+                createdById: user.id,
+                workspaceId: accountMeta.workspaceId,
+              },
+            });
+
+            await tx.accountBalance.update({
+              where: { accountId_currency: { accountId, currency } },
+              data: { balance: bnRound(newBalance) },
+            });
+          }
+        } else {
+          // New currency balance
+          await tx.accountBalance.create({
+            data: { accountId, currency, balance: bnRound(newBalance) },
+          });
+
           await tx.transaction.create({
             data: {
-              type: TRANSACTION_TYPES.BALANCE_CORRECTION,
-              // Store signed delta: positive = balance went up, negative = went down.
-              // This lets the history reconstruction correctly undo the correction.
-              amount: bnRound(delta),
+              type: TRANSACTION_TYPES.INITIAL_BALANCE,
+              amount: bnRound(newBalance),
+              currency,
               date: new Date(),
               accountId,
               createdById: user.id,
-              workspaceId: current.workspaceId,
+              workspaceId: accountMeta.workspaceId,
             },
           });
-
-          return tx.account.update({
-            where: { id: accountId },
-            data: updateData,
-            select: accountSelect,
-          });
-        });
+        }
       }
     }
-  }
 
-  return prisma.account.update({
-    where: { id: accountId },
-    data: updateData,
-    select: accountSelect,
+    // Use tx so the read sees the uncommitted writes in this transaction
+    return tx.account.findUnique({
+      where: { id: accountId },
+      select: accountSelect,
+    });
   });
 };
 
@@ -225,20 +272,17 @@ export const deleteAccountForUser = async (
 export type ConvertedAccountTotal = {
   accountId: string;
   accountName: string;
-  accountCurrency: string;
-  balance: number;
-  /** Balance expressed in the workspace primary currency. Null when conversion failed. */
-  balanceInPrimary: number | null;
-  /** True when FX conversion was actually performed (or currencies already matched). */
-  converted: boolean;
+  /** Total balance in primary currency. Null when conversion failed. */
+  totalInPrimary: number | null;
+  /** Per-currency balances on this account. */
+  balances: { currency: string; balance: number }[];
   primaryCurrency: string;
   conversionDate: string;
 };
 
 /**
- * Returns each account's balance converted to the workspace's primary currency.
- * Accounts already in the primary currency are passed through without an FX lookup.
- * When FX rates are not yet persisted the raw balance is returned with a flag.
+ * Returns each account's total balance converted to the workspace's primary currency
+ * by summing all AccountBalance rows.
  */
 export const getAccountTotalsConverted = async (
   firebaseUid: string,
@@ -264,60 +308,53 @@ export const getAccountTotalsConverted = async (
 
   const accounts = await prisma.account.findMany({
     where: { workspaceId: wsId, isArchived: false },
-    select: { id: true, name: true, currency: true, balance: true },
+    select: {
+      id: true,
+      name: true,
+      balances: { select: { currency: true, balance: true } },
+    },
   });
 
-  // Pre-seed today's rates keyed by the primary currency so the snapshot is
-  // always stored under the workspace currency (e.g. UAH) rather than a pivot.
-  // Errors are swallowed — individual conversions will fail gracefully if needed.
   await refreshDailyRates(primaryCurrency, conversionDate).catch(() => null);
 
   const results: ConvertedAccountTotal[] = await Promise.all(
     accounts.map(async (acc) => {
-      const balance = bnParse(acc.balance).toNumber();
+      const balances = acc.balances.map((b) => ({
+        currency: b.currency,
+        balance: bnParse(b.balance).toNumber(),
+      }));
 
-      if (acc.currency === primaryCurrency) {
-        return {
-          accountId: acc.id,
-          accountName: acc.name,
-          accountCurrency: acc.currency,
-          balance,
-          balanceInPrimary: balance,
-          converted: true,
-          primaryCurrency,
-          conversionDate,
-        };
+      let totalInPrimary: number | null = 0;
+      for (const b of balances) {
+        if (b.currency === primaryCurrency) {
+          totalInPrimary = (totalInPrimary ?? 0) + b.balance;
+        } else {
+          try {
+            const converted = await convertAmount(
+              b.balance,
+              b.currency,
+              primaryCurrency,
+              conversionDate,
+            );
+            totalInPrimary = (totalInPrimary ?? 0) + converted;
+          } catch {
+            totalInPrimary = null;
+            break;
+          }
+        }
       }
 
-      try {
-        const balanceInPrimary = await convertAmount(
-          balance,
-          acc.currency,
-          primaryCurrency,
-          conversionDate,
-        );
-        return {
-          accountId: acc.id,
-          accountName: acc.name,
-          accountCurrency: acc.currency,
-          balance,
-          balanceInPrimary,
-          converted: true,
-          primaryCurrency,
-          conversionDate,
-        };
-      } catch {
-        return {
-          accountId: acc.id,
-          accountName: acc.name,
-          accountCurrency: acc.currency,
-          balance,
-          balanceInPrimary: null,
-          converted: false,
-          primaryCurrency,
-          conversionDate,
-        };
-      }
+      return {
+        accountId: acc.id,
+        accountName: acc.name,
+        totalInPrimary:
+          totalInPrimary !== null
+            ? Math.round(totalInPrimary * 100) / 100
+            : null,
+        balances,
+        primaryCurrency,
+        conversionDate,
+      };
     }),
   );
 
@@ -331,19 +368,11 @@ export type BalanceHistoryPoint = {
 };
 
 /**
- * Returns the end-of-month account balance for every calendar month that has
- * transaction activity, plus the current month.
+ * Returns the end-of-month total balance (in workspace primary currency) for the account,
+ * summed across all currency balances.
  *
- * Algorithm:
- * 1. Group all transactions by "YYYY-MM" month key.
- * 2. Collect all distinct months (including the current one) and sort them.
- * 3. Walk backwards from the current balance:
- *    - Record current balance as the end-of-month balance for that month.
- *    - Undo all transactions in that month to arrive at the end-of-previous-month
- *      balance, then repeat.
- *
- * This ensures the most-recent data point always reflects the real current
- * balance (e.g. −265) rather than an intermediate reconstructed value.
+ * For each currency, walks backwards through that currency's transactions.
+ * Then converts all per-currency end-of-month balances to workspace currency.
  */
 export const getBalanceHistoryForAccount = async (
   firebaseUid: string,
@@ -355,9 +384,19 @@ export const getBalanceHistoryForAccount = async (
       id: accountId,
       workspace: { members: { some: { userId: user.id } } },
     },
-    select: { id: true, balance: true },
+    select: {
+      id: true,
+      workspaceId: true,
+      balances: { select: { currency: true, balance: true } },
+    },
   });
   if (!account) throw new ApiError("Account not found", HTTP_STATUS.notFound);
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: account.workspaceId },
+    select: { currency: true },
+  });
+  const primaryCurrency = workspace?.currency ?? "USD";
 
   const transactions = await prisma.transaction.findMany({
     where: { OR: [{ accountId }, { destinationAccountId: accountId }] },
@@ -365,6 +404,7 @@ export const getBalanceHistoryForAccount = async (
     select: {
       type: true,
       amount: true,
+      currency: true,
       destinationAmount: true,
       date: true,
       accountId: true,
@@ -375,60 +415,106 @@ export const getBalanceHistoryForAccount = async (
   const toMonthKey = (d: Date) =>
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 
-  // Group transactions by month
-  const txByMonth = new Map<string, typeof transactions>();
+  // Group transactions by (currency, month)
+  const txByCurrencyAndMonth = new Map<
+    string,
+    Map<string, typeof transactions>
+  >();
+
   for (const tx of transactions) {
-    const key = toMonthKey(new Date(tx.date));
-    const existing = txByMonth.get(key) ?? [];
+    const currency = tx.currency;
+    const monthKey = toMonthKey(new Date(tx.date));
+    if (!txByCurrencyAndMonth.has(currency)) {
+      txByCurrencyAndMonth.set(currency, new Map());
+    }
+    const monthMap = txByCurrencyAndMonth.get(currency)!;
+    const existing = monthMap.get(monthKey) ?? [];
     existing.push(tx);
-    txByMonth.set(key, existing);
+    monthMap.set(monthKey, existing);
   }
 
-  // All distinct months (including current), sorted ascending
   const currentMonth = toMonthKey(new Date());
-  const allMonths = [
-    ...new Set([...txByMonth.keys(), currentMonth]),
-  ].sort();
 
-  // Walk backwards: for each month record end-of-month balance, then undo
-  // that month's transactions to get the end-of-previous-month balance.
-  let endBalance = bnParse(account.balance);
-  const result: BalanceHistoryPoint[] = [];
+  // All distinct months across all currencies
+  const allMonthsSet = new Set<string>([currentMonth]);
+  for (const monthMap of txByCurrencyAndMonth.values()) {
+    for (const m of monthMap.keys()) allMonthsSet.add(m);
+  }
+  const allMonths = [...allMonthsSet].sort();
 
-  for (let i = allMonths.length - 1; i >= 0; i--) {
-    const month = allMonths[i];
-    result.unshift({ month, balance: endBalance.toNumber() });
+  // Per-currency end-of-month balances map: currency → month → balance
+  const perCurrencyHistory = new Map<string, Map<string, number>>();
 
-    for (const tx of (txByMonth.get(month) ?? []).reverse()) {
-      const isIncoming =
-        tx.destinationAccountId === accountId && tx.type === "transfer";
-      const amount =
-        isIncoming && tx.destinationAmount
-          ? bnParse(tx.destinationAmount)
-          : bnParse(tx.amount);
+  for (const b of account.balances) {
+    const currency = b.currency;
+    const monthMap = txByCurrencyAndMonth.get(currency) ?? new Map();
+    const monthHistory = new Map<string, number>();
 
-      if (tx.type === "expense") endBalance = endBalance.plus(amount);
-      else if (tx.type === "income") endBalance = endBalance.minus(amount);
-      else if (tx.type === "transfer") {
-        if (isIncoming) endBalance = endBalance.minus(amount);
-        else endBalance = endBalance.plus(amount);
-      } else if (
-        tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
-        tx.type === TRANSACTION_TYPES.INITIAL_BALANCE
-      ) {
-        // amount is stored as a signed value (positive = balance went up).
-        // To reconstruct the prior balance, undo the signed effect.
-        endBalance = endBalance.minus(amount);
+    let endBalance = bnParse(b.balance);
+
+    for (let i = allMonths.length - 1; i >= 0; i--) {
+      const month = allMonths[i];
+      monthHistory.set(month, endBalance.toNumber());
+
+      for (const tx of (monthMap.get(month) ?? []).reverse()) {
+        const isIncoming =
+          tx.destinationAccountId === accountId && tx.type === "transfer";
+        const amount =
+          isIncoming && tx.destinationAmount
+            ? bnParse(tx.destinationAmount)
+            : bnParse(tx.amount);
+
+        if (tx.type === "expense") endBalance = endBalance.plus(amount);
+        else if (tx.type === "income") endBalance = endBalance.minus(amount);
+        else if (tx.type === "transfer") {
+          if (isIncoming) endBalance = endBalance.minus(amount);
+          else endBalance = endBalance.plus(amount);
+        } else if (
+          tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
+          tx.type === TRANSACTION_TYPES.INITIAL_BALANCE
+        ) {
+          endBalance = endBalance.minus(amount);
+        }
       }
     }
+
+    perCurrencyHistory.set(currency, monthHistory);
+  }
+
+  // Convert per-currency per-month to primary currency total
+  const conversionDate = todayUTC();
+  await refreshDailyRates(primaryCurrency, conversionDate).catch(() => null);
+
+  const result: BalanceHistoryPoint[] = [];
+  for (const month of allMonths) {
+    let total = 0;
+    for (const [currency, monthHistory] of perCurrencyHistory.entries()) {
+      const bal = monthHistory.get(month) ?? 0;
+      if (currency === primaryCurrency) {
+        total += bal;
+      } else {
+        try {
+          const converted = await convertAmount(
+            bal,
+            currency,
+            primaryCurrency,
+            conversionDate,
+          );
+          total += converted;
+        } catch {
+          total += bal; // fallback: add as-is
+        }
+      }
+    }
+    result.push({ month, balance: Math.round(total * 100) / 100 });
   }
 
   return result;
 };
 
 /**
- * Returns end-of-month total balance across all non-archived workspace accounts.
- * Uses the same backwards-walking algorithm as getBalanceHistoryForAccount.
+ * Returns end-of-month total balance across all non-archived workspace accounts,
+ * converted to workspace primary currency.
  */
 export const getWorkspaceBalanceHistory = async (
   firebaseUid: string,
@@ -437,9 +523,18 @@ export const getWorkspaceBalanceHistory = async (
   const user = await getUser(firebaseUid);
   const wsId = await resolveWorkspaceId(user.id, workspaceId ?? undefined);
 
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: wsId },
+    select: { currency: true },
+  });
+  const primaryCurrency = workspace?.currency ?? "USD";
+
   const accounts = await prisma.account.findMany({
     where: { workspaceId: wsId, isArchived: false },
-    select: { id: true, balance: true },
+    select: {
+      id: true,
+      balances: { select: { currency: true, balance: true } },
+    },
   });
 
   if (accounts.length === 0) return [];
@@ -458,6 +553,7 @@ export const getWorkspaceBalanceHistory = async (
     select: {
       type: true,
       amount: true,
+      currency: true,
       destinationAmount: true,
       date: true,
       accountId: true,
@@ -468,6 +564,7 @@ export const getWorkspaceBalanceHistory = async (
   const toMonthKey = (d: Date) =>
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 
+  // Group transactions by month for the backwards walk
   const txByMonth = new Map<string, typeof transactions>();
   for (const tx of transactions) {
     const key = toMonthKey(new Date(tx.date));
@@ -481,44 +578,87 @@ export const getWorkspaceBalanceHistory = async (
     ...new Set([...txByMonth.keys(), currentMonth]),
   ].sort();
 
-  let endBalance = accounts.reduce(
-    (sum, a) => sum.plus(bnParse(a.balance)),
-    bn(0),
-  );
+  // Current balance per account per currency
+  const accountBalances = new Map<string, Map<string, ReturnType<typeof bnParse>>>();
+  for (const acc of accounts) {
+    const map = new Map<string, ReturnType<typeof bnParse>>();
+    for (const b of acc.balances) {
+      map.set(b.currency, bnParse(b.balance));
+    }
+    accountBalances.set(acc.id, map);
+  }
+
+  const conversionDate = todayUTC();
+  await refreshDailyRates(primaryCurrency, conversionDate).catch(() => null);
+
+  const getTotalInPrimary = async () => {
+    let total = 0;
+    for (const [, currencyMap] of accountBalances.entries()) {
+      for (const [currency, balance] of currencyMap.entries()) {
+        const bal = balance.toNumber();
+        if (currency === primaryCurrency) {
+          total += bal;
+        } else {
+          try {
+            const c = await convertAmount(bal, currency, primaryCurrency, conversionDate);
+            total += c;
+          } catch {
+            total += bal;
+          }
+        }
+      }
+    }
+    return Math.round(total * 100) / 100;
+  };
 
   const result: BalanceHistoryPoint[] = [];
 
   for (let i = allMonths.length - 1; i >= 0; i--) {
     const month = allMonths[i];
-    result.unshift({ month, balance: endBalance.toNumber() });
+    const total = await getTotalInPrimary();
+    result.unshift({ month, balance: total });
 
+    // Walk backwards: undo each transaction in this month
     for (const tx of (txByMonth.get(month) ?? []).reverse()) {
       const srcInWs = accountIdSet.has(tx.accountId);
       const dstInWs =
         tx.destinationAccountId != null &&
         accountIdSet.has(tx.destinationAccountId);
-
+      const currency = tx.currency;
       const txAmount = bnParse(tx.amount);
-      if (tx.type === "expense") {
-        endBalance = endBalance.plus(txAmount);
-      } else if (tx.type === "income") {
-        endBalance = endBalance.minus(txAmount);
+
+      if (tx.type === "expense" && srcInWs) {
+        const map = accountBalances.get(tx.accountId)!;
+        const cur = map.get(currency) ?? bn(0);
+        map.set(currency, cur.plus(txAmount)); // undo expense (was deducted)
+      } else if (tx.type === "income" && srcInWs) {
+        const map = accountBalances.get(tx.accountId)!;
+        const cur = map.get(currency) ?? bn(0);
+        map.set(currency, cur.minus(txAmount)); // undo income (was added)
       } else if (tx.type === "transfer") {
-        if (srcInWs && dstInWs) {
-          // internal transfer – net zero
-        } else if (srcInWs) {
-          endBalance = endBalance.plus(txAmount);
-        } else if (dstInWs) {
+        if (srcInWs && !dstInWs) {
+          // undo source deduction
+          const map = accountBalances.get(tx.accountId)!;
+          const cur = map.get(currency) ?? bn(0);
+          map.set(currency, cur.plus(txAmount));
+        } else if (dstInWs && !srcInWs) {
+          // undo destination credit
           const destAmt = tx.destinationAmount
             ? bnParse(tx.destinationAmount)
             : txAmount;
-          endBalance = endBalance.minus(destAmt);
+          const map = accountBalances.get(tx.destinationAccountId!)!;
+          const cur = map.get(currency) ?? bn(0);
+          map.set(currency, cur.minus(destAmt));
         }
+        // internal transfer: net zero, skip
       } else if (
-        tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
-        tx.type === TRANSACTION_TYPES.INITIAL_BALANCE
+        (tx.type === TRANSACTION_TYPES.BALANCE_CORRECTION ||
+          tx.type === TRANSACTION_TYPES.INITIAL_BALANCE) &&
+        srcInWs
       ) {
-        endBalance = endBalance.minus(txAmount);
+        const map = accountBalances.get(tx.accountId)!;
+        const cur = map.get(currency) ?? bn(0);
+        map.set(currency, cur.minus(txAmount)); // signed, undo
       }
     }
   }
@@ -544,14 +684,15 @@ export const getTransactionsForAccount = async (
       id: true,
       type: true,
       amount: true,
+      currency: true,
       destinationAmount: true,
       description: true,
       date: true,
       account: {
-        select: { id: true, name: true, currency: true, icon: true, color: true },
+        select: { id: true, name: true, icon: true, color: true },
       },
       destinationAccount: {
-        select: { id: true, name: true, currency: true, icon: true, color: true },
+        select: { id: true, name: true, icon: true, color: true },
       },
       category: {
         select: { id: true, name: true, icon: true, color: true, translationKey: true },

@@ -51,7 +51,11 @@ const gatherFinancialContext = async (workspaceId: string) => {
 
   const accounts = await prisma.account.findMany({
     where: { workspaceId, isArchived: false },
-    select: { name: true, type: true, balance: true, currency: true },
+    select: {
+      name: true,
+      type: true,
+      balances: { select: { currency: true, balance: true } },
+    },
     orderBy: { sortOrder: "asc" },
   });
 
@@ -70,10 +74,11 @@ const gatherFinancialContext = async (workspaceId: string) => {
     select: {
       type: true,
       amount: true,
+      currency: true,
       description: true,
       date: true,
       category: { select: { name: true } },
-      account: { select: { name: true, currency: true } },
+      account: { select: { name: true } },
     },
   });
 
@@ -128,12 +133,14 @@ const gatherFinancialContext = async (workspaceId: string) => {
 
   return {
     currency: workspace?.currency ?? "USD",
-    accounts: accounts.map((a) => ({
-      name: a.name,
-      type: a.type,
-      balance: parseFloat(a.balance.toString()),
-      currency: a.currency,
-    })),
+    accounts: accounts.flatMap((a) =>
+      a.balances.map((b) => ({
+        name: a.name,
+        type: a.type,
+        balance: parseFloat(b.balance.toString()),
+        currency: b.currency,
+      })),
+    ),
     thisMonth: {
       totalExpenses: parseFloat(expenseAgg._sum.amount?.toString() ?? "0"),
       expenseCount: expenseAgg._count.id,
@@ -148,7 +155,7 @@ const gatherFinancialContext = async (workspaceId: string) => {
       date: tx.date.toISOString().slice(0, 10),
       category: tx.category?.name ?? null,
       account: tx.account.name,
-      currency: tx.account.currency,
+      currency: tx.currency,
     })),
   };
 };

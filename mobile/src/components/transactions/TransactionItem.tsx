@@ -25,9 +25,8 @@ export const formatTxAmount = (
       ? tx.destinationAmount
       : tx.amount,
   );
-  const currency = isIncomingTransfer
-    ? (tx.destinationAccount?.currency ?? tx.account.currency)
-    : tx.account.currency;
+  // Transaction currency is now stored directly on the transaction
+  const currency = tx.currency;
   const symbol = getCurrencySymbol(currency);
   const absNum = raw.abs();
   const abs = absNum.isInteger() ? absNum.toFormat(0) : absNum.toFormat(2);

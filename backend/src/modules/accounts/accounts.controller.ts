@@ -28,12 +28,14 @@ const createAccountSchema = z.object({
 const updateAccountSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   type: z.string().trim().optional(),
-  currency: z.string().trim().optional(),
-  balance: z.string().optional(),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   isPrimary: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  /** Array of currency balances to upsert. Each entry creates or updates an AccountBalance row. */
+  balances: z
+    .array(z.object({ currency: z.string().trim().min(1), balance: z.string() }))
+    .optional(),
 });
 
 export const getAccountsController = async (
@@ -75,11 +77,7 @@ export const updateAccountController = async (
   const parsed = updateAccountSchema.safeParse(req.body);
   if (!parsed.success)
     throw new ApiError("Invalid request body", HTTP_STATUS.badRequest);
-  const account = await updateAccountForUser(
-    req.user.uid,
-    req.params.id,
-    parsed.data as Parameters<typeof updateAccountForUser>[2],
-  );
+  const account = await updateAccountForUser(req.user.uid, req.params.id, parsed.data);
   res.status(HTTP_STATUS.ok).json({ success: true, data: { account } });
 };
 

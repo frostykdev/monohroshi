@@ -55,12 +55,31 @@ const formatBalance = (balance: string | number, currency: string) => {
 
 // ─── Account row ──────────────────────────────────────────────────────────────
 
-const AccountRow = ({ account }: { account: Account }) => {
+const AccountRow = ({
+  account,
+  convertedTotal,
+}: {
+  account: Account;
+  convertedTotal?: ConvertedAccountTotal;
+}) => {
   const cfg = getAccountTypeConfig(account.type);
   const iconName = (account.icon ?? cfg.icon) as React.ComponentProps<
     typeof Ionicons
   >["name"];
   const iconColor = account.color ?? cfg.color;
+
+  const balanceLabel = (() => {
+    if (account.balances.length > 1 && convertedTotal?.totalInPrimary != null) {
+      return formatBalance(
+        convertedTotal.totalInPrimary,
+        convertedTotal.primaryCurrency,
+      );
+    }
+    return account.balances
+      .map((b) => formatBalance(b.balance, b.currency))
+      .join(" / ");
+  })();
+
   return (
     <Pressable
       style={({ pressed }) => [s.accountRow, pressed && s.pressed]}
@@ -78,7 +97,7 @@ const AccountRow = ({ account }: { account: Account }) => {
         </Typography>
       </View>
       <Typography variant="body" color="textPrimary" style={s.accountBalance}>
-        {formatBalance(account.balance, account.currency)}
+        {balanceLabel}
       </Typography>
     </Pressable>
   );
@@ -109,19 +128,17 @@ const AccountSection = ({
       const ids = new Set(accounts.map((a) => a.id));
       const relevant = convertedTotals.filter((ct) => ids.has(ct.accountId));
       if (relevant.length === 0) return null;
-      if (!relevant.every((ct) => ct.converted)) return null;
-      return relevant.reduce((sum, ct) => sum + (ct.balanceInPrimary ?? 0), 0);
+      const allConverted = relevant.every((ct) => ct.totalInPrimary !== null);
+      if (!allConverted) return null;
+      return relevant.reduce((sum, ct) => sum + (ct.totalInPrimary ?? 0), 0);
     }
-    const allSame = accounts.every((a) => a.currency === accounts[0]?.currency);
-    if (allSame)
-      return accounts.reduce((sum, a) => sum + parseFloat(a.balance || "0"), 0);
     return null;
   })();
 
   const currency =
     convertedTotals.length > 0 && primaryCurrency
       ? primaryCurrency
-      : (accounts[0]?.currency ?? "");
+      : (accounts[0]?.balances[0]?.currency ?? "");
 
   return (
     <View style={s.section}>
@@ -156,7 +173,12 @@ const AccountSection = ({
           {accounts.map((account, idx) => (
             <View key={account.id}>
               {idx > 0 && <View style={s.rowDivider} />}
-              <AccountRow account={account} />
+              <AccountRow
+                account={account}
+                convertedTotal={convertedTotals.find(
+                  (ct) => ct.accountId === account.id,
+                )}
+              />
             </View>
           ))}
         </View>
@@ -227,9 +249,8 @@ const AccountsScreen = () => {
   // Total current balance (converted) — memoized to avoid recalculating on every render
   const totalBalance = useMemo(() => {
     if (convertedTotals.length === 0) return null;
-    const all = convertedTotals.filter((ct) => ct.converted);
-    if (all.length !== convertedTotals.length) return null;
-    return all.reduce((s, ct) => s + (ct.balanceInPrimary ?? 0), 0);
+    if (convertedTotals.some((ct) => ct.totalInPrimary === null)) return null;
+    return convertedTotals.reduce((s, ct) => s + (ct.totalInPrimary ?? 0), 0);
   }, [convertedTotals]);
 
   const effectiveBalanceHistory = useMemo(() => {

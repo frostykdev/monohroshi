@@ -376,8 +376,10 @@ const AddTransactionModal = () => {
     setAccountName(selected.name);
     setAccountIcon(selected.icon ?? null);
     setAccountColor(selected.color ?? null);
-    setCurrency(selected.currency);
-    setAccountCurrency(selected.currency);
+    // Use the first balance's currency as the default transaction currency
+    const defaultCurrency = selected.balances[0]?.currency ?? "UAH";
+    setCurrency(defaultCurrency);
+    setAccountCurrency(defaultCurrency);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts]);
 
@@ -680,8 +682,9 @@ const AddTransactionModal = () => {
     setAccountName(account.name);
     setAccountIcon(account.icon ?? null);
     setAccountColor(account.color ?? null);
-    setCurrency(account.currency);
-    setAccountCurrency(account.currency);
+    const firstCurrency = account.balances[0]?.currency ?? "UAH";
+    setCurrency(firstCurrency);
+    setAccountCurrency(firstCurrency);
     accountSheetRef.current?.dismiss();
   };
 
@@ -690,7 +693,7 @@ const AddTransactionModal = () => {
     setDestAccountName(account.name);
     setDestAccountIcon(account.icon ?? null);
     setDestAccountColor(account.color ?? null);
-    setDestAccountCurrency(account.currency);
+    setDestAccountCurrency(account.balances[0]?.currency ?? "UAH");
     setDestAmount(null); // reset manual override when account changes
     destAccountSheetRef.current?.dismiss();
   };
@@ -859,11 +862,13 @@ const AddTransactionModal = () => {
         <View style={s.flex}>
           <Typography variant="body">{account.name}</Typography>
           <Typography variant="caption" color="textTertiary">
-            {account.currency}
+            {account.balances.map((b) => b.currency).join(" · ")}
           </Typography>
         </View>
         <Typography variant="body" color="textSecondary">
-          {formatAmount(account.balance, account.currency)}
+          {account.balances
+            .map((b) => formatAmount(b.balance, b.currency))
+            .join(" / ")}
         </Typography>
       </Pressable>
     );
