@@ -67,12 +67,20 @@ export const createCategoryForUser = async (
   const user = await getUser(firebaseUid);
   const wsId = await resolveWorkspaceId(user.id, data.workspaceId);
 
+  const last = await prisma.category.findFirst({
+    where: { workspaceId: wsId, type: data.type },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const nextSortOrder = (last?.sortOrder ?? -1) + 1;
+
   return prisma.category.create({
     data: {
       name: data.name,
       type: data.type,
       icon: data.icon ?? null,
       workspaceId: wsId,
+      sortOrder: nextSortOrder,
     },
     select: categorySelect,
   });

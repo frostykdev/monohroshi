@@ -29,11 +29,22 @@ export const formatTxAmount = (
     ? (tx.destinationAccount?.currency ?? tx.account.currency)
     : tx.account.currency;
   const symbol = getCurrencySymbol(currency);
-  const abs = raw.abs().toFormat(2);
+  const absNum = raw.abs();
+  const abs = absNum.isInteger() ? absNum.toFormat(0) : absNum.toFormat(2);
+  const isSpecialBalanceEvent =
+    tx.type === "initial_balance" || tx.type === "balance_correction";
 
   if (tx.type === "income" || isIncomingTransfer) {
     return { text: `+${abs} ${symbol}`, color: colors.success };
   }
+
+  if (isSpecialBalanceEvent) {
+    if (raw.isGreaterThanOrEqualTo(0)) {
+      return { text: `+${abs} ${symbol}`, color: colors.success };
+    }
+    return { text: `-${abs} ${symbol}`, color: colors.textPrimary };
+  }
+
   return { text: `${abs} ${symbol}`, color: colors.textPrimary };
 };
 

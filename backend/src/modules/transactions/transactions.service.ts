@@ -500,6 +500,36 @@ export const getTransactions = async (
   const from = fromDate ? new Date(fromDate) : undefined;
   const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
 
+  // Resolve special virtual category values:
+  //   "__uncategorized__"  → transactions with no categoryId
+  //   "balance_correction" → balance_correction type transactions
+  const wantsUncategorized = categoryIds?.includes("__uncategorized__");
+  const wantsBalanceCorrection = categoryIds?.includes("balance_correction");
+  const realCategoryIds = categoryIds?.filter(
+    (id) => id !== "__uncategorized__" && id !== "balance_correction",
+  );
+
+  const buildCategoryCondition = () => {
+    const conditions: object[] = [];
+
+    if (realCategoryIds && realCategoryIds.length > 0) {
+      conditions.push({ categoryId: { in: realCategoryIds } });
+    }
+    if (wantsUncategorized) {
+      conditions.push({
+        categoryId: null,
+        type: { in: [TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.INCOME] },
+      });
+    }
+    if (wantsBalanceCorrection) {
+      conditions.push({ type: TRANSACTION_TYPES.BALANCE_CORRECTION });
+    }
+
+    if (conditions.length === 0) return {};
+    if (conditions.length === 1) return conditions[0];
+    return { OR: conditions };
+  };
+
   return prisma.transaction.findMany({
     where: {
       workspaceId: wsId,
@@ -507,7 +537,7 @@ export const getTransactions = async (
         ? { accountId: { in: accountIds } }
         : {}),
       ...(categoryIds && categoryIds.length > 0
-        ? { categoryId: { in: categoryIds } }
+        ? buildCategoryCondition()
         : {}),
       ...(tagIds && tagIds.length > 0
         ? { tags: { some: { tagId: { in: tagIds } } } }
@@ -647,32 +677,72 @@ export const getTransactionStats = async (
     },
   });
 
+  const correctionTransactions = await prisma.transaction.findMany({
+    where: {
+      workspaceId: wsId,
+      type: TRANSACTION_TYPES.BALANCE_CORRECTION,
+      ...dateCond,
+      ...accountCond,
+    },
+    select: {
+      amount: true,
+      tags: {
+        select: {
+          tag: { select: { id: true, name: true, color: true } },
+        },
+      },
+    },
+  });
+
   const buildResult = (type: "expense" | "income"): TypeStats => {
     const rows = grouped.filter((g) => g.type === type);
-    const totalAmount = rows.reduce(
-      (sum, r) => sum + parseFloat(((r._sum?.amount) ?? 0).toString()),
+    const byCategoryBase: CategoryStat[] = rows.map((r) => {
+      const cat = r.categoryId ? catMap.get(r.categoryId) : null;
+      const rowTotal = parseFloat(((r._sum?.amount) ?? 0).toString());
+      return {
+        categoryId: r.categoryId,
+        categoryName: cat?.name ?? null,
+        categoryTranslationKey: cat?.translationKey ?? null,
+        icon: cat?.icon ?? null,
+        color: cat?.color ?? null,
+        total: Math.round(rowTotal * 100) / 100,
+        count: r._count?.id ?? 0,
+        percent: 0,
+      };
+    });
+
+    const correctionRows = correctionTransactions.filter((tx) =>
+      type === "income"
+        ? bnParse(tx.amount).isGreaterThan(0)
+        : bnParse(tx.amount).isLessThan(0),
+    );
+    const correctionTotal = correctionRows.reduce(
+      (sum, tx) => sum + bnParse(tx.amount).abs().toNumber(),
       0,
     );
-    const count = rows.reduce((sum, r) => sum + (r._count?.id ?? 0), 0);
+    const correctionCount = correctionRows.length;
 
-    const byCategory: CategoryStat[] = rows
-      .map((r) => {
-        const cat = r.categoryId ? catMap.get(r.categoryId) : null;
-        const rowTotal = parseFloat(((r._sum?.amount) ?? 0).toString());
-        return {
-          categoryId: r.categoryId,
-          categoryName: cat?.name ?? null,
-          categoryTranslationKey: cat?.translationKey ?? null,
-          icon: cat?.icon ?? null,
-          color: cat?.color ?? null,
-          total: Math.round(rowTotal * 100) / 100,
-          count: r._count?.id ?? 0,
-          percent:
-            totalAmount > 0
-              ? Math.round((rowTotal / totalAmount) * 100)
-              : 0,
-        };
-      })
+    const byCategory: CategoryStat[] = [...byCategoryBase];
+    if (correctionCount > 0) {
+      byCategory.push({
+        categoryId: "balance_correction",
+        categoryName: "Balance correction",
+        categoryTranslationKey: "addTransaction.balanceCorrection",
+        icon: "scale-outline",
+        color: null,
+        total: Math.round(correctionTotal * 100) / 100,
+        count: correctionCount,
+        percent: 0,
+      });
+    }
+
+    const totalAmount = byCategory.reduce((sum, r) => sum + r.total, 0);
+    const count = byCategory.reduce((sum, r) => sum + r.count, 0);
+    const byCategoryWithPercent = byCategory
+      .map((r) => ({
+        ...r,
+        percent: totalAmount > 0 ? Math.round((r.total / totalAmount) * 100) : 0,
+      }))
       .sort((a, b) => b.total - a.total);
 
     // Aggregate tag stats for this type
@@ -683,6 +753,18 @@ export const getTransactionStats = async (
     for (const tx of transactionsWithTags) {
       if (tx.type !== type) continue;
       const amt = parseFloat(tx.amount.toString());
+      for (const { tag } of tx.tags) {
+        const existing = tagAccumulator.get(tag.id);
+        if (existing) {
+          existing.total += amt;
+          existing.count += 1;
+        } else {
+          tagAccumulator.set(tag.id, { tag, total: amt, count: 1 });
+        }
+      }
+    }
+    for (const tx of correctionRows) {
+      const amt = bnParse(tx.amount).abs().toNumber();
       for (const { tag } of tx.tags) {
         const existing = tagAccumulator.get(tag.id);
         if (existing) {
@@ -708,7 +790,7 @@ export const getTransactionStats = async (
     return {
       total: Math.round(totalAmount * 100) / 100,
       count,
-      byCategory,
+      byCategory: byCategoryWithPercent,
       byTag,
     };
   };

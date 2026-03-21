@@ -39,15 +39,30 @@ import { AmountKeyboard } from "@components/ui/AmountKeyboard";
 import { useAmountKeyboard } from "@hooks/useAmountKeyboard";
 import { usePickerStore, type PickedTag } from "@stores/usePickerStore";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
-import { useAccounts } from "@services/accounts/accounts.queries";
+import { useAccounts, ACCOUNT_KEYS } from "@services/accounts/accounts.queries";
 import type { Account } from "@services/accounts/accounts.api";
 import { useCategories } from "@services/categories/categories.queries";
-import { useCreateTransaction } from "@services/transactions/transactions.queries";
+import {
+  useCreateTransaction,
+  TRANSACTION_KEYS,
+} from "@services/transactions/transactions.queries";
+import { createTransaction as createTransactionApi } from "@services/transactions/transactions.api";
 import { useFxConvert } from "@services/fx/fx.queries";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TransactionType = "expense" | "income" | "transfer";
+
+type SplitItem = {
+  id: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  categorySystemCode: string | null;
+  amount: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -281,6 +296,58 @@ const AddTransactionModal = () => {
     onDone: () => setShowKeyboard(false),
   });
 
+  // ── Split mode ───────────────────────────────────────────────────────────────
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [splitItems, setSplitItems] = useState<SplitItem[]>([]);
+  const splitIdCounter = useRef(0);
+  const nextSplitId = () => {
+    splitIdCounter.current += 1;
+    return String(splitIdCounter.current);
+  };
+
+  const splitAmountSheetRef = useRef<BottomSheetModal>(null);
+  const editingSplitAmountIndexRef = useRef(0);
+  const keyboardTotalRef = useRef(0);
+  const splitAmountKeyboard = useAmountKeyboard({
+    showSignToggle: false,
+    onDone: (v) => {
+      const idx = editingSplitAmountIndexRef.current;
+      const enteredAmount = v === "0" || v === "" ? "0" : v;
+      setSplitItems((prev) => {
+        const updated = prev.map((item, i) =>
+          i === idx ? { ...item, amount: enteredAmount } : item,
+        );
+        // If exactly one other item still has amount "0", auto-fill it with remaining
+        const grandTotal = Math.abs(keyboardTotalRef.current);
+        const filledTotal = updated.reduce(
+          (sum, item, i) =>
+            i === idx ? sum : sum + parseFloat(item.amount || "0"),
+          0,
+        );
+        const entered = parseFloat(enteredAmount || "0");
+        const remaining =
+          Math.round((grandTotal - filledTotal - entered) * 100) / 100;
+        const zeroIndexes = updated.reduce<number[]>(
+          (acc, item, i) =>
+            i !== idx && item.amount === "0" ? [...acc, i] : acc,
+          [],
+        );
+        if (zeroIndexes.length === 1 && remaining >= 0) {
+          return updated.map((item, i) =>
+            i === zeroIndexes[0]
+              ? { ...item, amount: String(remaining) }
+              : item,
+          );
+        }
+        return updated;
+      });
+      splitAmountSheetRef.current?.dismiss();
+    },
+  });
+
+  const qc = useQueryClient();
+  const [splitSaving, setSplitSaving] = useState(false);
+
   // ── Account picker sheet ─────────────────────────────────────────────────────
   const accountSheetRef = useRef<BottomSheetModal>(null);
   const destAccountSheetRef = useRef<BottomSheetModal>(null);
@@ -315,8 +382,9 @@ const AddTransactionModal = () => {
   }, [accounts]);
 
   // ── Mutations ────────────────────────────────────────────────────────────────
-  const { mutate: createTransaction, isPending: saving } =
+  const { mutate: createTransaction, isPending: txSaving } =
     useCreateTransaction(activeWorkspaceId);
+  const saving = txSaving || splitSaving;
 
   // ── Picker store sync (on focus) ─────────────────────────────────────────────
   useFocusEffect(
@@ -331,6 +399,7 @@ const AddTransactionModal = () => {
         const pickedIsRefund = store.isRefundCategory;
         const pickedCategory = allCategories.find((c) => c.id === pickedId);
         const pickedSystemCode = pickedCategory?.systemCode ?? null;
+        const splitIdx = store.splitPickerIndex;
 
         usePickerStore.setState({
           categoryId: null,
@@ -338,7 +407,31 @@ const AddTransactionModal = () => {
           categoryIcon: null,
           categoryColor: null,
           isRefundCategory: false,
+          splitPickerIndex: null,
         });
+
+        // Handle pick for a split item
+        if (splitIdx !== null) {
+          setSplitItems((prev) => {
+            const updated = [...prev];
+            const newItem: SplitItem = {
+              id: updated[splitIdx]?.id ?? nextSplitId(),
+              categoryId: pickedId,
+              categoryName: store.categoryName!,
+              categoryIcon: store.categoryIcon ?? null,
+              categoryColor: store.categoryColor ?? null,
+              categorySystemCode: pickedSystemCode,
+              amount: updated[splitIdx]?.amount ?? "0",
+            };
+            if (splitIdx < updated.length) {
+              updated[splitIdx] = newItem;
+            } else {
+              updated.push({ ...newItem, id: nextSplitId() });
+            }
+            return updated;
+          });
+          return;
+        }
 
         if (pickedSystemCode === "refund") {
           // User picked the "Refund" income category — immediately open the
@@ -492,6 +585,79 @@ const AddTransactionModal = () => {
     router.push(`/(modals)/tag-picker?${params.toString()}` as never);
   };
 
+  const openSplitCategoryPicker = useCallback(
+    (index: number) => {
+      haptic();
+      usePickerStore.setState({ splitPickerIndex: index });
+      const tab = txType === "income" ? "income" : "expense";
+      router.push(
+        `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&fromModal=1` as never,
+      );
+    },
+    [txType],
+  );
+
+  const handleSplitPress = () => {
+    haptic();
+    const firstItem: SplitItem = {
+      id: nextSplitId(),
+      categoryId,
+      categoryName,
+      categoryIcon,
+      categoryColor,
+      categorySystemCode,
+      amount: "0",
+    };
+    setIsSplitMode(true);
+    setSplitItems([firstItem]);
+    openSplitCategoryPicker(1);
+  };
+
+  const handleAddSplitCategory = () => {
+    haptic();
+    openSplitCategoryPicker(splitItems.length);
+  };
+
+  const handleDeleteSplitItem = (index: number) => {
+    setSplitItems((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (updated.length <= 1) {
+        // Exit split mode, restore single category from remaining item
+        const remaining = updated[0];
+        if (remaining) {
+          setCategoryId(remaining.categoryId);
+          setCategoryName(remaining.categoryName);
+          setCategoryIcon(remaining.categoryIcon);
+          setCategoryColor(remaining.categoryColor);
+          setCategorySystemCode(remaining.categorySystemCode);
+        }
+        setIsSplitMode(false);
+        return [];
+      }
+      return updated;
+    });
+  };
+
+  const openSplitAmountSheet = (index: number) => {
+    haptic();
+    Keyboard.dismiss();
+    setShowKeyboard(false);
+    setShowCalendar(false);
+    editingSplitAmountIndexRef.current = index;
+    keyboardTotalRef.current = keyboard.evaluate();
+    splitAmountKeyboard.reset(splitItems[index]?.amount || "0", false);
+    splitAmountSheetRef.current?.present();
+  };
+
+  // Split totals
+  const totalAmount = Math.abs(keyboard.evaluate());
+  const splitTotal = splitItems.reduce(
+    (sum, item) => sum + parseFloat(item.amount || "0"),
+    0,
+  );
+  const remainingAmount = Math.round((totalAmount - splitTotal) * 100) / 100;
+  const isSplitBalanced = isSplitMode && Math.abs(remainingAmount) < 0.001;
+
   const handleDestAmountPress = () => {
     haptic();
     Keyboard.dismiss();
@@ -550,7 +716,7 @@ const AddTransactionModal = () => {
     if (amount <= 0) {
       Alert.alert(
         t("addTransaction.title"),
-        t("addTransaction.errors.accountRequired"),
+        t("addTransaction.errors.amountRequired"),
       );
       return;
     }
@@ -559,6 +725,71 @@ const AddTransactionModal = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
 
+    // ── Split mode: create one transaction per split item ─────────────────────
+    if (isSplitMode) {
+      if (!isSplitBalanced) {
+        Alert.alert(
+          t("addTransaction.title"),
+          t("addTransaction.errors.splitNotBalanced"),
+        );
+        return;
+      }
+      setSplitSaving(true);
+      const commonFields = {
+        type: txType as "expense" | "income",
+        currency: isCrossRate ? currency : undefined,
+        accountId: accountId!,
+        tagIds:
+          selectedTags.length > 0 ? selectedTags.map((tg) => tg.id) : undefined,
+        description: description.trim() || undefined,
+        date: date.toISOString(),
+        workspaceId: activeWorkspaceId ?? undefined,
+      };
+      Promise.all(
+        splitItems.map((item) =>
+          createTransactionApi({
+            ...commonFields,
+            amount: item.amount || "0",
+            categoryId: item.categoryId ?? undefined,
+          }),
+        ),
+      )
+        .then(([first]) => {
+          setSplitSaving(false);
+          // Invalidate same caches as useCreateTransaction.onSuccess
+          const wsId = activeWorkspaceId;
+          qc.invalidateQueries({ queryKey: TRANSACTION_KEYS.all() });
+          qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
+          qc.invalidateQueries({ queryKey: ["transactions", "recent"] });
+          qc.invalidateQueries({
+            queryKey: wsId
+              ? ACCOUNT_KEYS.byWorkspace(wsId)
+              : ACCOUNT_KEYS.all(),
+          });
+          qc.invalidateQueries({ queryKey: ACCOUNT_KEYS.all() });
+          qc.invalidateQueries({
+            queryKey: ACCOUNT_KEYS.totalsConverted(wsId),
+          });
+          qc.invalidateQueries({
+            queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(wsId),
+          });
+          qc.invalidateQueries({
+            queryKey: ACCOUNT_KEYS.transactions(accountId!),
+          });
+          usePickerStore.setState({ newTransactionId: first.id });
+          router.back();
+        })
+        .catch(() => {
+          setSplitSaving(false);
+          Alert.alert(
+            t("addTransaction.title"),
+            t("addTransaction.errors.saveFailed"),
+          );
+        });
+      return;
+    }
+
+    // ── Normal single transaction ─────────────────────────────────────────────
     createTransaction(
       {
         type: txType,
@@ -669,6 +900,8 @@ const AddTransactionModal = () => {
             setCategorySystemCode(null);
             setIsRefundCategory(false);
             setSelectedTags([]);
+            setIsSplitMode(false);
+            setSplitItems([]);
             setDescription("");
             setDestAccountId(null);
             setDestAccountName(null);
@@ -888,85 +1121,224 @@ const AddTransactionModal = () => {
         )}
 
         {/* Category (expense / income only) */}
-        {txType !== "transfer" && (
-          <View style={s.card}>
-            <Pressable
-              style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
-              onPress={handleCategoryPress}
-            >
-              <View
-                style={[
-                  s.rowIconCircle,
-                  {
-                    backgroundColor: categoryId
-                      ? (categoryColor ?? colors.backgroundElevated)
-                      : colors.backgroundElevated,
-                  },
-                ]}
+        {txType !== "transfer" && !isSplitMode && (
+          <>
+            <View style={s.card}>
+              <Pressable
+                style={({ pressed }) => [s.cardRow, pressed && s.pressed]}
+                onPress={handleCategoryPress}
               >
-                <Ionicons
-                  name={categoryId ? categoryIconName : "help"}
-                  size={18}
-                  color={"#fff"}
-                />
-              </View>
-              <View style={s.flex}>
-                <Typography variant="caption" color="textTertiary">
-                  {t("addTransaction.category")}
-                </Typography>
-                <Typography
-                  variant="body"
-                  color={categoryId ? "textPrimary" : "textSecondary"}
+                <View
+                  style={[
+                    s.rowIconCircle,
+                    {
+                      backgroundColor: categoryId
+                        ? (categoryColor ?? colors.backgroundElevated)
+                        : colors.backgroundElevated,
+                    },
+                  ]}
                 >
-                  {categoryName ?? defaultCategoryLabel}
-                </Typography>
-                {isRefundCategory && (
-                  <View style={s.refundBadge}>
-                    <Ionicons
-                      name="refresh-outline"
-                      size={11}
-                      color={colors.iconBlue}
-                    />
-                    <Typography variant="caption" style={s.refundBadgeText}>
-                      {t("defaultCategories.refund")}
-                    </Typography>
-                  </View>
-                )}
-                {selectedTags.length > 0 && (
-                  <View style={s.inlineTags}>
-                    <Ionicons
-                      name="pricetag"
-                      size={12}
-                      color={colors.textTertiary}
-                    />
-                    <Typography variant="caption" color="textTertiary">
-                      {selectedTags.map((tag) => tag.name).join(", ")}
-                    </Typography>
-                  </View>
-                )}
-              </View>
-              {amountValue !== 0 && (
-                <View style={s.categoryAmountCol}>
-                  {isCrossRate && convertedAmount !== null ? (
-                    <>
-                      <Typography variant="body" color="textSecondary">
-                        {formatAmount(String(convertedAmount), accountCurrency)}
+                  <Ionicons
+                    name={categoryId ? categoryIconName : "help"}
+                    size={18}
+                    color={"#fff"}
+                  />
+                </View>
+                <View style={s.flex}>
+                  <Typography variant="caption" color="textTertiary">
+                    {t("addTransaction.category")}
+                  </Typography>
+                  <Typography
+                    variant="body"
+                    color={categoryId ? "textPrimary" : "textSecondary"}
+                  >
+                    {categoryName ?? defaultCategoryLabel}
+                  </Typography>
+                  {isRefundCategory && (
+                    <View style={s.refundBadge}>
+                      <Ionicons
+                        name="refresh-outline"
+                        size={11}
+                        color={colors.iconBlue}
+                      />
+                      <Typography variant="caption" style={s.refundBadgeText}>
+                        {t("defaultCategories.refund")}
                       </Typography>
+                    </View>
+                  )}
+                  {selectedTags.length > 0 && (
+                    <View style={s.inlineTags}>
+                      <Ionicons
+                        name="pricetag"
+                        size={12}
+                        color={colors.textTertiary}
+                      />
                       <Typography variant="caption" color="textTertiary">
-                        {formatAmount(String(amountValue), currency)}
+                        {selectedTags.map((tag) => tag.name).join(", ")}
                       </Typography>
-                    </>
-                  ) : (
-                    <Typography variant="body" color="textSecondary">
-                      {formatAmount(String(amountValue), currency)}
-                    </Typography>
+                    </View>
                   )}
                 </View>
-              )}
+                {amountValue !== 0 && (
+                  <View style={s.categoryAmountCol}>
+                    {isCrossRate && convertedAmount !== null ? (
+                      <>
+                        <Typography variant="body" color="textSecondary">
+                          {formatAmount(
+                            String(convertedAmount),
+                            accountCurrency,
+                          )}
+                        </Typography>
+                        <Typography variant="caption" color="textTertiary">
+                          {formatAmount(String(amountValue), currency)}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography variant="body" color="textSecondary">
+                        {formatAmount(String(amountValue), currency)}
+                      </Typography>
+                    )}
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            {/* Split transaction trigger */}
+            <Pressable
+              style={({ pressed }) => [s.splitRow, pressed && s.pressed]}
+              onPress={handleSplitPress}
+            >
+              <Ionicons
+                name="git-branch-outline"
+                size={18}
+                color={colors.textTertiary}
+              />
+              <Typography variant="body" color="textTertiary">
+                {t("addTransaction.splitTransaction")}
+              </Typography>
             </Pressable>
-          </View>
+          </>
+        )}
+
+        {/* Split mode: one card per category */}
+        {txType !== "transfer" && isSplitMode && (
+          <>
+            {splitItems.map((item, index) => {
+              const itemIconName = (item.categoryIcon ??
+                "help") as React.ComponentProps<typeof Ionicons>["name"];
+              return (
+                <View key={item.id} style={s.card}>
+                  <View style={s.cardRow}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        s.rowIconCircle,
+                        {
+                          backgroundColor:
+                            item.categoryColor ?? colors.backgroundElevated,
+                        },
+                        pressed && s.pressed,
+                      ]}
+                      onPress={() => openSplitCategoryPicker(index)}
+                    >
+                      <Ionicons name={itemIconName} size={18} color="#fff" />
+                    </Pressable>
+                    <Pressable
+                      style={[s.flex]}
+                      onPress={() => openSplitCategoryPicker(index)}
+                    >
+                      <Typography variant="caption" color="textTertiary">
+                        {t("addTransaction.splitCategory")}
+                      </Typography>
+                      <Typography
+                        variant="body"
+                        color={
+                          item.categoryId ? "textPrimary" : "textSecondary"
+                        }
+                      >
+                        {item.categoryName ??
+                          (txType === "income"
+                            ? t("addTransaction.uncategorisedIncome")
+                            : t("addTransaction.uncategorisedExpense"))}
+                      </Typography>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [
+                        s.splitAmountBtn,
+                        pressed && s.pressed,
+                      ]}
+                      onPress={() => openSplitAmountSheet(index)}
+                    >
+                      <Typography
+                        variant="body"
+                        color="textPrimary"
+                        style={s.splitAmountText}
+                      >
+                        {formatAmount(item.amount || "0", currency)}
+                      </Typography>
+                    </Pressable>
+                    <Pressable
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        s.splitMenuBtn,
+                        pressed && s.pressed,
+                      ]}
+                      onPress={() =>
+                        Alert.alert(
+                          item.categoryName ??
+                            t("addTransaction.uncategorisedExpense"),
+                          undefined,
+                          [
+                            {
+                              text: t("common.delete"),
+                              style: "destructive",
+                              onPress: () => handleDeleteSplitItem(index),
+                            },
+                            { text: t("common.cancel"), style: "cancel" },
+                          ],
+                        )
+                      }
+                    >
+                      <Ionicons
+                        name="ellipsis-vertical"
+                        size={18}
+                        color={colors.textTertiary}
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Add category row */}
+            {splitItems.length < 3 && (
+              <Pressable
+                style={({ pressed }) => [s.splitRow, pressed && s.pressed]}
+                onPress={handleAddSplitCategory}
+              >
+                <Ionicons name="add" size={18} color={colors.textTertiary} />
+                <Typography variant="body" color="textTertiary">
+                  {t("addTransaction.addCategory")}
+                </Typography>
+              </Pressable>
+            )}
+          </>
         )}
       </ScrollView>
+
+      {/* ── Split warning bar ───────────────────────────────────────────────── */}
+      {isSplitMode && !isSplitBalanced && totalAmount > 0 && (
+        <View style={s.splitWarningBar}>
+          <Ionicons
+            name="information-circle-outline"
+            size={16}
+            color={colors.warning}
+          />
+          <Typography variant="bodySmall" style={s.splitWarningText}>
+            {formatAmount(String(Math.abs(remainingAmount)), currency)}{" "}
+            {t("addTransaction.remainingToDistribute")}
+          </Typography>
+        </View>
+      )}
 
       {/* ── Sticky bottom ───────────────────────────────────────────────────── */}
       {showKeyboard ? (
@@ -995,10 +1367,14 @@ const AddTransactionModal = () => {
               style={({ pressed }) => [
                 s.saveBtn,
                 pressed && s.pressed,
-                saving && s.saveBtnDisabled,
+                (saving ||
+                  (isSplitMode && !isSplitBalanced && totalAmount > 0)) &&
+                  s.saveBtnDisabled,
               ]}
               onPress={handleSave}
-              disabled={saving}
+              disabled={
+                saving || (isSplitMode && !isSplitBalanced && totalAmount > 0)
+              }
             >
               <Typography style={s.saveBtnLabel}>
                 {t("addTransaction.save")}
@@ -1014,10 +1390,13 @@ const AddTransactionModal = () => {
             {
               marginBottom: insets.bottom > 0 ? insets.bottom + 8 : 24,
             },
-            saving && s.saveBtnDisabled,
+            (saving || (isSplitMode && !isSplitBalanced && totalAmount > 0)) &&
+              s.saveBtnDisabled,
           ]}
           onPress={handleSave}
-          disabled={saving}
+          disabled={
+            saving || (isSplitMode && !isSplitBalanced && totalAmount > 0)
+          }
         >
           <Typography style={s.bottomSaveBtnLabel}>
             {t("addTransaction.save")}
@@ -1119,6 +1498,61 @@ const AddTransactionModal = () => {
           </View>
           <AmountKeyboard
             onKey={destAmountKeyboard.handleKey}
+            showSignToggle={false}
+          />
+        </BottomSheetView>
+      </BottomSheetModal>
+
+      {/* ── Split amount sheet ───────────────────────────────────────────────── */}
+      <BottomSheetModal
+        ref={splitAmountSheetRef}
+        enableDynamicSizing
+        backdropComponent={renderBackdrop}
+        backgroundStyle={s.sheetBg}
+        handleComponent={() => null}
+      >
+        <BottomSheetView>
+          <View style={s.destAmountSheetHeader}>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderBtn,
+                pressed && s.pressed,
+              ]}
+              onPress={() => splitAmountSheetRef.current?.dismiss()}
+              hitSlop={8}
+            >
+              <Ionicons name="close" size={18} color={colors.textPrimary} />
+            </Pressable>
+            <View style={s.destAmountHeaderCenter} pointerEvents="none">
+              <Typography variant="label" style={s.destAmountHeaderTitle}>
+                {splitItems[editingSplitAmountIndexRef.current]?.categoryName ??
+                  t("addTransaction.splitAmountLabel")}
+              </Typography>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                s.destAmountHeaderDone,
+                pressed && s.pressed,
+              ]}
+              onPress={() => splitAmountKeyboard.handleKey("done")}
+              hitSlop={8}
+            >
+              <Typography style={s.destAmountDoneLabel}>
+                {t("common.done")}
+              </Typography>
+            </Pressable>
+          </View>
+          <View style={s.destAmountDivider} />
+          <View style={s.destAmountArea}>
+            <View style={s.destAmountUnderline}>
+              <Typography style={s.destAmountText}>
+                {getCurrencySymbol(currency)}
+                {splitAmountKeyboard.displayStr}
+              </Typography>
+            </View>
+          </View>
+          <AmountKeyboard
+            onKey={splitAmountKeyboard.handleKey}
             showSignToggle={false}
           />
         </BottomSheetView>
@@ -1414,6 +1848,44 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: colors.textOnAccent,
+  } as TextStyle,
+
+  // Split mode
+  splitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+  } as ViewStyle,
+  splitAmountBtn: {
+    paddingLeft: 8,
+    alignItems: "flex-end",
+  } as ViewStyle,
+  splitAmountText: {
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  } as TextStyle,
+  splitMenuBtn: {
+    paddingLeft: 8,
+    paddingRight: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 36,
+  } as ViewStyle,
+  splitWarningBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.backgroundSurface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  } as ViewStyle,
+  splitWarningText: {
+    color: colors.warning,
+    flex: 1,
   } as TextStyle,
 });
 

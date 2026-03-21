@@ -1,9 +1,60 @@
+import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View, ViewStyle } from "react-native";
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { TransactionItem } from "./TransactionItem";
 import type { AccountTransaction } from "@services/accounts/accounts.api";
+
+const AnimatedTxRow = ({
+  tx,
+  accountId,
+  isLast,
+  isNew,
+}: {
+  tx: AccountTransaction;
+  accountId: string;
+  isLast: boolean;
+  isNew: boolean;
+}) => {
+  const translateY = useSharedValue(isNew ? -12 : 0);
+  const highlightProgress = useSharedValue(0);
+
+  useEffect(() => {
+    if (isNew) {
+      translateY.value = withSpring(0, { damping: 16, stiffness: 220 });
+      highlightProgress.value = withSequence(
+        withTiming(1, { duration: 50 }),
+        withDelay(300, withTiming(0, { duration: 900 })),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const rowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    backgroundColor: interpolateColor(
+      highlightProgress.value,
+      [0, 1],
+      [colors.backgroundElevated, colors.backgroundSurfaceAlt],
+    ),
+  }));
+
+  return (
+    <Animated.View style={rowStyle}>
+      <TransactionItem tx={tx} accountId={accountId} isLast={isLast} />
+    </Animated.View>
+  );
+};
 
 export const groupByDate = (
   transactions: AccountTransaction[],
@@ -36,6 +87,7 @@ type Props = {
   accountId: string;
   isLoading: boolean;
   emptyMessage?: string;
+  highlightedTxId?: string | null;
 };
 
 export const TransactionList = ({
@@ -43,6 +95,7 @@ export const TransactionList = ({
   accountId,
   isLoading,
   emptyMessage,
+  highlightedTxId,
 }: Props) => {
   const { t, i18n } = useTranslation();
   const grouped = groupByDate(transactions);
@@ -78,11 +131,12 @@ export const TransactionList = ({
           </Typography>
           <View style={s.txCard}>
             {group.items.map((tx, idx) => (
-              <TransactionItem
+              <AnimatedTxRow
                 key={tx.id}
                 tx={tx}
                 accountId={accountId}
                 isLast={idx === group.items.length - 1}
+                isNew={tx.id === highlightedTxId}
               />
             ))}
           </View>

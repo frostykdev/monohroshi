@@ -29,13 +29,13 @@ import * as Haptics from "expo-haptics";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetView,
   type BottomSheetBackdropProps,
 } from "@gorhom/bottom-sheet";
 import { colors } from "@constants/colors";
-import { getCurrencySymbol } from "@constants/account-types";
 import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
+import { AnimatedBalance } from "@components/ui/AnimatedBalance";
+import { DatePickerSheet } from "@components/ui/DatePickerSheet";
 import { TransactionItem } from "@components/transactions/TransactionItem";
 import { useAccounts } from "@services/accounts/accounts.queries";
 import {
@@ -53,25 +53,11 @@ import {
   StatCardSkeleton,
   CategoryRowsSkeleton,
 } from "@components/ui/Skeleton";
-import {
-  type DatePreset,
-  DATE_PRESETS,
-  getDateRange,
-} from "@utils/date-presets";
+import { FabAddButton } from "@components/ui/FabAddButton";
+import { useSinglePressGuard } from "@hooks/useSinglePressGuard";
+import { type DatePreset, getDateRange } from "@utils/date-presets";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-const fmtAmount = (n: number, currency: string) => {
-  const sym = getCurrencySymbol(currency);
-  return (
-    Math.abs(n).toLocaleString("uk-UA", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }) +
-    " " +
-    sym
-  );
-};
 
 // ─── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -130,13 +116,13 @@ const StatCard = ({
         {isExpense ? t("analytics.expenses") : t("analytics.income")}
       </Typography>
 
-      <Typography
-        variant="h1"
-        style={[sc.amount, isExpense ? sc.amountExpense : sc.amountIncome]}
-      >
-        {isExpense ? "-" : "+"}
-        {fmtAmount(data.total, currency)}
-      </Typography>
+      <AnimatedBalance
+        value={data.total}
+        currency={currency}
+        prefix={isExpense ? "−" : "+"}
+        color={"textPrimary"}
+        style={sc.amount}
+      />
 
       <View style={sc.hintBox}>
         <Typography variant="caption" color="textSecondary">
@@ -231,60 +217,6 @@ const sc = StyleSheet.create({
   } as ViewStyle,
 });
 
-// ─── Date preset sheet ─────────────────────────────────────────────────────────
-
-const DateSheet = ({
-  selected,
-  onSelect,
-  sheetRef,
-}: {
-  selected: DatePreset;
-  onSelect: (p: DatePreset) => void;
-  sheetRef: React.RefObject<BottomSheetModal | null>;
-}) => {
-  const { t } = useTranslation();
-  return (
-    <BottomSheetView>
-      {DATE_PRESETS.map((preset, i) => (
-        <Pressable
-          key={preset}
-          style={({ pressed }) => [
-            ds.row,
-            i < DATE_PRESETS.length - 1 && ds.divider,
-            pressed && ds.pressed,
-          ]}
-          onPress={() => {
-            onSelect(preset);
-            sheetRef.current?.dismiss();
-          }}
-        >
-          <Typography variant="body">
-            {t(`analytics.datePresets.${preset}`)}
-          </Typography>
-          {preset === selected && (
-            <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-          )}
-        </Pressable>
-      ))}
-    </BottomSheetView>
-  );
-};
-
-const ds = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-  } as ViewStyle,
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  } as ViewStyle,
-  pressed: { opacity: 0.6 } as ViewStyle,
-});
-
 // ─── Animated transaction row ──────────────────────────────────────────────────
 
 const AnimatedTxRow = ({
@@ -351,9 +283,11 @@ const HomeScreen = () => {
   const [highlightedTxId, setHighlightedTxId] = useState<string | null>(null);
 
   const dateSheetRef = useRef<BottomSheetModal>(null);
+  const { runWithGuard, resetGuard } = useSinglePressGuard();
 
   useFocusEffect(
     useCallback(() => {
+      resetGuard();
       const store = usePickerStore.getState();
       if (store.selectedAccountIds !== null) {
         setSelectedAccountIds(store.selectedAccountIds);
@@ -363,7 +297,7 @@ const HomeScreen = () => {
         setHighlightedTxId(store.newTransactionId);
         usePickerStore.setState({ newTransactionId: null });
       }
-    }, []),
+    }, [resetGuard]),
   );
   const pagerRef = useRef<ScrollView>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -472,10 +406,12 @@ const HomeScreen = () => {
     [],
   );
 
-  const openAdd = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    router.push("/(modals)/add-transaction" as never);
-  };
+  const openAdd = useCallback(() => {
+    runWithGuard(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      router.push("/(modals)/add-transaction" as never);
+    });
+  }, [runWithGuard]);
 
   const openBreakdown = useCallback(
     (initialType: "expense" | "income", initialTab: "categories" | "tags") => {
@@ -513,13 +449,23 @@ const HomeScreen = () => {
           </View>
           <Typography variant="label">{workspaceName}</Typography>
         </Pressable>
-        <View style={s.headerIcon}>
+        <Pressable
+          style={({ pressed }) => [s.headerIcon, pressed && s.pressed]}
+          onPress={() => {
+            const params = new URLSearchParams();
+            params.set("datePreset", datePreset);
+            if (selectedAccountIds.length > 0)
+              params.set("accountIds", selectedAccountIds.join(","));
+            router.push(`/stats-breakdown?${params.toString()}` as never);
+          }}
+          hitSlop={8}
+        >
           <Ionicons
             name="layers-outline"
             size={20}
             color={colors.textPrimary}
           />
-        </View>
+        </Pressable>
       </View>
 
       {/* ── Date bar ───────────────────────────────────── */}
@@ -702,16 +648,7 @@ const HomeScreen = () => {
       </ScrollView>
 
       {/* ── FAB ────────────────────────────────────────── */}
-      <Pressable
-        style={({ pressed }) => [
-          s.fab,
-          { bottom: 20 },
-          pressed && s.fabPressed,
-        ]}
-        onPress={openAdd}
-      >
-        <Ionicons name="add" size={28} color={colors.textOnAccent} />
-      </Pressable>
+      <FabAddButton onPress={openAdd} bottom={20} />
 
       {/* ── Date sheet ─────────────────────────────────── */}
       <BottomSheetModal
@@ -721,9 +658,9 @@ const HomeScreen = () => {
         handleIndicatorStyle={s.sheetHandle}
         backdropComponent={renderBackdrop}
       >
-        <DateSheet
+        <DatePickerSheet
           selected={datePreset}
-          onSelect={setDatePreset}
+          onSelect={(p) => p && setDatePreset(p)}
           sheetRef={dateSheetRef}
         />
       </BottomSheetModal>
@@ -870,26 +807,6 @@ const s = StyleSheet.create({
     borderCurve: "continuous",
     padding: 24,
     alignItems: "center",
-  } as ViewStyle,
-  // FAB
-  fab: {
-    position: "absolute",
-    right: 24,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 18,
-    elevation: 12,
-  } as ViewStyle,
-  fabPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.95 }],
   } as ViewStyle,
   // Sheets
   sheetBg: {

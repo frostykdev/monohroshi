@@ -89,6 +89,10 @@ export const useCreateAccount = (workspaceId?: string | null) => {
       qc.invalidateQueries({
         queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
       });
+      // Home screen cards/lists depend on transaction-derived queries.
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "recent"] });
     },
   });
 };
@@ -105,6 +109,15 @@ export const useUpdateAccount = (workspaceId?: string | null) => {
           ? ACCOUNT_KEYS.byWorkspace(workspaceId)
           : ACCOUNT_KEYS.all(),
       });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.totalsConverted(workspaceId),
+      });
+      qc.invalidateQueries({
+        queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
+      });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "recent"] });
     },
   });
 };
@@ -126,6 +139,9 @@ export const useDeleteAccount = (workspaceId?: string | null) => {
       qc.invalidateQueries({
         queryKey: ACCOUNT_KEYS.workspaceBalanceHistory(workspaceId),
       });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "stats"] });
+      qc.invalidateQueries({ queryKey: ["transactions", "recent"] });
     },
   });
 };

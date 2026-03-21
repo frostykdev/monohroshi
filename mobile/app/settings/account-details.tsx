@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { DateTime } from "luxon";
@@ -32,12 +32,15 @@ import {
   getCurrencySymbol,
 } from "@constants/account-types";
 import { Typography } from "@components/ui/Typography";
+import { FabAddButton } from "@components/ui/FabAddButton";
 import {
   useAccount,
   useAccountBalanceHistory,
   useAccountTransactions,
 } from "@services/accounts/accounts.queries";
 import { TransactionList } from "@components/transactions/TransactionList";
+import { useSinglePressGuard } from "@hooks/useSinglePressGuard";
+import { usePickerStore } from "@stores/usePickerStore";
 
 const haptic = () => {
   if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
@@ -63,6 +66,7 @@ const AccountDetailsScreen = () => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { runWithGuard } = useSinglePressGuard();
 
   // Computed early so animated worklets can capture it in their closures
   const navBarHeight = insets.top + NAV_HEIGHT;
@@ -72,6 +76,24 @@ const AccountDetailsScreen = () => {
     useAccountTransactions(id);
 
   const txSearch = "";
+  const [highlightedTxId, setHighlightedTxId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.newTransactionId !== null) {
+        setHighlightedTxId(store.newTransactionId);
+        usePickerStore.setState({ newTransactionId: null });
+      }
+    }, []),
+  );
+
+  const openAdd = useCallback(() => {
+    runWithGuard(() => {
+      haptic();
+      router.push(`/(modals)/add-transaction?defaultAccountId=${id}` as never);
+    });
+  }, [id, runWithGuard]);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -428,26 +450,13 @@ const AccountDetailsScreen = () => {
             transactions={filteredTx}
             accountId={id ?? ""}
             isLoading={txLoading}
+            highlightedTxId={highlightedTxId}
           />
         </View>
       </Animated.ScrollView>
 
       {/* FAB – add transaction pre-selected to this account */}
-      <Pressable
-        style={({ pressed }) => [
-          s.fab,
-          { bottom: insets.bottom + 20 },
-          pressed && s.fabPressed,
-        ]}
-        onPress={() => {
-          haptic();
-          router.push(
-            `/(modals)/add-transaction?defaultAccountId=${id}` as never,
-          );
-        }}
-      >
-        <Ionicons name="add" size={28} color={colors.textOnAccent} />
-      </Pressable>
+      <FabAddButton onPress={openAdd} bottom={insets.bottom + 20} />
     </View>
   );
 };
@@ -596,26 +605,6 @@ const s = StyleSheet.create({
 
   txList: {
     gap: 12,
-  } as ViewStyle,
-
-  fab: {
-    position: "absolute",
-    right: 24,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 18,
-    elevation: 12,
-  } as ViewStyle,
-  fabPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.95 }],
   } as ViewStyle,
 });
 

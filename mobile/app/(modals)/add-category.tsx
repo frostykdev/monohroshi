@@ -41,6 +41,7 @@ const AddCategoryScreen = () => {
     initialName,
     initialIcon,
     localId,
+    pickerMode,
   } = useLocalSearchParams<{
     tab?: string;
     workspaceId?: string;
@@ -49,7 +50,9 @@ const AddCategoryScreen = () => {
     initialName?: string;
     initialIcon?: string;
     localId?: string;
+    pickerMode?: string;
   }>();
+  const isPickerMode = pickerMode === "true";
 
   const isEditBackend = mode === "edit" && !!categoryId;
   const isEditLocal = mode === "edit-local" && !!localId;
@@ -128,7 +131,22 @@ const AddCategoryScreen = () => {
           icon: values.icon,
           workspaceId: workspaceId || undefined,
         },
-        { onSuccess: () => router.back() },
+        {
+          onSuccess: (created) => {
+            if (isPickerMode) {
+              usePickerStore
+                .getState()
+                .setCategory(
+                  created.id,
+                  trimmedName,
+                  created.icon ?? values.icon,
+                  created.color ?? null,
+                  false,
+                );
+            }
+            router.back();
+          },
+        },
       );
     },
   });
