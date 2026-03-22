@@ -7,9 +7,18 @@ export type ChatMessage = {
   content: string;
 };
 
+export type InsightsActionParams = {
+  categoryId: string;
+  categoryName: string;
+  amount: string;
+};
+
 export type InsightsAction = {
   label: string;
-  route: string;
+  route?: string;
+  isExecutable: boolean;
+  actionKey: string;
+  params: InsightsActionParams;
 };
 
 export type InsightsResponse = {

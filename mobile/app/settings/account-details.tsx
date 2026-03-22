@@ -441,6 +441,40 @@ const AccountDetailsScreen = () => {
             </Typography>
           )}
 
+          {/* Savings goal progress */}
+          {account.type === "savings" &&
+            account.savingsGoal &&
+            parseFloat(account.savingsGoal) > 0 &&
+            (() => {
+              const goal = parseFloat(account.savingsGoal!);
+              const current = parseFloat(primaryBalance?.balance ?? "0");
+              const progress = Math.min(Math.max(current / goal, 0), 1);
+              const percent = Math.round(progress * 100);
+              return (
+                <View style={s.savingsGoalCard}>
+                  <View style={s.savingsGoalHeader}>
+                    <Typography variant="bodySmall" color="textSecondary">
+                      {t("accounts.savingsGoalProgress" as never, {
+                        current: formatBalance(String(current), currency),
+                        goal: formatBalance(account.savingsGoal!, currency),
+                      })}
+                    </Typography>
+                    <Typography variant="bodySmall" color="accent">
+                      {percent}%
+                    </Typography>
+                  </View>
+                  <View style={s.savingsProgressTrack}>
+                    <View
+                      style={[
+                        s.savingsProgressFill,
+                        { width: `${percent}%` as `${number}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+              );
+            })()}
+
           {/* Balance chart */}
           {chartSeries && (
             <View style={s.chartCard}>
@@ -651,6 +685,32 @@ const s = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginLeft: 16,
+  } as ViewStyle,
+
+  savingsGoalCard: {
+    width: "100%",
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+  } as ViewStyle,
+  savingsGoalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } as ViewStyle,
+  savingsProgressTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.backgroundSurface,
+    overflow: "hidden",
+  } as ViewStyle,
+  savingsProgressFill: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   } as ViewStyle,
 
   chartCard: {

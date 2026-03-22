@@ -68,16 +68,17 @@ model WorkspaceInvitation {
 }
 
 model Account {
-  id         String   @id @default(cuid())
-  name       String
-  type       String
-  icon       String?
-  color      String?
-  isPrimary  Boolean  @default(false)
-  isArchived Boolean  @default(false)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  icon         String?
+  color        String?
+  isPrimary    Boolean  @default(false)
+  isArchived   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  savingsGoal  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

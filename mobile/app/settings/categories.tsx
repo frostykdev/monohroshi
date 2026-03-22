@@ -48,6 +48,7 @@ const CategoriesScreen = () => {
     pickerMode,
     gridMode,
     refundMode,
+    lockedTab,
     fromModal,
     excludedCategoryIds,
   } = useLocalSearchParams<{
@@ -55,12 +56,14 @@ const CategoriesScreen = () => {
     pickerMode?: string;
     gridMode?: string;
     refundMode?: string;
+    lockedTab?: string;
     fromModal?: string;
     excludedCategoryIds?: string;
   }>();
   const isPickerMode = pickerMode === "true";
   const isGridMode = gridMode === "true";
   const isRefundMode = refundMode === "true";
+  const isLockedTab = lockedTab === "true";
   const excludedIds = excludedCategoryIds
     ? excludedCategoryIds.split(",").filter(Boolean)
     : [];
@@ -298,7 +301,7 @@ const CategoriesScreen = () => {
         }}
       />
 
-      {!isRefundMode && (
+      {!isRefundMode && !isLockedTab && (
         <SegmentedControl
           segments={segments}
           activeKey={activeTab}

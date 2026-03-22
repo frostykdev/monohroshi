@@ -23,6 +23,7 @@ const createAccountSchema = z.object({
   color: z.string().optional(),
   isPrimary: z.boolean().optional(),
   workspaceId: z.string().optional(),
+  savingsGoal: z.string().nullable().optional(),
 });
 
 const updateAccountSchema = z.object({
@@ -32,6 +33,7 @@ const updateAccountSchema = z.object({
   color: z.string().nullable().optional(),
   isPrimary: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  savingsGoal: z.string().nullable().optional(),
   /** Array of currency balances to upsert. Each entry creates or updates an AccountBalance row. */
   balances: z
     .array(z.object({ currency: z.string().trim().min(1), balance: z.string() }))

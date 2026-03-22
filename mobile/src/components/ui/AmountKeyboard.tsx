@@ -50,6 +50,10 @@ export type AmountKeyboardProps = {
   showSignToggle?: boolean;
   isNegative?: boolean;
   onSetNegative?: (v: boolean) => void;
+  /** Override label for the positive/left toggle button */
+  positiveLabel?: string;
+  /** Override label for the negative/right toggle button */
+  negativeLabel?: string;
 };
 
 export const AmountKeyboard = ({
@@ -57,6 +61,8 @@ export const AmountKeyboard = ({
   showSignToggle = true,
   isNegative = false,
   onSetNegative,
+  positiveLabel,
+  negativeLabel,
 }: AmountKeyboardProps) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -80,7 +86,7 @@ export const AmountKeyboard = ({
               style={ns.toggleLabel}
               color={!isNegative ? "accent" : "textSecondary"}
             >
-              {t("balanceInput.positive")}
+              {positiveLabel ?? t("balanceInput.positive")}
             </Typography>
           </Pressable>
           <Pressable
@@ -97,7 +103,7 @@ export const AmountKeyboard = ({
               style={ns.toggleLabel}
               color={isNegative ? "accent" : "textSecondary"}
             >
-              {t("balanceInput.negative")}
+              {negativeLabel ?? t("balanceInput.negative")}
             </Typography>
           </Pressable>
           <Pressable

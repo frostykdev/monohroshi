@@ -69,6 +69,7 @@ const EditAccountScreen = () => {
       icon: account?.icon ?? cfg.icon,
       iconColor: account?.color ?? cfg.color,
       balances: (account?.balances ?? []) as FormBalances,
+      savingsGoal: account?.savingsGoal ?? "",
     },
     enableReinitialize: true,
     validationSchema,
@@ -83,11 +84,14 @@ const EditAccountScreen = () => {
         {
           id,
           name: values.name.trim(),
-          type: values.accountType,
           isPrimary: values.isPrimary,
           icon: values.icon,
           color: values.iconColor,
           balances: values.balances,
+          savingsGoal:
+            values.accountType === "savings" && values.savingsGoal
+              ? values.savingsGoal
+              : null,
         },
         {
           onSuccess: () => router.back(),
@@ -107,13 +111,6 @@ const EditAccountScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const store = usePickerStore.getState();
-      if (store.accountType) {
-        const typeCfg = getAccountTypeConfig(store.accountType);
-        formikRef.current.setFieldValue("accountType", store.accountType);
-        formikRef.current.setFieldValue("icon", typeCfg.icon);
-        formikRef.current.setFieldValue("iconColor", typeCfg.color);
-        usePickerStore.setState({ accountType: null });
-      }
       if (store.icon) {
         formikRef.current.setFieldValue("icon", store.icon);
         formikRef.current.setFieldValue(
@@ -153,6 +150,7 @@ const EditAccountScreen = () => {
           icon: account.icon ?? getAccountTypeConfig(account.type).icon,
           iconColor: account.color ?? getAccountTypeConfig(account.type).color,
           balances: account.balances as FormBalances,
+          savingsGoal: account.savingsGoal ?? "",
         },
       });
     }
@@ -163,6 +161,12 @@ const EditAccountScreen = () => {
     formik.submitCount > 0 && formik.errors.name
       ? formik.errors.name
       : undefined;
+
+  const isDebtType = ["debt", "credit_loan"].includes(
+    formik.values.accountType,
+  );
+  const positiveLabel = isDebtType ? t("balanceInput.owedToMe") : undefined;
+  const negativeLabel = isDebtType ? t("balanceInput.iOwe") : undefined;
 
   const handleAddCurrency = () => {
     haptic();
@@ -290,31 +294,16 @@ const EditAccountScreen = () => {
 
           {/* Settings rows */}
           <View style={s.settingsGroup}>
-            <Pressable
-              style={({ pressed }) => [s.settingRow, pressed && s.pressed]}
-              onPress={() => {
-                haptic();
-                router.push(
-                  `/(modals)/account-type-picker?selected=${formik.values.accountType}`,
-                );
-              }}
-            >
+            <View style={s.settingRow}>
               <Typography variant="body" color="textSecondary">
                 {t("onboarding.accountSetup.accountType")}
               </Typography>
-              <View style={s.settingValue}>
-                <Typography variant="body" color="textPrimary">
-                  {t(
-                    `onboarding.accountSetup.types.${formik.values.accountType}` as never,
-                  )}
-                </Typography>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.textTertiary}
-                />
-              </View>
-            </Pressable>
+              <Typography variant="body" color="textTertiary">
+                {t(
+                  `onboarding.accountSetup.types.${formik.values.accountType}` as never,
+                )}
+              </Typography>
+            </View>
 
             <View style={s.separator} />
 
@@ -336,12 +325,27 @@ const EditAccountScreen = () => {
                   currency={b.currency}
                   showSignToggle
                   showInfo={false}
+                  positiveLabel={positiveLabel}
+                  negativeLabel={negativeLabel}
                 />
                 {i < formik.values.balances.length - 1 && (
                   <View style={s.separator} />
                 )}
               </View>
             ))}
+            {formik.values.accountType === "savings" && (
+              <>
+                <View style={s.separator} />
+                <BalanceInput
+                  value={formik.values.savingsGoal}
+                  onChange={(v) => formik.setFieldValue("savingsGoal", v)}
+                  currency={formik.values.balances[0]?.currency ?? "USD"}
+                  label={t("onboarding.accountSetup.savingsGoal")}
+                  showSignToggle={false}
+                  showInfo={false}
+                />
+              </>
+            )}
 
             <View style={s.separator} />
 

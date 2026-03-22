@@ -8,7 +8,7 @@ import { TRANSACTION_TYPES } from "../../shared/constants";
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
-const ALLOWED_ACTIONS: Record<string, string> = {
+const NAVIGATE_ACTIONS: Record<string, string> = {
   create_savings_account: "/(modals)/add-account",
   create_budget: "/(modals)/add-budget",
   add_transaction: "/(modals)/add-transaction",
@@ -16,6 +16,8 @@ const ALLOWED_ACTIONS: Record<string, string> = {
   view_budgets: "/settings/budgets",
   view_transactions: "/transactions",
 };
+
+const EXECUTE_ACTIONS = new Set(["execute_create_budget"]);
 
 const getUser = async (firebaseUid: string) => {
   const user = await prisma.user.findUnique({ where: { firebaseUid } });
@@ -59,9 +61,27 @@ const gatherFinancialContext = async (workspaceId: string) => {
     orderBy: { sortOrder: "asc" },
   });
 
+  const categories = await prisma.category.findMany({
+    where: { workspaceId },
+    select: { id: true, name: true, type: true },
+    orderBy: { sortOrder: "asc" },
+  });
+
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const monthEnd = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
 
   const recentTransactions = await prisma.transaction.findMany({
     where: {
@@ -141,6 +161,11 @@ const gatherFinancialContext = async (workspaceId: string) => {
         currency: b.currency,
       })),
     ),
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+    })),
     thisMonth: {
       totalExpenses: parseFloat(expenseAgg._sum.amount?.toString() ?? "0"),
       expenseCount: expenseAgg._count.id,
@@ -160,7 +185,16 @@ const gatherFinancialContext = async (workspaceId: string) => {
   };
 };
 
-const buildSystemPrompt = (context: Awaited<ReturnType<typeof gatherFinancialContext>>) => {
+const buildSystemPrompt = (
+  context: Awaited<ReturnType<typeof gatherFinancialContext>>,
+) => {
+  const expenseCategories = context.categories.filter(
+    (c) => c.type === "expense",
+  );
+  const incomeCategories = context.categories.filter(
+    (c) => c.type === "income",
+  );
+
   return `You are a helpful personal finance advisor built into the Monohroshi finance app. The user is chatting with you about their finances.
 
 FINANCIAL CONTEXT (current workspace, primary currency: ${context.currency}):
@@ -176,22 +210,35 @@ THIS MONTH SUMMARY:
 BUDGETS (this month):
 ${context.budgets.map((b) => `- ${b.category}: limit ${b.limit} ${context.currency}, spent ${b.spent} ${context.currency}, remaining ${(b.limit - b.spent).toFixed(2)} ${context.currency}`).join("\n") || "No budgets set."}
 
+EXPENSE CATEGORIES (use exact id values when suggesting budget creation):
+${expenseCategories.map((c) => `- id: ${c.id}, name: ${c.name}`).join("\n") || "No expense categories."}
+
+INCOME CATEGORIES:
+${incomeCategories.map((c) => `- id: ${c.id}, name: ${c.name}`).join("\n") || "No income categories."}
+
 RECENT TRANSACTIONS (this month, up to 50):
 ${context.recentTransactions.map((tx) => `- ${tx.date}: ${tx.type} ${tx.amount} ${tx.currency} ${tx.category ? `[${tx.category}]` : ""} ${tx.description ?? ""} (${tx.account})`).join("\n") || "No transactions this month."}
 
 RULES:
-- Be concise and conversational. Keep responses under 200 words.
+- Be concise and conversational.
+- Use **bold** markdown for key numbers or important terms.
 - Analyze the data above to give personalized advice.
-- When you suggest an action the user can take in the app, include it in the "actions" array of your response.
-- Available actions (use these exact keys):
-  * "create_savings_account" — suggest creating a new savings account
-  * "create_budget" — suggest creating or adjusting a budget
-  * "add_transaction" — suggest logging a transaction
-  * "view_accounts" — suggest reviewing accounts
-  * "view_budgets" — suggest reviewing budgets
-  * "view_transactions" — suggest reviewing transaction history
-- Only suggest actions when they are relevant to your advice. Do not force them.
-- Use the user's currency when mentioning amounts.
+- For longer responses that cover multiple topics, use ## headers to create logical sections (e.g. ## Overview, ## Key Issues, ## Recommendations). Keep each section focused and scannable.
+- Use --- (horizontal rule) only to separate clearly distinct topics, not between every paragraph.
+- For short single-topic responses, skip headers entirely — write in plain flowing text.
+
+ACTION RULES — there are two kinds of actions:
+
+1. NAVIGATE actions: open a screen in the app. Use when pointing the user somewhere to do something themselves.
+   Available action_keys: create_savings_account, create_budget, add_transaction, view_accounts, view_budgets, view_transactions
+   For these, set params.categoryId, params.categoryName, params.amount all to "".
+
+2. EXECUTE actions: you perform the operation on behalf of the user. Only use these when the user has EXPLICITLY confirmed BOTH the category AND the amount they want (they said "yes", "confirm", "do it", or provided final numbers). Do NOT use execute actions based on speculation.
+   Available action_keys: execute_create_budget
+   For execute_create_budget, populate params.categoryId with the exact id from the EXPENSE CATEGORIES list, params.categoryName with the category display name, and params.amount as a numeric string (e.g. "5000").
+
+- Only suggest actions that are relevant to your advice.
+- Use the user's currency (${context.currency}) when mentioning amounts.
 - If the user asks about something unrelated to finances, gently redirect them.`;
 };
 
@@ -200,9 +247,18 @@ export type ChatMessage = {
   content: string;
 };
 
+export type InsightsActionParams = {
+  categoryId: string;
+  categoryName: string;
+  amount: string;
+};
+
 export type InsightsAction = {
   label: string;
-  route: string;
+  route?: string;
+  isExecutable: boolean;
+  actionKey: string;
+  params: InsightsActionParams;
 };
 
 export type InsightsResponse = {
@@ -217,7 +273,10 @@ export const chat = async (
   workspaceId?: string,
 ): Promise<InsightsResponse> => {
   if (!env.OPENAI_API_KEY) {
-    throw new ApiError("AI features are not configured", HTTP_STATUS.serviceUnavailable);
+    throw new ApiError(
+      "AI features are not configured",
+      HTTP_STATUS.serviceUnavailable,
+    );
   }
 
   const user = await getUser(firebaseUid);
@@ -235,7 +294,7 @@ export const chat = async (
   ];
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages,
     response_format: {
       type: "json_schema",
@@ -245,21 +304,53 @@ export const chat = async (
         schema: {
           type: "object",
           properties: {
-            reply: { type: "string", description: "The assistant's text reply." },
+            reply: {
+              type: "string",
+              description: "The assistant's text reply.",
+            },
             actions: {
               type: "array",
               description: "Suggested app actions. Only include if relevant.",
               items: {
                 type: "object",
                 properties: {
-                  label: { type: "string", description: "Button label shown to the user." },
+                  label: {
+                    type: "string",
+                    description: "Button label shown to the user.",
+                  },
                   action_key: {
                     type: "string",
-                    enum: Object.keys(ALLOWED_ACTIONS),
+                    enum: [
+                      ...Object.keys(NAVIGATE_ACTIONS),
+                      ...Array.from(EXECUTE_ACTIONS),
+                    ],
                     description: "The action key.",
                   },
+                  params: {
+                    type: "object",
+                    description:
+                      "Parameters for execute actions. Use empty strings for navigate actions.",
+                    properties: {
+                      categoryId: {
+                        type: "string",
+                        description: "Category id (for execute_create_budget).",
+                      },
+                      categoryName: {
+                        type: "string",
+                        description:
+                          "Category display name (for execute_create_budget).",
+                      },
+                      amount: {
+                        type: "string",
+                        description:
+                          "Budget amount as a numeric string (for execute_create_budget).",
+                      },
+                    },
+                    required: ["categoryId", "categoryName", "amount"],
+                    additionalProperties: false,
+                  },
                 },
-                required: ["label", "action_key"],
+                required: ["label", "action_key", "params"],
                 additionalProperties: false,
               },
             },
@@ -270,7 +361,7 @@ export const chat = async (
       },
     },
     temperature: 0.7,
-    max_tokens: 600,
+    max_tokens: 800,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -280,14 +371,23 @@ export const chat = async (
 
   const parsed = JSON.parse(content) as {
     reply: string;
-    actions: { label: string; action_key: string }[];
+    actions: {
+      label: string;
+      action_key: string;
+      params: InsightsActionParams;
+    }[];
   };
 
   const actions: InsightsAction[] = parsed.actions
-    .filter((a) => ALLOWED_ACTIONS[a.action_key])
+    .filter(
+      (a) => NAVIGATE_ACTIONS[a.action_key] || EXECUTE_ACTIONS.has(a.action_key),
+    )
     .map((a) => ({
       label: a.label,
-      route: ALLOWED_ACTIONS[a.action_key],
+      route: NAVIGATE_ACTIONS[a.action_key],
+      isExecutable: EXECUTE_ACTIONS.has(a.action_key),
+      actionKey: a.action_key,
+      params: a.params,
     }));
 
   return { reply: parsed.reply, actions };

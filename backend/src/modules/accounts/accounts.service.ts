@@ -14,6 +14,7 @@ const accountSelect = {
   isPrimary: true,
   isArchived: true,
   sortOrder: true,
+  savingsGoal: true,
   balances: {
     select: { currency: true, balance: true },
     orderBy: { createdAt: "asc" as const },
@@ -100,6 +101,7 @@ export const createAccountForUser = async (
     color?: string;
     isPrimary?: boolean;
     workspaceId?: string;
+    savingsGoal?: string | null;
   },
 ) => {
   const user = await getUser(firebaseUid);
@@ -114,6 +116,7 @@ export const createAccountForUser = async (
         icon: data.icon ?? null,
         color: data.color ?? null,
         isPrimary: data.isPrimary ?? false,
+        savingsGoal: data.savingsGoal ?? null,
         workspaceId: wsId,
       },
       select: { id: true },
@@ -159,6 +162,7 @@ export const updateAccountForUser = async (
     color?: string | null;
     isPrimary?: boolean;
     isArchived?: boolean;
+    savingsGoal?: string | null;
     /** Updated currency balances. Each entry upserts the AccountBalance for that currency. */
     balances?: { currency: string; balance: string }[];
   },
@@ -180,6 +184,7 @@ export const updateAccountForUser = async (
     ...(data.color !== undefined && { color: data.color }),
     ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
     ...(data.isArchived !== undefined && { isArchived: data.isArchived }),
+    ...(data.savingsGoal !== undefined && { savingsGoal: data.savingsGoal }),
   };
 
   return prisma.$transaction(async (tx) => {

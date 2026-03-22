@@ -63,6 +63,7 @@ const AddAccountScreen = () => {
       accountType: "bank_account",
       currency: workspaceCurrency,
       balance: "",
+      savingsGoal: "",
       isPrimary: false,
       icon: getAccountTypeConfig("bank_account").icon as string,
       iconColor: getAccountTypeConfig("bank_account").color,
@@ -84,6 +85,10 @@ const AddAccountScreen = () => {
           icon: values.icon,
           color: values.iconColor,
           workspaceId: workspaceId ?? undefined,
+          savingsGoal:
+            values.accountType === "savings" && values.savingsGoal
+              ? values.savingsGoal
+              : null,
         },
         { onSuccess: () => router.back() },
       );
@@ -124,6 +129,11 @@ const AddAccountScreen = () => {
   };
 
   const currencySymbol = getCurrencySymbol(formik.values.currency);
+  const isDebtType = ["debt", "credit_loan"].includes(
+    formik.values.accountType,
+  );
+  const positiveLabel = isDebtType ? t("balanceInput.owedToMe") : undefined;
+  const negativeLabel = isDebtType ? t("balanceInput.iOwe") : undefined;
   const nameError =
     formik.submitCount > 0 && formik.errors.name
       ? formik.errors.name
@@ -253,7 +263,21 @@ const AddAccountScreen = () => {
               value={formik.values.balance}
               onChange={(v) => formik.setFieldValue("balance", v)}
               currency={formik.values.currency}
+              positiveLabel={positiveLabel}
+              negativeLabel={negativeLabel}
             />
+            {formik.values.accountType === "savings" && (
+              <>
+                <View style={s.separator} />
+                <BalanceInput
+                  value={formik.values.savingsGoal}
+                  onChange={(v) => formik.setFieldValue("savingsGoal", v)}
+                  currency={formik.values.currency}
+                  label={t("onboarding.accountSetup.savingsGoal")}
+                  showSignToggle={false}
+                />
+              </>
+            )}
           </View>
 
           <View style={s.toggleGroup}>

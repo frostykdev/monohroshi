@@ -56,6 +56,12 @@ const RootLayout = () => {
                 name="(modals)"
                 options={{ presentation: "fullScreenModal" }}
               />
+              <Stack.Screen
+                name="insights"
+                options={{
+                  presentation: "fullScreenModal",
+                }}
+              />
             </Stack>
           </BottomSheetModalProvider>
         </QueryClientProvider>

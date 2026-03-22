@@ -18,6 +18,8 @@
     "title": "Current balance",
     "positive": "Positive",
     "negative": "Negative",
+    "owedToMe": "They owe me",
+    "iOwe": "I owe",
     "done": "Done",
     "infoTitle": "Current balance",
     "infoMessage": "Current balance is the amount available in your account (or the debt amount if it is a debt account). If you manually change the current balance, Monohroshi will create a Balance Correction transaction that will affect your expenses or income.",
@@ -37,6 +39,7 @@
     "addCurrency": "Add currency",
     "currencies": "currencies",
     "currentBalance": "Current balance",
+    "savingsGoalProgress": "Saved {{current}} of {{goal}}",
     "transactionHistory": "Transaction history",
     "searchTransactions": "Search transactions...",
     "noTransactions": "No transactions yet",
@@ -542,13 +545,14 @@
       "types": {
         "bank_account": "Bank accounts",
         "cash": "Cash",
-        "stocks_crypto": "Stocks & Crypto",
+        "savings": "Savings",
         "property": "Property",
         "vehicles": "Vehicles",
         "other_assets": "Other assets",
-        "credit": "Credit",
-        "loan": "Loan"
+        "credit_loan": "Credits & Loans",
+        "debt": "Debt"
       },
+      "savingsGoal": "Savings goal",
       "chooseIcon": "Choose icon",
       "errors": {
         "nameRequired": "Account name is required",
@@ -609,6 +613,9 @@
       "saveMoney": "Where can I save money?",
       "planBudget": "Help me plan a budget",
       "spendingHabits": "Analyze my spending habits"
-    }
+    },
+    "budgetCreated": "Budget created successfully!",
+    "viewBudgets": "View Budgets",
+    "budgetCreateError": "Failed to create budget. Please try again."
   }
 }

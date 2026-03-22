@@ -20,12 +20,12 @@ export type InvitationStatus =
 export const ACCOUNT_TYPES = {
   BANK_ACCOUNT: "bank_account",
   CASH: "cash",
-  STOCKS_CRYPTO: "stocks_crypto",
+  SAVINGS: "savings",
   PROPERTY: "property",
   VEHICLES: "vehicles",
   OTHER_ASSETS: "other_assets",
-  CREDIT: "credit",
-  LOAN: "loan",
+  CREDIT_LOAN: "credit_loan",
+  DEBT: "debt",
 } as const;
 
 export type AccountType =

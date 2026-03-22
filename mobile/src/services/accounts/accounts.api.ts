@@ -17,6 +17,7 @@ export type Account = {
   isPrimary: boolean;
   isArchived: boolean;
   sortOrder: number;
+  savingsGoal: string | null;
 };
 
 export type AccountTransaction = {
@@ -57,6 +58,7 @@ export type CreateAccountPayload = {
   color?: string;
   isPrimary?: boolean;
   workspaceId?: string;
+  savingsGoal?: string | null;
 };
 
 export type UpdateAccountPayload = {
@@ -66,6 +68,7 @@ export type UpdateAccountPayload = {
   color?: string | null;
   isPrimary?: boolean;
   isArchived?: boolean;
+  savingsGoal?: string | null;
   balances?: { currency: string; balance: string }[];
 };
 

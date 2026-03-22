@@ -575,7 +575,7 @@ const AddTransactionModal = () => {
     }
     const tab = txType === "income" ? "income" : "expense";
     router.push(
-      `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&fromModal=1` as never,
+      `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&lockedTab=true&fromModal=1` as never,
     );
   };
 
@@ -593,7 +593,7 @@ const AddTransactionModal = () => {
       usePickerStore.setState({ splitPickerIndex: index });
       const tab = txType === "income" ? "income" : "expense";
       router.push(
-        `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&fromModal=1` as never,
+        `/settings/categories?pickerMode=true&gridMode=true&tab=${tab}&lockedTab=true&fromModal=1` as never,
       );
     },
     [txType],

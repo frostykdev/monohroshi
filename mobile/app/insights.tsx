@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -7,10 +14,20 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Markdown from "react-native-markdown-display";
 import {
   GiftedChat,
   IMessage,
@@ -19,6 +36,8 @@ import {
   Composer,
   Send,
   BubbleProps,
+  Message,
+  MessageProps,
 } from "react-native-gifted-chat";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
@@ -29,6 +48,7 @@ import {
   type ChatMessageEntry,
 } from "@stores/useInsightsStore";
 import { useSendInsightsMessage } from "@services/insights/insights.queries";
+import { useCreateBudget } from "@services/budgets/budgets.queries";
 import type { InsightsAction } from "@services/insights/insights.api";
 
 const HEADER_HEIGHT = 56;
@@ -52,6 +72,53 @@ const toGiftedMessages = (entries: ChatMessageEntry[]): IMessage[] =>
       ? { quickReplies: undefined, actions: e.actions }
       : {}),
   }));
+
+const DOT_DURATION = 380;
+
+const TypingIndicator = () => {
+  const d1 = useSharedValue(0.3);
+  const d2 = useSharedValue(0.3);
+  const d3 = useSharedValue(0.3);
+
+  useEffect(() => {
+    const cfg = { duration: DOT_DURATION, easing: Easing.inOut(Easing.ease) };
+    const anim = withRepeat(
+      withSequence(withTiming(1, cfg), withTiming(0.3, cfg)),
+      -1,
+    );
+    d1.value = anim;
+    d2.value = withDelay(DOT_DURATION * 0.33, anim);
+    d3.value = withDelay(DOT_DURATION * 0.66, anim);
+  }, [d1, d2, d3]);
+
+  const s1 = useAnimatedStyle(() => ({ opacity: d1.value }));
+  const s2 = useAnimatedStyle(() => ({ opacity: d2.value }));
+  const s3 = useAnimatedStyle(() => ({ opacity: d3.value }));
+
+  return (
+    <View style={ti.container}>
+      <Animated.View style={[ti.dot, s1]} />
+      <Animated.View style={[ti.dot, s2]} />
+      <Animated.View style={[ti.dot, s3]} />
+    </View>
+  );
+};
+
+const ti = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  } as ViewStyle,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  } as ViewStyle,
+});
 
 const InsightsScreen = () => {
   const insets = useSafeAreaInsets();
@@ -77,6 +144,10 @@ const InsightsScreen = () => {
   const clearMessages = useInsightsStore((s) => s.clearMessages);
 
   const mutation = useSendInsightsMessage();
+  const createBudgetMutation = useCreateBudget(workspaceId);
+  const [executingActionId, setExecutingActionId] = useState<string | null>(
+    null,
+  );
   const idCounter = useRef(Date.now());
 
   const nextId = () => {
@@ -136,56 +207,143 @@ const InsightsScreen = () => {
     [handleSend],
   );
 
-  const handleActionPress = useCallback((action: InsightsAction) => {
-    router.push(action.route as never);
-  }, []);
+  const handleActionPress = useCallback(
+    (action: InsightsAction, messageId: string) => {
+      if (!action.isExecutable) {
+        router.push(action.route as never);
+        return;
+      }
 
-  const renderBubble = useCallback(
-    (props: BubbleProps<IMessage>) => {
-      const msg = props.currentMessage;
-      const actions = (msg as IMessage & { actions?: InsightsAction[] })
-        ?.actions;
+      if (action.actionKey === "execute_create_budget") {
+        const chipId = `${messageId}:${action.actionKey}`;
+        setExecutingActionId(chipId);
+        createBudgetMutation.mutate(
+          {
+            amount: action.params.amount,
+            categoryId: action.params.categoryId || undefined,
+            workspaceId: workspaceId ?? undefined,
+          },
+          {
+            onSuccess: () => {
+              setExecutingActionId(null);
+              addMessage({
+                id: nextId(),
+                role: "assistant",
+                content: t("insights.budgetCreated"),
+                actions: [
+                  {
+                    label: t("insights.viewBudgets"),
+                    route: "/settings/budgets",
+                    isExecutable: false,
+                    actionKey: "view_budgets",
+                    params: { categoryId: "", categoryName: "", amount: "" },
+                  },
+                ],
+              });
+            },
+            onError: () => {
+              setExecutingActionId(null);
+              addMessage({
+                id: nextId(),
+                role: "assistant",
+                content: t("insights.budgetCreateError"),
+              });
+            },
+          },
+        );
+      }
+    },
+    [createBudgetMutation, workspaceId, addMessage, t],
+  );
+
+  const renderMessage = useCallback(
+    (props: MessageProps<IMessage>): React.ReactElement => {
+      const isBot = props.currentMessage?.user._id === "bot";
+
+      if (isBot) {
+        const msg = props.currentMessage;
+        const actions = (msg as IMessage & { actions?: InsightsAction[] })
+          ?.actions;
+
+        return (
+          <View style={s.botMessageContainer}>
+            <Markdown style={markdownStyles}>
+              {(msg?.text as string) ?? ""}
+            </Markdown>
+            {actions && actions.length > 0 && (
+              <View style={s.actionsRow}>
+                {actions.map((action) => {
+                  const chipId = `${msg?._id}:${action.actionKey}`;
+                  const isRunning = executingActionId === chipId;
+                  return (
+                    <Pressable
+                      key={`${action.actionKey}:${action.label}`}
+                      style={({ pressed }) => [
+                        s.actionChip,
+                        action.isExecutable && s.actionChipExecute,
+                        pressed && s.actionChipPressed,
+                        isRunning && s.actionChipPressed,
+                      ]}
+                      onPress={() =>
+                        handleActionPress(action, String(msg?._id ?? ""))
+                      }
+                      disabled={isRunning}
+                    >
+                      {isRunning ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.textOnAccent}
+                        />
+                      ) : (
+                        <>
+                          <Typography
+                            variant="bodySmall"
+                            style={
+                              action.isExecutable
+                                ? s.executeChipText
+                                : s.navigateChipText
+                            }
+                          >
+                            {action.label}
+                          </Typography>
+                          <Ionicons
+                            name={
+                              action.isExecutable
+                                ? "checkmark-circle-outline"
+                                : "chevron-forward"
+                            }
+                            size={14}
+                            color={
+                              action.isExecutable
+                                ? colors.textOnAccent
+                                : colors.accent
+                            }
+                          />
+                        </>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        );
+      }
 
       return (
-        <View>
-          <Bubble
-            {...props}
-            wrapperStyle={{
-              left: s.bubbleLeft,
-              right: s.bubbleRight,
-            }}
-            textStyle={{
-              left: s.bubbleTextLeft,
-              right: s.bubbleTextRight,
-            }}
-          />
-          {actions && actions.length > 0 && (
-            <View style={s.actionsRow}>
-              {actions.map((action) => (
-                <Pressable
-                  key={action.route}
-                  style={({ pressed }) => [
-                    s.actionChip,
-                    pressed && s.actionChipPressed,
-                  ]}
-                  onPress={() => handleActionPress(action)}
-                >
-                  <Typography variant="bodySmall" color="accent">
-                    {action.label}
-                  </Typography>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={14}
-                    color={colors.accent}
-                  />
-                </Pressable>
-              ))}
-            </View>
+        <Message
+          {...props}
+          renderBubble={(bubbleProps: BubbleProps<IMessage>) => (
+            <Bubble
+              {...bubbleProps}
+              wrapperStyle={{ right: s.bubbleRight }}
+              textStyle={{ right: s.bubbleTextRight }}
+            />
           )}
-        </View>
+        />
       );
     },
-    [handleActionPress],
+    [handleActionPress, executingActionId],
   );
 
   const renderInputToolbar = useCallback(
@@ -224,6 +382,11 @@ const InsightsScreen = () => {
       </Send>
     ),
     [],
+  );
+
+  const renderFooter = useCallback(
+    () => (mutation.isPending ? <TypingIndicator /> : null),
+    [mutation.isPending],
   );
 
   const renderChatEmpty = useCallback(() => {
@@ -281,9 +444,7 @@ const InsightsScreen = () => {
     <View style={[s.container, { paddingTop: insets.top }]}>
       <ScreenHeader
         title={t("insights.title")}
-        left={
-          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-        }
+        left={<Ionicons name="close" size={24} color={colors.textPrimary} />}
         onLeftPress={() => router.back()}
         right={
           messages.length > 0 ? (
@@ -297,7 +458,8 @@ const InsightsScreen = () => {
         onSend={onSendGifted}
         user={CURRENT_USER}
         colorScheme="dark"
-        renderBubble={renderBubble}
+        renderMessage={renderMessage}
+        renderFooter={renderFooter}
         renderInputToolbar={renderInputToolbar}
         renderComposer={renderComposer}
         renderSend={renderSend}
@@ -305,7 +467,7 @@ const InsightsScreen = () => {
         renderAvatar={null}
         renderDay={() => null}
         renderTime={() => null}
-        isTyping={mutation.isPending}
+        isTyping={false}
         isSendButtonAlwaysVisible
         isScrollToBottomEnabled
         scrollToBottomStyle={s.scrollToBottom}
@@ -322,6 +484,69 @@ const InsightsScreen = () => {
   );
 };
 
+const markdownStyles = {
+  body: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  heading1: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  heading2: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: colors.textPrimary,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  heading3: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: colors.textSecondary,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  hr: {
+    backgroundColor: colors.border,
+    marginVertical: 12,
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 6,
+  },
+  strong: {
+    fontWeight: "700" as const,
+  },
+  em: {
+    fontStyle: "italic" as const,
+  },
+  bullet_list: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  ordered_list: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  list_item: {
+    marginBottom: 3,
+  },
+  code_inline: {
+    backgroundColor: colors.backgroundSurface,
+    color: colors.accent,
+    fontSize: 13,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+  },
+};
+
 const s = StyleSheet.create({
   container: {
     flex: 1,
@@ -331,15 +556,15 @@ const s = StyleSheet.create({
     backgroundColor: colors.background,
   } as ViewStyle,
 
-  // Bubbles
-  bubbleLeft: {
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: 18,
-    borderBottomLeftRadius: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-    marginBottom: 2,
+  // Bot message — full-width, no bubble
+  botMessageContainer: {
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 14,
   } as ViewStyle,
+
+  // User bubble
   bubbleRight: {
     backgroundColor: colors.backgroundSurface,
     borderRadius: 18,
@@ -348,11 +573,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 2,
   } as ViewStyle,
-  bubbleTextLeft: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    lineHeight: 22,
-  } as TextStyle,
   bubbleTextRight: {
     color: colors.textPrimary,
     fontSize: 15,
@@ -364,9 +584,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    paddingLeft: 8,
-    paddingTop: 6,
-    paddingBottom: 8,
+    paddingTop: 10,
   } as ViewStyle,
   actionChip: {
     flexDirection: "row",
@@ -379,9 +597,19 @@ const s = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: "rgba(240, 185, 11, 0.08)",
   } as ViewStyle,
+  actionChipExecute: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  } as ViewStyle,
   actionChipPressed: {
     opacity: 0.6,
   } as ViewStyle,
+  navigateChipText: {
+    color: colors.accent,
+  } as TextStyle,
+  executeChipText: {
+    color: colors.textOnAccent,
+  } as TextStyle,
 
   // Input
   inputToolbar: {

@@ -31,6 +31,8 @@ interface BalanceInputProps {
   title?: string;
   showSignToggle?: boolean;
   showInfo?: boolean;
+  positiveLabel?: string;
+  negativeLabel?: string;
 }
 
 export const BalanceInput = ({
@@ -41,6 +43,8 @@ export const BalanceInput = ({
   title,
   showSignToggle = true,
   showInfo = true,
+  positiveLabel,
+  negativeLabel,
 }: BalanceInputProps) => {
   const { t } = useTranslation();
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -190,7 +194,8 @@ export const BalanceInput = ({
             showSignToggle={showSignToggle}
             isNegative={keyboard.isNegative}
             onSetNegative={keyboard.setIsNegative}
-            onDone={() => keyboard.handleKey("done")}
+            positiveLabel={positiveLabel}
+            negativeLabel={negativeLabel}
           />
         </BottomSheetView>
       </BottomSheetModal>

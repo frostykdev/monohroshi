@@ -188,5 +188,20 @@ export const ICON_PRESET_COLORS = [
   "#007AFF",
   "#FF3B30",
   "#FF9500",
+];
+
+export const ICON_EXTRA_COLORS = [
   "#5AC8FA",
+  "#FF2D55",
+  "#00C7BE",
+  "#FFD60A",
+  "#A2845E",
+  "#8E8E93",
+  "#4ECDC4",
+  "#FF6B6B",
+  "#6C5CE7",
+  "#30D158",
+  "#BF5AF2",
+  "#FF9F0A",
+  "#32ADE6",
 ];
