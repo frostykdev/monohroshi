@@ -4,6 +4,7 @@ import {
   getAuth,
   signInWithCredential,
   GoogleAuthProvider,
+  AppleAuthProvider,
   OAuthProvider,
 } from "@react-native-firebase/auth";
 import {
@@ -20,14 +21,16 @@ export const signInWithApple = async () => {
     ],
   });
 
-  const { identityToken } = result;
+  const { identityToken, nonce } = result;
   if (!identityToken) {
     throw new Error("Apple Sign-In failed: no identity token received");
   }
 
-  const appleProvider = new OAuthProvider("apple.com");
-  const credential = appleProvider.credential({ idToken: identityToken });
-  return signInWithCredential(getAuth(), credential);
+  // Create a Firebase credential from the response
+  const appleCredential = AppleAuthProvider.credential(identityToken, nonce);
+
+  // Sign the user in with the credential
+  return signInWithCredential(getAuth(), appleCredential);
 };
 
 export const signInWithGoogle = async () => {

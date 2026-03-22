@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
-import * as Notifications from "expo-notifications";
+import { OneSignal } from "react-native-onesignal";
 import { colors } from "@constants/colors";
 import { Typography } from "@components/ui/Typography";
 import { Button } from "@components/ui/Button";
@@ -68,8 +68,8 @@ const SetupScreen = () => {
     useGoogleSignIn("signup", onAuthSuccess);
 
   useEffect(() => {
-    Notifications.getPermissionsAsync().then(({ status }) => {
-      if (status === "granted") {
+    OneSignal.Notifications.getPermissionAsync().then((granted) => {
+      if (granted) {
         markStepComplete("notifications");
       }
     });
@@ -105,8 +105,8 @@ const SetupScreen = () => {
           router.push("/(onboarding)/categories-setup");
           break;
         case "notifications":
-          Notifications.requestPermissionsAsync().then(({ status }) => {
-            if (status === "granted") {
+          OneSignal.Notifications.requestPermission(true).then((granted) => {
+            if (granted) {
               markStepComplete("notifications");
             }
           });

@@ -23,9 +23,14 @@ export const useAuthListener = () => {
       if (user) {
         try {
           await reload(user);
-        } catch {
-          await signOut(getAuth());
-          router.replace("/(onboarding)/welcome");
+        } catch (reloadError) {
+          const code = (reloadError as { code?: string }).code;
+          // Network errors from reload should not sign the user out.
+          // Only sign out for account-level errors (disabled, deleted, etc.).
+          if (code !== "auth/network-request-failed") {
+            await signOut(getAuth());
+            router.replace("/(onboarding)/welcome");
+          }
           return;
         }
 

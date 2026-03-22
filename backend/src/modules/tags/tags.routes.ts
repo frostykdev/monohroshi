@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   createTagController,
@@ -11,9 +11,9 @@ import {
 
 const tagsRouter = Router();
 
-tagsRouter.get("/", checkAuthenticated, asyncHandler(getTagsController));
-tagsRouter.post("/", checkAuthenticated, asyncHandler(createTagController));
-tagsRouter.patch("/:id", checkAuthenticated, asyncHandler(updateTagController));
-tagsRouter.delete("/:id", checkAuthenticated, asyncHandler(deleteTagController));
+tagsRouter.get("/", checkAuthorized, asyncHandler(getTagsController));
+tagsRouter.post("/", checkAuthorized, asyncHandler(createTagController));
+tagsRouter.patch("/:id", checkAuthorized, asyncHandler(updateTagController));
+tagsRouter.delete("/:id", checkAuthorized, asyncHandler(deleteTagController));
 
 export { tagsRouter };

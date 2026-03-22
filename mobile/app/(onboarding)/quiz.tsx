@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import * as Notifications from "expo-notifications";
+import { OneSignal } from "react-native-onesignal";
 import Svg, { Path } from "react-native-svg";
 import { useTranslation } from "react-i18next";
 import {
@@ -330,7 +330,7 @@ const QuizScreen = () => {
   }, [step]);
 
   const handleEnableNotifications = useCallback(async () => {
-    await Notifications.requestPermissionsAsync();
+    await OneSignal.Notifications.requestPermission(true);
     handleNext();
   }, [handleNext]);
 

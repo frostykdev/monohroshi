@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   createTransactionController,
@@ -14,32 +14,32 @@ const transactionsRouter = Router();
 
 transactionsRouter.get(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getTransactionsController),
 );
 transactionsRouter.post(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(createTransactionController),
 );
 transactionsRouter.get(
   "/stats",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getTransactionStatsController),
 );
 transactionsRouter.get(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getTransactionByIdController),
 );
 transactionsRouter.patch(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(updateTransactionController),
 );
 transactionsRouter.delete(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(deleteTransactionController),
 );
 

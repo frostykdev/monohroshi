@@ -11,7 +11,7 @@ export const ENTITLEMENT_PRO = "Monohroshi Pro";
 
 export const RevenueCatService = {
   configure() {
-    Purchases.configure({ apiKey: env.revenueCatApiKey });
+    Purchases.configure({ apiKey: env.revenueCatiOSApiKey });
 
     if (__DEV__) {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);

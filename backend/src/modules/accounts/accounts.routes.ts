@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   createAccountController,
@@ -15,18 +15,18 @@ import {
 
 const accountsRouter = Router();
 
-accountsRouter.get("/", checkAuthenticated, asyncHandler(getAccountsController));
+accountsRouter.get("/", checkAuthorized, asyncHandler(getAccountsController));
 accountsRouter.get(
   "/totals-converted",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getAccountTotalsConvertedController),
 );
-accountsRouter.get("/workspace-balance-history", checkAuthenticated, asyncHandler(getWorkspaceBalanceHistoryController));
-accountsRouter.post("/", checkAuthenticated, asyncHandler(createAccountController));
-accountsRouter.get("/:id", checkAuthenticated, asyncHandler(getAccountByIdController));
-accountsRouter.patch("/:id", checkAuthenticated, asyncHandler(updateAccountController));
-accountsRouter.delete("/:id", checkAuthenticated, asyncHandler(deleteAccountController));
-accountsRouter.get("/:id/transactions", checkAuthenticated, asyncHandler(getAccountTransactionsController));
-accountsRouter.get("/:id/balance-history", checkAuthenticated, asyncHandler(getAccountBalanceHistoryController));
+accountsRouter.get("/workspace-balance-history", checkAuthorized, asyncHandler(getWorkspaceBalanceHistoryController));
+accountsRouter.post("/", checkAuthorized, asyncHandler(createAccountController));
+accountsRouter.get("/:id", checkAuthorized, asyncHandler(getAccountByIdController));
+accountsRouter.patch("/:id", checkAuthorized, asyncHandler(updateAccountController));
+accountsRouter.delete("/:id", checkAuthorized, asyncHandler(deleteAccountController));
+accountsRouter.get("/:id/transactions", checkAuthorized, asyncHandler(getAccountTransactionsController));
+accountsRouter.get("/:id/balance-history", checkAuthorized, asyncHandler(getAccountBalanceHistoryController));
 
 export { accountsRouter };

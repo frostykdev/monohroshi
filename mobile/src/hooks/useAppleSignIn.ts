@@ -28,7 +28,7 @@ export const useAppleSignIn = (mode: AuthMode, onSuccess: () => void) => {
       // User dismissed the native Apple sign-in sheet — silent
       if (code === "ERR_CANCELED") return;
 
-      if (isApiError(error) && error.status === 404) {
+      if (isApiError(error) && error.status === 403) {
         await signOut(getAuth());
         Alert.alert(
           t("onboarding.auth.errors.accountNotFoundTitle"),

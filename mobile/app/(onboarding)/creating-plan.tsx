@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View, ViewStyle } from "react-native";
+import { StyleSheet, View, ViewStyle } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -106,12 +106,15 @@ const CreatingPlanScreen = () => {
     completeOnboarding(payload, {
       onSuccess: () => setApiDone(true),
       onError: (err) => {
+        console.log("[CreatingPlan] completeOnboarding error:", {
+          isApiError: isApiError(err),
+          status: isApiError(err) ? err.status : undefined,
+          message: err.message,
+          data: isApiError(err) ? err.data : undefined,
+        });
         if (isApiError(err) && err.status === 409) {
-          Alert.alert(
-            t("onboarding.creatingPlan.alreadyRegisteredTitle"),
-            t("onboarding.creatingPlan.alreadyRegisteredSubtitle"),
-            [{ text: t("common.ok"), onPress: navigateHome }],
-          );
+          // User already registered (local state was out of sync) — just navigate home silently
+          navigateHome();
         } else {
           setError(true);
         }

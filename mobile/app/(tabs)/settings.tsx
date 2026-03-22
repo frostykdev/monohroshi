@@ -219,6 +219,20 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(t("home.settings.logout"), undefined, [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("home.settings.logout"),
+        style: "destructive",
+        onPress: async () => {
+          setOnboardingComplete(false);
+          await signOut(getAuth());
+        },
+      },
+    ]);
+  };
+
   const handleComingSoon = () =>
     Alert.alert("Coming soon", "This feature is not yet available.");
 
@@ -435,12 +449,23 @@ const SettingsScreen = () => {
           />
         </Section>
 
+        {/* Account */}
+        <Section>
+          <Row
+            icon="log-out-outline"
+            iconBg={colors.backgroundSurface}
+            labelKey="home.settings.logout"
+            onPress={handleLogout}
+            isLast
+          />
+        </Section>
+
         {/* Danger */}
         <Section>
           <Row
             icon="trash-outline"
             iconBg={colors.error}
-            labelKey="home.settings.resetData"
+            labelKey="home.settings.deleteAccount"
             onPress={deleting ? undefined : handleDeleteAccount}
             destructive
             isLast

@@ -33,7 +33,7 @@ export const useGoogleSignIn = (mode: AuthMode, onSuccess: () => void) => {
         if (error.code === statusCodes.IN_PROGRESS) return;
       }
 
-      if (isApiError(error) && error.status === 404) {
+      if (isApiError(error) && error.status === 403) {
         await signOut(getAuth());
         Alert.alert(
           t("onboarding.auth.errors.accountNotFoundTitle"),

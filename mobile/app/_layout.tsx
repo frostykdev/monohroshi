@@ -6,6 +6,7 @@ import { colors } from "@constants/colors";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { OneSignal } from "react-native-onesignal";
 import { env } from "@constants/env";
 import { useRevenueCat } from "@hooks/useRevenueCat";
 import { useAuthListener } from "@hooks/useAuthListener";
@@ -13,6 +14,8 @@ import { useAppsFlyer } from "@hooks/useAppsFlyer";
 import { queryClient } from "@services/query-client";
 import { useLanguageStore } from "@stores/useLanguageStore";
 import i18n from "@i18n";
+
+OneSignal.initialize(env.oneSignalAppId);
 
 GoogleSignin.configure({
   webClientId: env.googleWebClientId,

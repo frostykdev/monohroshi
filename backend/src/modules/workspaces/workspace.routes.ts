@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   cancelInvitationController,
@@ -18,55 +18,55 @@ const workspaceRouter = Router();
 
 workspaceRouter.get(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getAllWorkspacesController),
 );
 
 workspaceRouter.get(
   "/current",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getCurrentWorkspaceController),
 );
 
 workspaceRouter.patch(
   "/current",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(updateCurrentWorkspaceController),
 );
 
 workspaceRouter.post(
   "/current/invites",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(inviteToCurrentWorkspaceController),
 );
 
 workspaceRouter.delete(
   "/current/invites/:inviteId",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(cancelInvitationController),
 );
 
 workspaceRouter.get(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getWorkspaceByIdController),
 );
 
 workspaceRouter.patch(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(updateWorkspaceByIdController),
 );
 
 workspaceRouter.delete(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(deleteWorkspaceController),
 );
 
 workspaceRouter.post(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(createWorkspaceController),
 );
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   createCategoryController,
@@ -14,31 +14,31 @@ const categoriesRouter = Router();
 
 categoriesRouter.get(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(getCategoriesController),
 );
 
 categoriesRouter.post(
   "/",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(createCategoryController),
 );
 
 categoriesRouter.patch(
   "/reorder",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(reorderCategoriesController),
 );
 
 categoriesRouter.patch(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(updateCategoryController),
 );
 
 categoriesRouter.delete(
   "/:id",
-  checkAuthenticated,
+  checkAuthorized,
   asyncHandler(deleteCategoryController),
 );
 

@@ -16,7 +16,14 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleAllowMixedLocalizations": true,
+        "UIBackgroundModes": ["remote-notification"]
+      },
+      "entitlements": {
+        "aps-environment": "production",
+        "com.apple.security.application-groups": [
+          "group.com.monohroshi.onesignal"
+        ]
       },
       "appleTeamId": "77D6J7AP4B"
     },
@@ -40,7 +47,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/icon.png",
+          "image": "./assets/images/icon-splash.png",
           "imageWidth": 300,
           "resizeMode": "contain",
           "backgroundColor": "#1B1F2E",
@@ -58,14 +65,18 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": [
-              "RNFBApp"
-            ]
+            "forceStaticLinking": ["RNFBApp"]
           }
         }
       ],
       "@react-native-firebase/auth",
-      "react-native-appsflyer"
+      "react-native-appsflyer",
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "production"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

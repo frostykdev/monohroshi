@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkAuthenticated } from "../../middlewares/check-authenticated";
+import { checkAuthorized } from "../../middlewares/check-authorized";
 import { asyncHandler } from "../../shared/async-handler";
 import {
   convertController,
@@ -13,9 +13,9 @@ const fxRouter = Router();
 fxRouter.post("/refresh-daily", asyncHandler(refreshDailyController));
 
 /** GET /v1/fx/rates?base=USD&date=2026-03-15 */
-fxRouter.get("/rates", checkAuthenticated, asyncHandler(getRatesController));
+fxRouter.get("/rates", checkAuthorized, asyncHandler(getRatesController));
 
 /** GET /v1/fx/convert?amount=100&from=USD&to=UAH&date=2026-03-15 */
-fxRouter.get("/convert", checkAuthenticated, asyncHandler(convertController));
+fxRouter.get("/convert", checkAuthorized, asyncHandler(convertController));
 
 export { fxRouter };

@@ -9,7 +9,10 @@
     "back": "Back",
     "loading": "Loading...",
     "continue": "Continue",
-    "retry": "Retry"
+    "retry": "Retry",
+    "errors": {
+      "networkError": "No internet connection"
+    }
   },
   "balanceInput": {
     "title": "Current balance",
@@ -279,7 +282,8 @@
       "faq": "FAQ",
       "localBackup": "Local backup",
       "localBackupHint": "Your data is stored only on this device. We recommend making regular backups to avoid losing data if you change your phone or delete the app.",
-      "resetData": "Reset data",
+      "logout": "Log out",
+      "deleteAccount": "Delete account",
       "termsOfUse": "Terms of use",
       "privacyPolicy": "Privacy policy",
       "version": "Version",
