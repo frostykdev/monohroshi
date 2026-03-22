@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,9 +9,10 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import DraggableFlatList, {
@@ -78,11 +79,43 @@ const CategoriesScreen = () => {
   const [selectedItem, setSelectedItem] =
     useState<CategoryActionsSheetItem | null>(null);
   const actionsSheetRef = useRef<BottomSheetModal>(null);
+  const flatListRef = useRef<FlatList<Category>>(null);
+  const gridScrollRef = useRef<ScrollView>(null);
+
+  // When returning from add-category in picker mode, if a category was already
+  // set in the picker store, navigate straight back to the transaction modal.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPickerMode) return;
+      const store = usePickerStore.getState();
+      if (store.categoryId) {
+        router.back();
+      }
+    }, [isPickerMode]),
+  );
 
   const categories = allCategories.filter(
     (c) =>
       c.type === activeTab && !(isPickerMode && excludedIds.includes(c.id)),
   );
+
+  const prevCategoriesLengthRef = useRef(categories.length);
+  const pendingScrollRef = useRef(false);
+
+  useEffect(() => {
+    if (categories.length > prevCategoriesLengthRef.current) {
+      pendingScrollRef.current = true;
+    }
+    prevCategoriesLengthRef.current = categories.length;
+  }, [categories.length]);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (pendingScrollRef.current) {
+      pendingScrollRef.current = false;
+      flatListRef.current?.scrollToOffset({ offset: 999999, animated: true });
+      gridScrollRef.current?.scrollTo({ y: 999999, animated: true });
+    }
+  }, []);
 
   const segments: Segment<Tab>[] = [
     { key: "expense", label: t("onboarding.categoriesSetup.expenseTab") },
@@ -251,20 +284,18 @@ const CategoriesScreen = () => {
         }
         onLeftPress={() => router.back()}
         right={
-          isPickerMode ? undefined : (
-            <Ionicons name="add" size={26} color={colors.textPrimary} />
-          )
+          <Ionicons
+            name="add"
+            size={26}
+            color={isPickerMode ? colors.accent : colors.textPrimary}
+          />
         }
-        onRightPress={
-          isPickerMode
-            ? undefined
-            : () => {
-                haptic();
-                router.push(
-                  `/(modals)/add-category?tab=${activeTab}&workspaceId=${activeWorkspaceId ?? ""}` as never,
-                );
-              }
-        }
+        onRightPress={() => {
+          haptic();
+          router.push(
+            `/(modals)/add-category?tab=${activeTab}&workspaceId=${activeWorkspaceId ?? ""}${isPickerMode ? "&pickerMode=true" : ""}` as never,
+          );
+        }}
       />
 
       {!isRefundMode && (
@@ -301,13 +332,16 @@ const CategoriesScreen = () => {
         </View>
       ) : isGridMode ? (
         <ScrollView
+          ref={gridScrollRef}
           contentContainerStyle={s.gridContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={handleContentSizeChange}
         >
           <View style={s.gridWrap}>{categories.map(renderGridCell)}</View>
         </ScrollView>
       ) : (
         <DraggableFlatList
+          ref={flatListRef}
           data={categories}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -319,6 +353,7 @@ const CategoriesScreen = () => {
           }}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={handleContentSizeChange}
         />
       )}
 

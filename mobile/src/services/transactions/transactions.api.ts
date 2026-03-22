@@ -5,7 +5,6 @@ type ApiResponse<TData> = { success: boolean; data: TData };
 export type TransactionAccount = {
   id: string;
   name: string;
-  currency: string;
   icon: string | null;
   color: string | null;
 };
@@ -28,6 +27,7 @@ export type Transaction = {
   id: string;
   type: string;
   amount: string;
+  currency: string;
   destinationAmount: string | null;
   description: string | null;
   date: string;

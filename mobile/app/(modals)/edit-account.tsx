@@ -20,10 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { colors } from "@constants/colors";
-import {
-  getAccountTypeConfig,
-  getCurrencySymbol,
-} from "@constants/account-types";
+import { getAccountTypeConfig } from "@constants/account-types";
 import { DEFAULT_ICON_COLOR } from "@constants/icon-list";
 import { BalanceInput } from "@components/ui/BalanceInput";
 import { IconPickerButton } from "@components/ui/IconPickerButton";
@@ -40,6 +37,8 @@ import {
 const haptic = () => {
   if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
 };
+
+type FormBalances = { currency: string; balance: string }[];
 
 const EditAccountScreen = () => {
   const { t } = useTranslation();
@@ -66,11 +65,10 @@ const EditAccountScreen = () => {
     initialValues: {
       name: account?.name ?? "",
       accountType: account?.type ?? "bank_account",
-      currency: account?.currency ?? "USD",
-      balance: account?.balance ?? "0",
       isPrimary: account?.isPrimary ?? false,
       icon: account?.icon ?? cfg.icon,
       iconColor: account?.color ?? cfg.color,
+      balances: (account?.balances ?? []) as FormBalances,
     },
     enableReinitialize: true,
     validationSchema,
@@ -86,11 +84,10 @@ const EditAccountScreen = () => {
           id,
           name: values.name.trim(),
           type: values.accountType,
-          currency: values.currency,
-          balance: values.balance || "0",
           isPrimary: values.isPrimary,
           icon: values.icon,
           color: values.iconColor,
+          balances: values.balances,
         },
         {
           onSuccess: () => router.back(),
@@ -117,10 +114,6 @@ const EditAccountScreen = () => {
         formikRef.current.setFieldValue("iconColor", typeCfg.color);
         usePickerStore.setState({ accountType: null });
       }
-      if (store.currency) {
-        formikRef.current.setFieldValue("currency", store.currency);
-        usePickerStore.setState({ currency: null });
-      }
       if (store.icon) {
         formikRef.current.setFieldValue("icon", store.icon);
         formikRef.current.setFieldValue(
@@ -129,10 +122,25 @@ const EditAccountScreen = () => {
         );
         usePickerStore.setState({ icon: null, iconColor: null });
       }
+      // When returning from currency picker for "add currency" flow,
+      // add the new balance immediately (with "0") so zero is also valid.
+      if (store.currency) {
+        const newCurrency = store.currency;
+        usePickerStore.setState({ currency: null });
+        const already = formikRef.current.values.balances.some(
+          (b) => b.currency === newCurrency,
+        );
+        if (!already) {
+          formikRef.current.setFieldValue("balances", [
+            ...formikRef.current.values.balances,
+            { currency: newCurrency, balance: "0" },
+          ]);
+        }
+      }
     }, []),
   );
 
-  // Sync once account data loads (before user touches anything)
+  // Sync once account data loads
   const initialized = useRef(false);
   useEffect(() => {
     if (account && !initialized.current) {
@@ -141,22 +149,30 @@ const EditAccountScreen = () => {
         values: {
           name: account.name,
           accountType: account.type,
-          currency: account.currency,
-          balance: account.balance,
           isPrimary: account.isPrimary,
           icon: account.icon ?? getAccountTypeConfig(account.type).icon,
           iconColor: account.color ?? getAccountTypeConfig(account.type).color,
+          balances: account.balances as FormBalances,
         },
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
-  const currencySymbol = getCurrencySymbol(formik.values.currency);
   const nameError =
     formik.submitCount > 0 && formik.errors.name
       ? formik.errors.name
       : undefined;
+
+  const handleAddCurrency = () => {
+    haptic();
+    const existingCodes = formik.values.balances
+      .map((b) => b.currency)
+      .join(",");
+    router.push(
+      `/(modals)/currency-picker?fromModal=1${existingCodes ? `&excludedCurrencies=${existingCodes}` : ""}` as never,
+    );
+  };
 
   const handleArchive = () => {
     if (!id) return;
@@ -302,39 +318,45 @@ const EditAccountScreen = () => {
 
             <View style={s.separator} />
 
-            <Pressable
-              style={({ pressed }) => [s.settingRow, pressed && s.pressed]}
-              onPress={() => {
-                haptic();
-                router.push(
-                  `/(modals)/currency-picker?selected=${formik.values.currency}&fromModal=1`,
-                );
-              }}
-            >
-              <Typography variant="body" color="textSecondary">
-                {t("onboarding.accountSetup.currency")}
-              </Typography>
-              <View style={s.settingValue}>
-                <Typography variant="body" color="textPrimary">
-                  {currencySymbol !== formik.values.currency
-                    ? `${formik.values.currency} (${currencySymbol})`
-                    : formik.values.currency}
-                </Typography>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.textTertiary}
+            {/* Per-currency balance rows */}
+            {formik.values.balances.map((b, i) => (
+              <View key={b.currency}>
+                <BalanceInput
+                  value={b.balance}
+                  onChange={(v) =>
+                    formik.setFieldValue(
+                      "balances",
+                      formik.values.balances.map((item) =>
+                        item.currency === b.currency
+                          ? { ...item, balance: v }
+                          : item,
+                      ),
+                    )
+                  }
+                  currency={b.currency}
+                  showSignToggle
+                  showInfo={false}
                 />
+                {i < formik.values.balances.length - 1 && (
+                  <View style={s.separator} />
+                )}
               </View>
-            </Pressable>
+            ))}
 
             <View style={s.separator} />
 
-            <BalanceInput
-              value={formik.values.balance}
-              onChange={(v) => formik.setFieldValue("balance", v)}
-              currency={formik.values.currency}
-            />
+            {/* Add currency row */}
+            <Pressable
+              style={({ pressed }) => [s.settingRow, pressed && s.pressed]}
+              onPress={handleAddCurrency}
+            >
+              <View style={s.addCurrencyRow}>
+                <Ionicons name="add" size={18} color={colors.accent} />
+                <Typography variant="body" color="accent">
+                  {t("accounts.addCurrency" as never)}
+                </Typography>
+              </View>
+            </Pressable>
           </View>
 
           <View style={s.toggleGroup}>
@@ -399,7 +421,6 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
   flex: { flex: 1 } as ViewStyle,
   pressed: { opacity: 0.6 } as ViewStyle,
-  disabledButton: { opacity: 0.4 } as ViewStyle,
   scrollContent: { paddingBottom: 40 } as ViewStyle,
   nameInputContainer: {
     marginHorizontal: 24,
@@ -460,6 +481,11 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+  } as ViewStyle,
+  addCurrencyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   } as ViewStyle,
   separator: {
     height: StyleSheet.hairlineWidth,

@@ -75,15 +75,34 @@ export const completeOnboardingForCurrentUser = async (input: {
         },
       });
 
-      await tx.account.create({
+      const newAccount = await tx.account.create({
         data: {
           name: input.account.name || input.workspace.name,
           type: input.account.type,
-          currency: input.account.currency,
-          balance: input.account.balance || "0",
           isPrimary: input.account.isPrimary,
           icon: input.account.icon ?? null,
           color: input.account.color ?? null,
+          workspaceId: workspace.id,
+        },
+        select: { id: true },
+      });
+
+      await tx.accountBalance.create({
+        data: {
+          accountId: newAccount.id,
+          currency: input.account.currency,
+          balance: input.account.balance || "0",
+        },
+      });
+
+      await tx.transaction.create({
+        data: {
+          type: "initial_balance",
+          amount: input.account.balance || "0",
+          currency: input.account.currency,
+          date: new Date(),
+          accountId: newAccount.id,
+          createdById: user.id,
           workspaceId: workspace.id,
         },
       });

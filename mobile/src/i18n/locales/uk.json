@@ -31,6 +31,8 @@
     },
     "empty": "Рахунків ще немає. Додайте перший рахунок.",
     "addAccount": "Додати рахунок",
+    "addCurrency": "Додати валюту",
+    "currencies": "валюти",
     "currentBalance": "Поточний баланс",
     "transactionHistory": "Історія транзакцій",
     "searchTransactions": "Пошук транзакцій...",
@@ -184,10 +186,17 @@
     "uncategorisedExpense": "Без категорії (витрата)",
     "uncategorisedIncome": "Без категорії (дохід)",
     "save": "Зберегти",
+    "splitTransaction": "Розділити транзакцію",
+    "addCategory": "Додати категорію",
+    "splitCategory": "Категорія",
+    "splitAmountLabel": "Сума",
+    "remainingToDistribute": "залишилось розподілити",
     "errors": {
       "saveFailed": "Не вдалося зберегти транзакцію. Спробуйте ще раз.",
-      "accountRequired": "Рахунок обов'язковий",
-      "destinationRequired": "Будь ласка, оберіть рахунок призначення для переказу"
+      "accountRequired": "Будь ласка, оберіть рахунок",
+      "amountRequired": "Будь ласка, введіть суму більше 0",
+      "destinationRequired": "Будь ласка, оберіть рахунок призначення для переказу",
+      "splitNotBalanced": "Сума категорій має дорівнювати загальній сумі транзакції"
     },
     "autoConverted": "авто"
   },

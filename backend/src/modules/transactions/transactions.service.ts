@@ -34,10 +34,11 @@ const resolveWorkspaceId = async (userId: string, workspaceId?: string) => {
 export type CreateTransactionData = {
   type: string;
   amount: string;
-  /** Currency the amount was entered in. If omitted, assumed to match the account's currency. */
+  /** Currency the transaction is in. Stored as-is on the transaction and used to find/create AccountBalance. */
   currency?: string;
   accountId: string;
   destinationAccountId?: string;
+  /** Override amount received at destination (same currency). Useful for fee differences. */
   destinationAmount?: string;
   categoryId?: string;
   tagIds?: string[];
@@ -50,15 +51,16 @@ const transactionSelect = {
   id: true,
   type: true,
   amount: true,
+  currency: true,
   destinationAmount: true,
   description: true,
   date: true,
   createdAt: true,
   account: {
-    select: { id: true, name: true, currency: true, icon: true, color: true },
+    select: { id: true, name: true, icon: true, color: true },
   },
   destinationAccount: {
-    select: { id: true, name: true, currency: true, icon: true, color: true },
+    select: { id: true, name: true, icon: true, color: true },
   },
   category: {
     select: { id: true, name: true, icon: true, color: true, translationKey: true },
@@ -70,6 +72,32 @@ const transactionSelect = {
   },
 } as const;
 
+/** Upsert an AccountBalance row, adjusting balance by `delta` (positive = increase, negative = decrease). */
+const adjustAccountBalance = async (
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  accountId: string,
+  currency: string,
+  delta: ReturnType<typeof bnParse>,
+) => {
+  const existing = await tx.accountBalance.findUnique({
+    where: { accountId_currency: { accountId, currency } },
+    select: { balance: true },
+  });
+
+  if (existing) {
+    const newBalance = bnParse(existing.balance).plus(delta);
+    await tx.accountBalance.update({
+      where: { accountId_currency: { accountId, currency } },
+      data: { balance: bnRound(newBalance) },
+    });
+  } else {
+    // Create a new AccountBalance for this currency
+    await tx.accountBalance.create({
+      data: { accountId, currency, balance: bnRound(delta) },
+    });
+  }
+};
+
 export const createTransaction = async (
   firebaseUid: string,
   data: CreateTransactionData,
@@ -79,7 +107,7 @@ export const createTransaction = async (
 
   const account = await prisma.account.findFirst({
     where: { id: data.accountId, workspaceId: wsId },
-    select: { id: true, balance: true, currency: true },
+    select: { id: true },
   });
 
   if (!account)
@@ -98,20 +126,22 @@ export const createTransaction = async (
   if (rawAmount.isNaN() || rawAmount.isLessThanOrEqualTo(0))
     throw new ApiError("Amount must be positive", HTTP_STATUS.badRequest);
 
-  // Convert to account's currency if entry currency differs
-  const entryCurrency = data.currency?.toUpperCase();
-  let amount = rawAmount;
-  if (entryCurrency && entryCurrency !== account.currency) {
-    const dateStr = new Date(data.date).toISOString().slice(0, 10) || todayUTC();
-    const converted = await convertAmount(rawAmount.toNumber(), entryCurrency, account.currency, dateStr);
-    amount = bn(converted);
-  }
+  // Use the provided currency; default to first balance currency if not specified
+  const currency =
+    data.currency?.toUpperCase() ??
+    (
+      await prisma.accountBalance.findFirst({
+        where: { accountId: data.accountId },
+        orderBy: { createdAt: "asc" },
+        select: { currency: true },
+      })
+    )?.currency ??
+    "USD";
 
   const txDate = new Date(data.date);
   if (isNaN(txDate.getTime()))
     throw new ApiError("Invalid date", HTTP_STATUS.badRequest);
 
-  // Validate tag IDs belong to this workspace
   if (data.tagIds && data.tagIds.length > 0) {
     const validTags = await prisma.tag.findMany({
       where: { id: { in: data.tagIds }, workspaceId: wsId },
@@ -126,12 +156,13 @@ export const createTransaction = async (
     const newTx = await tx.transaction.create({
       data: {
         type: data.type,
-        amount: bnRound(amount),
+        amount: bnRound(rawAmount),
+        currency,
         destinationAmount: data.destinationAccountId
           ? bnRound(
               data.destinationAmount
                 ? bnParse(data.destinationAmount).abs()
-                : amount,
+                : rawAmount,
             )
           : null,
         description: data.description ?? null,
@@ -143,46 +174,26 @@ export const createTransaction = async (
         workspaceId: wsId,
         tags:
           data.tagIds && data.tagIds.length > 0
-            ? {
-                create: data.tagIds.map((tagId) => ({ tagId })),
-              }
+            ? { create: data.tagIds.map((tagId) => ({ tagId })) }
             : undefined,
       },
       select: transactionSelect,
     });
 
-    // Update account balances
-    const currentBalance = bnParse(account.balance);
-    let newBalance =
-      data.type === TRANSACTION_TYPES.INCOME
-        ? currentBalance.plus(amount)
-        : currentBalance.minus(amount); // expense or transfer (deduct from source)
+    // Update source AccountBalance
+    if (data.type === TRANSACTION_TYPES.INCOME) {
+      await adjustAccountBalance(tx, data.accountId, currency, rawAmount);
+    } else {
+      // expense or transfer (deduct from source)
+      await adjustAccountBalance(tx, data.accountId, currency, rawAmount.negated());
+    }
 
-    await tx.account.update({
-      where: { id: data.accountId },
-      data: { balance: bnRound(newBalance) },
-    });
-
-    // For transfer: add to destination
+    // For transfer: credit destination in the same currency
     if (data.type === TRANSACTION_TYPES.TRANSFER && data.destinationAccountId) {
-      const destAccount = await tx.account.findFirst({
-        where: { id: data.destinationAccountId, workspaceId: wsId },
-        select: { id: true, balance: true },
-      });
-      if (!destAccount)
-        throw new ApiError("Destination account not found", HTTP_STATUS.notFound);
-
-      // Use the explicit destination amount when provided (cross-currency transfers),
-      // otherwise mirror the source amount (same-currency transfers).
       const destCredit = data.destinationAmount
         ? bnParse(data.destinationAmount).abs()
-        : amount;
-
-      const destBalance = bnParse(destAccount.balance);
-      await tx.account.update({
-        where: { id: data.destinationAccountId },
-        data: { balance: bnRound(destBalance.plus(destCredit)) },
-      });
+        : rawAmount;
+      await adjustAccountBalance(tx, data.destinationAccountId, currency, destCredit);
     }
 
     return newTx;
@@ -235,6 +246,7 @@ export const updateTransaction = async (
       id: true,
       type: true,
       amount: true,
+      currency: true,
       destinationAmount: true,
       accountId: true,
       destinationAccountId: true,
@@ -246,8 +258,8 @@ export const updateTransaction = async (
 
   const newAccountId = data.accountId ?? existing.accountId;
   const newType = data.type ?? existing.type;
+  const newCurrency = (data.currency ?? existing.currency).toUpperCase();
 
-  // Validate tag IDs belong to this workspace
   if (data.tagIds && data.tagIds.length > 0) {
     const validTags = await prisma.tag.findMany({
       where: { id: { in: data.tagIds }, workspaceId: existing.workspaceId },
@@ -259,83 +271,37 @@ export const updateTransaction = async (
 
   return prisma.$transaction(async (tx) => {
     // ── Revert old balance effects ────────────────────────────────────────────
-    const oldAccount = await tx.account.findUnique({
-      where: { id: existing.accountId },
-      select: { balance: true },
-    });
-    if (!oldAccount)
-      throw new ApiError("Source account not found", HTTP_STATUS.notFound);
-
+    const oldCurrency = existing.currency.toUpperCase();
     const oldAmount = bnParse(existing.amount);
-    const oldRevertedBalance =
-      existing.type === TRANSACTION_TYPES.INCOME
-        ? bnParse(oldAccount.balance).minus(oldAmount)
-        : bnParse(oldAccount.balance).plus(oldAmount);
 
-    await tx.account.update({
-      where: { id: existing.accountId },
-      data: { balance: bnRound(oldRevertedBalance) },
-    });
+    if (existing.type === TRANSACTION_TYPES.INCOME) {
+      await adjustAccountBalance(tx, existing.accountId, oldCurrency, oldAmount.negated());
+    } else {
+      // expense or transfer source
+      await adjustAccountBalance(tx, existing.accountId, oldCurrency, oldAmount);
+    }
 
     if (
       existing.type === TRANSACTION_TYPES.TRANSFER &&
       existing.destinationAccountId
     ) {
-      const oldDest = await tx.account.findUnique({
-        where: { id: existing.destinationAccountId },
-        select: { balance: true },
-      });
-      if (oldDest) {
-        const oldDestAmount = existing.destinationAmount
-          ? bnParse(existing.destinationAmount)
-          : oldAmount;
-        await tx.account.update({
-          where: { id: existing.destinationAccountId },
-          data: {
-            balance: bnRound(bnParse(oldDest.balance).minus(oldDestAmount)),
-          },
-        });
-      }
+      const oldDestAmount = existing.destinationAmount
+        ? bnParse(existing.destinationAmount)
+        : oldAmount;
+      await adjustAccountBalance(tx, existing.destinationAccountId, oldCurrency, oldDestAmount.negated());
     }
 
     // ── Compute new amount ────────────────────────────────────────────────────
-    const newAccount = await tx.account.findFirst({
-      where: { id: newAccountId, workspaceId: existing.workspaceId },
-      select: { balance: true, currency: true },
-    });
-    if (!newAccount)
-      throw new ApiError("Account not found", HTTP_STATUS.notFound);
-
     let newAmount = data.amount ? bnParse(data.amount) : bnParse(existing.amount);
     if (newAmount.isLessThanOrEqualTo(0))
       throw new ApiError("Amount must be positive", HTTP_STATUS.badRequest);
 
-    if (data.amount && data.currency) {
-      const entryCurrency = data.currency.toUpperCase();
-      if (entryCurrency !== newAccount.currency) {
-        const dateStr = data.date
-          ? new Date(data.date).toISOString().slice(0, 10)
-          : todayUTC();
-        const converted = await convertAmount(
-          newAmount.toNumber(),
-          entryCurrency,
-          newAccount.currency,
-          dateStr,
-        );
-        newAmount = bn(converted);
-      }
-    }
-
     // ── Apply new balance effects ─────────────────────────────────────────────
-    const srcNewBalance =
-      newType === TRANSACTION_TYPES.INCOME
-        ? bnParse(newAccount.balance).plus(newAmount)
-        : bnParse(newAccount.balance).minus(newAmount);
-
-    await tx.account.update({
-      where: { id: newAccountId },
-      data: { balance: bnRound(srcNewBalance) },
-    });
+    if (newType === TRANSACTION_TYPES.INCOME) {
+      await adjustAccountBalance(tx, newAccountId, newCurrency, newAmount);
+    } else {
+      await adjustAccountBalance(tx, newAccountId, newCurrency, newAmount.negated());
+    }
 
     const newDestAccountId =
       "destinationAccountId" in data
@@ -343,30 +309,13 @@ export const updateTransaction = async (
         : existing.destinationAccountId;
 
     if (newType === TRANSACTION_TYPES.TRANSFER && newDestAccountId) {
-      const newDest = await tx.account.findFirst({
-        where: { id: newDestAccountId, workspaceId: existing.workspaceId },
-        select: { balance: true },
-      });
-      if (!newDest)
-        throw new ApiError(
-          "Destination account not found",
-          HTTP_STATUS.notFound,
-        );
-
       const newDestAmount =
         "destinationAmount" in data && data.destinationAmount
           ? bnParse(data.destinationAmount).abs()
           : newAmount;
-
-      await tx.account.update({
-        where: { id: newDestAccountId },
-        data: {
-          balance: bnRound(bnParse(newDest.balance).plus(newDestAmount)),
-        },
-      });
+      await adjustAccountBalance(tx, newDestAccountId, newCurrency, newDestAmount);
     }
 
-    // ── Persist the updated transaction ──────────────────────────────────────
     const resolvedDestAmount =
       newType === TRANSACTION_TYPES.TRANSFER
         ? "destinationAmount" in data && data.destinationAmount !== undefined
@@ -383,6 +332,7 @@ export const updateTransaction = async (
       data: {
         type: newType,
         amount: bnRound(newAmount),
+        currency: newCurrency,
         destinationAmount: resolvedDestAmount,
         description:
           "description" in data ? (data.description ?? null) : undefined,
@@ -430,6 +380,7 @@ export const deleteTransaction = async (
       id: true,
       type: true,
       amount: true,
+      currency: true,
       destinationAmount: true,
       accountId: true,
       destinationAccountId: true,
@@ -439,43 +390,25 @@ export const deleteTransaction = async (
     throw new ApiError("Transaction not found", HTTP_STATUS.notFound);
 
   await prisma.$transaction(async (tx) => {
-    const account = await tx.account.findUnique({
-      where: { id: existing.accountId },
-      select: { balance: true },
-    });
-    if (!account)
-      throw new ApiError("Account not found", HTTP_STATUS.notFound);
-
+    const currency = existing.currency.toUpperCase();
     const amount = bnParse(existing.amount);
-    const revertedBalance =
-      existing.type === TRANSACTION_TYPES.INCOME
-        ? bnParse(account.balance).minus(amount)
-        : bnParse(account.balance).plus(amount);
 
-    await tx.account.update({
-      where: { id: existing.accountId },
-      data: { balance: bnRound(revertedBalance) },
-    });
+    // Revert source balance
+    if (existing.type === TRANSACTION_TYPES.INCOME) {
+      await adjustAccountBalance(tx, existing.accountId, currency, amount.negated());
+    } else {
+      await adjustAccountBalance(tx, existing.accountId, currency, amount);
+    }
 
+    // Revert destination balance for transfers
     if (
       existing.type === TRANSACTION_TYPES.TRANSFER &&
       existing.destinationAccountId
     ) {
-      const destAccount = await tx.account.findUnique({
-        where: { id: existing.destinationAccountId },
-        select: { balance: true },
-      });
-      if (destAccount) {
-        const destAmount = existing.destinationAmount
-          ? bnParse(existing.destinationAmount)
-          : amount;
-        await tx.account.update({
-          where: { id: existing.destinationAccountId },
-          data: {
-            balance: bnRound(bnParse(destAccount.balance).minus(destAmount)),
-          },
-        });
-      }
+      const destAmount = existing.destinationAmount
+        ? bnParse(existing.destinationAmount)
+        : amount;
+      await adjustAccountBalance(tx, existing.destinationAccountId, currency, destAmount.negated());
     }
 
     await tx.transaction.delete({ where: { id: existing.id } });
@@ -500,6 +433,31 @@ export const getTransactions = async (
   const from = fromDate ? new Date(fromDate) : undefined;
   const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
 
+  const wantsUncategorized = categoryIds?.includes("__uncategorized__");
+  const wantsBalanceCorrection = categoryIds?.includes("balance_correction");
+  const realCategoryIds = categoryIds?.filter(
+    (id) => id !== "__uncategorized__" && id !== "balance_correction",
+  );
+
+  const buildCategoryCondition = () => {
+    const conditions: object[] = [];
+    if (realCategoryIds && realCategoryIds.length > 0) {
+      conditions.push({ categoryId: { in: realCategoryIds } });
+    }
+    if (wantsUncategorized) {
+      conditions.push({
+        categoryId: null,
+        type: { in: [TRANSACTION_TYPES.EXPENSE, TRANSACTION_TYPES.INCOME] },
+      });
+    }
+    if (wantsBalanceCorrection) {
+      conditions.push({ type: TRANSACTION_TYPES.BALANCE_CORRECTION });
+    }
+    if (conditions.length === 0) return {};
+    if (conditions.length === 1) return conditions[0];
+    return { OR: conditions };
+  };
+
   return prisma.transaction.findMany({
     where: {
       workspaceId: wsId,
@@ -507,7 +465,7 @@ export const getTransactions = async (
         ? { accountId: { in: accountIds } }
         : {}),
       ...(categoryIds && categoryIds.length > 0
-        ? { categoryId: { in: categoryIds } }
+        ? buildCategoryCondition()
         : {}),
       ...(tagIds && tagIds.length > 0
         ? { tags: { some: { tagId: { in: tagIds } } } }
@@ -524,11 +482,7 @@ export const getTransactions = async (
         ? {
             OR: [
               { description: { contains: search, mode: "insensitive" } },
-              {
-                category: {
-                  name: { contains: search, mode: "insensitive" },
-                },
-              },
+              { category: { name: { contains: search, mode: "insensitive" } } },
             ],
           }
         : {}),
@@ -587,26 +541,23 @@ export const getTransactionStats = async (
     where: { id: wsId },
     select: { currency: true },
   });
-  const currency = workspace?.currency ?? "USD";
+  const primaryCurrency = workspace?.currency ?? "USD";
 
   const from = fromDate ? new Date(fromDate) : undefined;
   const to = toDate ? new Date(`${toDate}T23:59:59.999Z`) : undefined;
 
-  const dateCond = from || to
-    ? {
-        date: {
-          ...(from ? { gte: from } : {}),
-          ...(to ? { lte: to } : {}),
-        },
-      }
-    : {};
+  const dateCond =
+    from || to
+      ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+      : {};
   const accountCond =
     accountIds && accountIds.length > 0
       ? { accountId: { in: accountIds } }
       : {};
 
+  // Group by (type, categoryId, currency) so we can convert each currency to primary
   const grouped = await prisma.transaction.groupBy({
-    by: ["type", "categoryId"],
+    by: ["type", "categoryId", "currency"],
     where: {
       workspaceId: wsId,
       type: { in: ["expense", "income"] },
@@ -617,7 +568,7 @@ export const getTransactionStats = async (
     _count: { id: true },
   });
 
-  // Fetch category details for all referenced category IDs
+  // Fetch category details
   const catIds = [
     ...new Set(grouped.map((g) => g.categoryId).filter(Boolean)),
   ] as string[];
@@ -627,7 +578,7 @@ export const getTransactionStats = async (
   });
   const catMap = new Map(categories.map((c) => [c.id, c]));
 
-  // Fetch tag breakdown by querying transactions with tags
+  // Fetch transactions with tags (for tag stats)
   const transactionsWithTags = await prisma.transaction.findMany({
     where: {
       workspaceId: wsId,
@@ -639,55 +590,139 @@ export const getTransactionStats = async (
     select: {
       type: true,
       amount: true,
+      currency: true,
       tags: {
-        select: {
-          tag: { select: { id: true, name: true, color: true } },
-        },
+        select: { tag: { select: { id: true, name: true, color: true } } },
       },
     },
   });
 
-  const buildResult = (type: "expense" | "income"): TypeStats => {
-    const rows = grouped.filter((g) => g.type === type);
-    const totalAmount = rows.reduce(
-      (sum, r) => sum + parseFloat(((r._sum?.amount) ?? 0).toString()),
-      0,
-    );
-    const count = rows.reduce((sum, r) => sum + (r._count?.id ?? 0), 0);
+  const correctionTransactions = await prisma.transaction.findMany({
+    where: {
+      workspaceId: wsId,
+      type: TRANSACTION_TYPES.BALANCE_CORRECTION,
+      ...dateCond,
+      ...accountCond,
+    },
+    select: {
+      amount: true,
+      currency: true,
+      tags: {
+        select: { tag: { select: { id: true, name: true, color: true } } },
+      },
+    },
+  });
 
-    const byCategory: CategoryStat[] = rows
-      .map((r) => {
-        const cat = r.categoryId ? catMap.get(r.categoryId) : null;
-        const rowTotal = parseFloat(((r._sum?.amount) ?? 0).toString());
-        return {
-          categoryId: r.categoryId,
-          categoryName: cat?.name ?? null,
-          categoryTranslationKey: cat?.translationKey ?? null,
-          icon: cat?.icon ?? null,
-          color: cat?.color ?? null,
-          total: Math.round(rowTotal * 100) / 100,
-          count: r._count?.id ?? 0,
-          percent:
-            totalAmount > 0
-              ? Math.round((rowTotal / totalAmount) * 100)
-              : 0,
-        };
-      })
+  const conversionDate = todayUTC();
+
+  /** Convert an amount from `fromCurrency` to workspace primary, returning 0 on failure */
+  const toPrimary = async (amount: number, fromCurrency: string) => {
+    if (fromCurrency === primaryCurrency) return amount;
+    try {
+      return await convertAmount(amount, fromCurrency, primaryCurrency, conversionDate);
+    } catch {
+      return amount; // fallback: use raw
+    }
+  };
+
+  const buildResult = async (type: "expense" | "income"): Promise<TypeStats> => {
+    const rows = grouped.filter((g) => g.type === type);
+
+    // Aggregate by categoryId, converting each currency group to primary currency
+    const catTotals = new Map<
+      string | null,
+      { total: number; count: number }
+    >();
+    for (const row of rows) {
+      const rawTotal = parseFloat(((row._sum?.amount) ?? 0).toString());
+      const convertedTotal = await toPrimary(rawTotal, row.currency);
+      const count = row._count?.id ?? 0;
+      const key = row.categoryId ?? null;
+      const existing = catTotals.get(key);
+      if (existing) {
+        existing.total += convertedTotal;
+        existing.count += count;
+      } else {
+        catTotals.set(key, { total: convertedTotal, count });
+      }
+    }
+
+    const byCategoryBase: CategoryStat[] = [];
+    for (const [categoryId, { total, count }] of catTotals.entries()) {
+      const cat = categoryId ? catMap.get(categoryId) : null;
+      byCategoryBase.push({
+        categoryId,
+        categoryName: cat?.name ?? null,
+        categoryTranslationKey: cat?.translationKey ?? null,
+        icon: cat?.icon ?? null,
+        color: cat?.color ?? null,
+        total: Math.round(total * 100) / 100,
+        count,
+        percent: 0,
+      });
+    }
+
+    // Balance corrections
+    const correctionRows = correctionTransactions.filter((tx) =>
+      type === "income"
+        ? bnParse(tx.amount).isGreaterThan(0)
+        : bnParse(tx.amount).isLessThan(0),
+    );
+    let correctionTotal = 0;
+    for (const tx of correctionRows) {
+      const rawAmt = bnParse(tx.amount).abs().toNumber();
+      correctionTotal += await toPrimary(rawAmt, tx.currency);
+    }
+    const correctionCount = correctionRows.length;
+
+    const byCategory: CategoryStat[] = [...byCategoryBase];
+    if (correctionCount > 0) {
+      byCategory.push({
+        categoryId: "balance_correction",
+        categoryName: "Balance correction",
+        categoryTranslationKey: "addTransaction.balanceCorrection",
+        icon: "scale-outline",
+        color: null,
+        total: Math.round(correctionTotal * 100) / 100,
+        count: correctionCount,
+        percent: 0,
+      });
+    }
+
+    const totalAmount = byCategory.reduce((sum, r) => sum + r.total, 0);
+    const count = byCategory.reduce((sum, r) => sum + r.count, 0);
+    const byCategoryWithPercent = byCategory
+      .map((r) => ({
+        ...r,
+        percent: totalAmount > 0 ? Math.round((r.total / totalAmount) * 100) : 0,
+      }))
       .sort((a, b) => b.total - a.total);
 
-    // Aggregate tag stats for this type
+    // Tag aggregation (convert each tx's amount to primary)
     const tagAccumulator = new Map<
       string,
       { tag: { id: string; name: string; color: string | null }; total: number; count: number }
     >();
     for (const tx of transactionsWithTags) {
       if (tx.type !== type) continue;
-      const amt = parseFloat(tx.amount.toString());
+      const amt = await toPrimary(parseFloat(tx.amount.toString()), tx.currency);
       for (const { tag } of tx.tags) {
-        const existing = tagAccumulator.get(tag.id);
-        if (existing) {
-          existing.total += amt;
-          existing.count += 1;
+        const ex = tagAccumulator.get(tag.id);
+        if (ex) {
+          ex.total += amt;
+          ex.count += 1;
+        } else {
+          tagAccumulator.set(tag.id, { tag, total: amt, count: 1 });
+        }
+      }
+    }
+    for (const tx of correctionRows) {
+      const amt = await toPrimary(bnParse(tx.amount).abs().toNumber(), tx.currency);
+      for (const { tag } of tx.tags) {
+        const ex = tagAccumulator.get(tag.id);
+        if (ex) {
+          ex.total += amt;
+          ex.count += 1;
         } else {
           tagAccumulator.set(tag.id, { tag, total: amt, count: 1 });
         }
@@ -708,14 +743,15 @@ export const getTransactionStats = async (
     return {
       total: Math.round(totalAmount * 100) / 100,
       count,
-      byCategory,
+      byCategory: byCategoryWithPercent,
       byTag,
     };
   };
 
-  return {
-    expenses: buildResult("expense"),
-    income: buildResult("income"),
-    currency,
-  };
+  const [expenses, income] = await Promise.all([
+    buildResult("expense"),
+    buildResult("income"),
+  ]);
+
+  return { expenses, income, currency: primaryCurrency };
 };

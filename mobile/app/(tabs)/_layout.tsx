@@ -5,6 +5,7 @@ import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import {
   getAuth,
   onAuthStateChanged,
+  reload,
   signOut,
 } from "@react-native-firebase/auth";
 import { useTranslation } from "react-i18next";
@@ -55,7 +56,7 @@ const HomeLayout = () => {
       }
 
       try {
-        await user.reload();
+        await reload(user);
       } catch {
         await signOut(auth);
         router.replace("/(onboarding)/welcome");

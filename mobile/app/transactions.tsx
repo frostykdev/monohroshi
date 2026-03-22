@@ -28,8 +28,10 @@ import { getCategoryDisplayName } from "@constants/default-categories";
 import { getAccountTypeConfig } from "@constants/account-types";
 import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
+import { DatePickerSheet } from "@components/ui/DatePickerSheet";
 import { TransactionItem } from "@components/transactions/TransactionItem";
 import { CategoryRowsSkeleton } from "@components/ui/Skeleton";
+import { FabAddButton } from "@components/ui/FabAddButton";
 import {
   type DatePreset,
   DATE_PRESETS,
@@ -40,6 +42,7 @@ import { useAccounts } from "@services/accounts/accounts.queries";
 import { useCategories } from "@services/categories/categories.queries";
 import { useTags } from "@services/tags/tags.queries";
 import { useWorkspaceStore } from "@stores/useWorkspaceStore";
+import { useSinglePressGuard } from "@hooks/useSinglePressGuard";
 import type { Transaction } from "@services/transactions/transactions.api";
 import type { Account } from "@services/accounts/accounts.api";
 
@@ -87,71 +90,6 @@ const buildList = (txs: Transaction[], locale: string): ListItem[] => {
 };
 
 // ─── Date sheet ───────────────────────────────────────────────────────────────
-
-const DateSheet = ({
-  selected,
-  onSelect,
-  sheetRef,
-}: {
-  selected: DatePreset | null;
-  onSelect: (p: DatePreset | null) => void;
-  sheetRef: React.RefObject<BottomSheetModal | null>;
-}) => {
-  const { t } = useTranslation();
-  const presets: (DatePreset | null)[] = [null, ...DATE_PRESETS];
-  return (
-    <BottomSheetView>
-      {presets.map((preset, i) => {
-        const isActive = preset === selected;
-        return (
-          <Pressable
-            key={preset ?? "all"}
-            style={({ pressed }) => [
-              ds.item,
-              i < presets.length - 1 && ds.divider,
-              pressed && ds.pressed,
-            ]}
-            onPress={() => {
-              haptic();
-              onSelect(preset);
-              sheetRef.current?.dismiss();
-            }}
-          >
-            <Typography
-              variant="body"
-              color={isActive ? "textPrimary" : "textSecondary"}
-              style={isActive ? ds.activeLabel : undefined}
-            >
-              {preset === null
-                ? t("analytics.datePresets.allTime")
-                : t(`analytics.datePresets.${preset}`)}
-            </Typography>
-            {isActive && (
-              <Ionicons name="checkmark" size={18} color={colors.accent} />
-            )}
-          </Pressable>
-        );
-      })}
-      <View style={{ height: 24 }} />
-    </BottomSheetView>
-  );
-};
-
-const ds = StyleSheet.create({
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-  } as ViewStyle,
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  } as ViewStyle,
-  pressed: { opacity: 0.6 } as ViewStyle,
-  activeLabel: { fontWeight: "700" } as TextStyle,
-});
 
 // ─── Filter chip ─────────────────────────────────────────────────────────────
 
@@ -273,6 +211,10 @@ const asp = StyleSheet.create({
   pressed: { opacity: 0.6 } as ViewStyle,
 });
 
+// Virtual category IDs (not real DB ids)
+export const VIRTUAL_CATEGORY_UNCATEGORIZED = "__uncategorized__";
+export const VIRTUAL_CATEGORY_BALANCE_CORRECTION = "balance_correction";
+
 // ─── Category picker sheet ────────────────────────────────────────────────────
 
 const CategorySheet = ({
@@ -293,6 +235,22 @@ const CategorySheet = ({
   insetBottom: number;
 }) => {
   const { t } = useTranslation();
+
+  const specialCategories = [
+    {
+      id: VIRTUAL_CATEGORY_UNCATEGORIZED,
+      name: t("analytics.uncategorised"),
+      icon: "help-outline" as const,
+      color: colors.backgroundSurfaceAlt,
+    },
+    {
+      id: VIRTUAL_CATEGORY_BALANCE_CORRECTION,
+      name: t("addTransaction.balanceCorrection"),
+      icon: "scale-outline" as const,
+      color: colors.backgroundSurfaceAlt,
+    },
+  ];
+
   return (
     <BottomSheetScrollView
       contentContainerStyle={[asp.content, { paddingBottom: insetBottom + 16 }]}
@@ -300,6 +258,26 @@ const CategorySheet = ({
       <Typography variant="label" style={asp.title}>
         {t("transactions.filterCategories")}
       </Typography>
+      {specialCategories.map((cat) => {
+        const isSelected = selected.includes(cat.id);
+        return (
+          <Pressable
+            key={cat.id}
+            style={({ pressed }) => [asp.row, pressed && asp.pressed]}
+            onPress={() => onToggle(cat.id)}
+          >
+            <View style={[asp.icon, { backgroundColor: cat.color }]}>
+              <Ionicons name={cat.icon} size={18} color={colors.textTertiary} />
+            </View>
+            <Typography variant="body" style={asp.flex}>
+              {cat.name}
+            </Typography>
+            {isSelected && (
+              <Ionicons name="checkmark" size={18} color={colors.accent} />
+            )}
+          </Pressable>
+        );
+      })}
       {categories.map((cat) => {
         const isSelected = selected.includes(cat.id);
         const bg = cat.color ?? colors.backgroundSurface;
@@ -395,6 +373,9 @@ const TransactionsScreen = () => {
     tagName?: string;
     datePreset?: string;
     search?: string;
+    // virtual category flags
+    uncategorized?: string;
+    balanceCorrection?: string;
   }>();
 
   // ── Filter state ─────────────────────────────────────────────────────────────
@@ -407,7 +388,15 @@ const TransactionsScreen = () => {
     params.accountIds ? params.accountIds.split(",").filter(Boolean) : [],
   );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
-    params.categoryId ? [params.categoryId] : [],
+    () => {
+      const ids: string[] = [];
+      if (params.categoryId) ids.push(params.categoryId);
+      if (params.uncategorized === "1")
+        ids.push(VIRTUAL_CATEGORY_UNCATEGORIZED);
+      if (params.balanceCorrection === "1")
+        ids.push(VIRTUAL_CATEGORY_BALANCE_CORRECTION);
+      return ids;
+    },
   );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     params.tagId ? [params.tagId] : [],
@@ -418,6 +407,7 @@ const TransactionsScreen = () => {
   const accountSheetRef = useRef<BottomSheetModal>(null);
   const categorySheetRef = useRef<BottomSheetModal>(null);
   const tagSheetRef = useRef<BottomSheetModal>(null);
+  const { runWithGuard } = useSinglePressGuard();
 
   // ── Data ─────────────────────────────────────────────────────────────────────
   const { data: accounts = [] } = useAccounts(workspaceId);
@@ -476,6 +466,13 @@ const TransactionsScreen = () => {
     setDatePreset(null);
     setSearch("");
   }, []);
+
+  const openAdd = useCallback(() => {
+    runWithGuard(() => {
+      haptic();
+      router.push("/(modals)/add-transaction" as never);
+    });
+  }, [runWithGuard]);
 
   const hasFilters =
     selectedAccountIds.length > 0 ||
@@ -717,19 +714,7 @@ const TransactionsScreen = () => {
       </View>
 
       {/* ── FAB ──────────────────────────────────────────────────────────────── */}
-      <Pressable
-        style={({ pressed }) => [
-          s.fab,
-          { bottom: insets.bottom + 20 },
-          pressed && s.fabPressed,
-        ]}
-        onPress={() => {
-          haptic();
-          router.push("/(modals)/add-transaction" as never);
-        }}
-      >
-        <Ionicons name="add" size={28} color={colors.textOnAccent} />
-      </Pressable>
+      <FabAddButton onPress={openAdd} bottom={insets.bottom + 20} />
 
       {/* ── Date sheet ───────────────────────────────────────────────────────── */}
       <BottomSheetModal
@@ -739,10 +724,11 @@ const TransactionsScreen = () => {
         handleIndicatorStyle={s.sheetHandle}
         backdropComponent={renderBackdrop}
       >
-        <DateSheet
+        <DatePickerSheet
           selected={datePreset}
           onSelect={setDatePreset}
           sheetRef={dateSheetRef}
+          allowNull
         />
       </BottomSheetModal>
 
@@ -906,25 +892,6 @@ const s = StyleSheet.create({
   emptyText: {
     textAlign: "center",
   } as TextStyle,
-  fab: {
-    position: "absolute",
-    right: 24,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 18,
-    elevation: 12,
-  } as ViewStyle,
-  fabPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.95 }],
-  } as ViewStyle,
   sheetBg: { backgroundColor: colors.backgroundElevated } as ViewStyle,
   sheetHandle: { backgroundColor: colors.border } as ViewStyle,
   pressed: { opacity: 0.6 } as ViewStyle,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { DateTime } from "luxon";
@@ -31,13 +31,19 @@ import {
   getAccountTypeConfig,
   getCurrencySymbol,
 } from "@constants/account-types";
+import { currencyFlag, getCurrencyByCode } from "@constants/currencies";
 import { Typography } from "@components/ui/Typography";
+import { FabAddButton } from "@components/ui/FabAddButton";
 import {
   useAccount,
   useAccountBalanceHistory,
   useAccountTransactions,
+  useAccountTotalsConverted,
 } from "@services/accounts/accounts.queries";
 import { TransactionList } from "@components/transactions/TransactionList";
+import { useSinglePressGuard } from "@hooks/useSinglePressGuard";
+import { usePickerStore } from "@stores/usePickerStore";
+import { useWorkspaceStore } from "@stores/useWorkspaceStore";
 
 const haptic = () => {
   if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
@@ -63,15 +69,37 @@ const AccountDetailsScreen = () => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { runWithGuard } = useSinglePressGuard();
 
   // Computed early so animated worklets can capture it in their closures
   const navBarHeight = insets.top + NAV_HEIGHT;
 
+  const activeWorkspaceId = useWorkspaceStore((s) => s.id);
   const { data: account, isLoading } = useAccount(id);
   const { data: transactions = [], isLoading: txLoading } =
     useAccountTransactions(id);
+  const { data: totalsData } = useAccountTotalsConverted(activeWorkspaceId);
+  const convertedTotal = totalsData?.accounts.find((ct) => ct.accountId === id);
 
   const txSearch = "";
+  const [highlightedTxId, setHighlightedTxId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const store = usePickerStore.getState();
+      if (store.newTransactionId !== null) {
+        setHighlightedTxId(store.newTransactionId);
+        usePickerStore.setState({ newTransactionId: null });
+      }
+    }, []),
+  );
+
+  const openAdd = useCallback(() => {
+    runWithGuard(() => {
+      haptic();
+      router.push(`/(modals)/add-transaction?defaultAccountId=${id}` as never);
+    });
+  }, [id, runWithGuard]);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -178,7 +206,11 @@ const AccountDetailsScreen = () => {
     ];
   }, [chartData]);
 
-  const currency = account?.currency ?? "USD";
+  const balances = account?.balances ?? [];
+  const isMultiCurrency = balances.length > 1;
+  // For single-currency display, use the first balance; for chart Y-axis label
+  const primaryBalance = balances[0];
+  const currency = primaryBalance?.currency ?? "USD";
   const symbol = getCurrencySymbol(currency);
 
   // ── Skeleton ───────────────────────────────────────────────────────────────
@@ -342,7 +374,7 @@ const AccountDetailsScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           s.scrollContent,
-          { paddingTop: navBarHeight, paddingBottom: insets.bottom + 32 },
+          { paddingTop: navBarHeight, paddingBottom: insets.bottom + 80 },
         ]}
       >
         {/* Hero – scrolls naturally behind the fixed nav bar */}
@@ -358,9 +390,56 @@ const AccountDetailsScreen = () => {
             </View>
           </View>
           <Typography variant="h2">{account.name}</Typography>
-          <Typography variant="h1" color="textPrimary" style={s.balanceText}>
-            {formatBalance(account.balance, currency)}
-          </Typography>
+          {isMultiCurrency ? (
+            <>
+              {convertedTotal?.totalInPrimary != null ? (
+                <Typography
+                  variant="h1"
+                  color="textPrimary"
+                  style={s.balanceText}
+                >
+                  {formatBalance(
+                    String(convertedTotal.totalInPrimary),
+                    convertedTotal.primaryCurrency,
+                  )}
+                </Typography>
+              ) : null}
+              <Typography
+                variant="caption"
+                color="textSecondary"
+                style={s.multiCurrencySubtitle}
+              >
+                {t("accounts.currentBalance" as never)}, {balances.length}{" "}
+                {t("accounts.currencies" as never)}
+              </Typography>
+              <View style={s.balanceCurrencyCard}>
+                {balances.map((b, i) => (
+                  <View key={b.currency}>
+                    <View style={s.balanceCurrencyRow}>
+                      <View style={s.balanceCurrencyLeft}>
+                        <Typography variant="body" color="textSecondary">
+                          {currencyFlag(b.currency)}
+                        </Typography>
+                        <Typography variant="body" color="textSecondary">
+                          {getCurrencyByCode(b.currency)?.name ?? b.currency}
+                        </Typography>
+                      </View>
+                      <Typography variant="label" color="textPrimary">
+                        {formatBalance(b.balance, b.currency)}
+                      </Typography>
+                    </View>
+                    {i < balances.length - 1 && (
+                      <View style={s.balanceCurrencyDivider} />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <Typography variant="h1" color="textPrimary" style={s.balanceText}>
+              {formatBalance(primaryBalance?.balance ?? "0", currency)}
+            </Typography>
+          )}
 
           {/* Balance chart */}
           {chartSeries && (
@@ -428,26 +507,13 @@ const AccountDetailsScreen = () => {
             transactions={filteredTx}
             accountId={id ?? ""}
             isLoading={txLoading}
+            highlightedTxId={highlightedTxId}
           />
         </View>
       </Animated.ScrollView>
 
       {/* FAB – add transaction pre-selected to this account */}
-      <Pressable
-        style={({ pressed }) => [
-          s.fab,
-          { bottom: insets.bottom + 20 },
-          pressed && s.fabPressed,
-        ]}
-        onPress={() => {
-          haptic();
-          router.push(
-            `/(modals)/add-transaction?defaultAccountId=${id}` as never,
-          );
-        }}
-      >
-        <Ionicons name="add" size={28} color={colors.textOnAccent} />
-      </Pressable>
+      <FabAddButton onPress={openAdd} bottom={insets.bottom + 20} />
     </View>
   );
 };
@@ -557,6 +623,35 @@ const s = StyleSheet.create({
     marginTop: 2,
     marginBottom: 8,
   } as TextStyle,
+  multiCurrencySubtitle: {
+    marginTop: 4,
+    marginBottom: 12,
+  } as TextStyle,
+  balanceCurrencyCard: {
+    width: "100%",
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    marginBottom: 16,
+  } as ViewStyle,
+  balanceCurrencyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  } as ViewStyle,
+  balanceCurrencyLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  } as ViewStyle,
+  balanceCurrencyDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: 16,
+  } as ViewStyle,
 
   chartCard: {
     width: "100%",
@@ -596,26 +691,6 @@ const s = StyleSheet.create({
 
   txList: {
     gap: 12,
-  } as ViewStyle,
-
-  fab: {
-    position: "absolute",
-    right: 24,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.65,
-    shadowRadius: 18,
-    elevation: 12,
-  } as ViewStyle,
-  fabPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.95 }],
   } as ViewStyle,
 });
 

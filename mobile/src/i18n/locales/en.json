@@ -31,6 +31,8 @@
     },
     "empty": "No accounts yet. Add your first account.",
     "addAccount": "Add Account",
+    "addCurrency": "Add currency",
+    "currencies": "currencies",
     "currentBalance": "Current balance",
     "transactionHistory": "Transaction history",
     "searchTransactions": "Search transactions...",
@@ -185,10 +187,17 @@
     "uncategorisedIncome": "Uncategorised income",
     "save": "Save",
     "autoConverted": "auto",
+    "splitTransaction": "Split transaction",
+    "addCategory": "Add category",
+    "splitCategory": "Category",
+    "splitAmountLabel": "Amount",
+    "remainingToDistribute": "remaining to distribute",
     "errors": {
       "saveFailed": "Failed to save transaction. Please try again.",
-      "accountRequired": "Account is required",
-      "destinationRequired": "Please select a destination account for the transfer"
+      "accountRequired": "Please select an account",
+      "amountRequired": "Please enter an amount greater than 0",
+      "destinationRequired": "Please select a destination account for the transfer",
+      "splitNotBalanced": "Split amounts must equal the total transaction amount"
     }
   },
   "editTransaction": {

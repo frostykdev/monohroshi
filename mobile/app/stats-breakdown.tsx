@@ -16,7 +16,6 @@ import { DateTime } from "luxon";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetView,
   type BottomSheetBackdropProps,
 } from "@gorhom/bottom-sheet";
 import {
@@ -30,6 +29,7 @@ import { getCategoryDisplayName } from "@constants/default-categories";
 import { getIconColor } from "@constants/icon-list";
 import { Typography } from "@components/ui/Typography";
 import { ScreenHeader } from "@components/ui/ScreenHeader";
+import { DatePickerSheet } from "@components/ui/DatePickerSheet";
 import { SegmentedControl } from "@components/ui/SegmentedControl";
 import type { Segment } from "@components/ui/SegmentedControl";
 import { useTransactionStats } from "@services/transactions/transactions.queries";
@@ -40,11 +40,7 @@ import type {
   TagStat,
 } from "@services/transactions/transactions.api";
 
-import {
-  type DatePreset,
-  DATE_PRESETS,
-  getDateRange,
-} from "@utils/date-presets";
+import { type DatePreset, getDateRange } from "@utils/date-presets";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -68,60 +64,6 @@ const FALLBACK_COLORS = [
   colors.success,
   colors.error,
 ];
-
-// ─── Date sheet ────────────────────────────────────────────────────────────────
-
-const DateSheet = ({
-  selected,
-  onSelect,
-  sheetRef,
-}: {
-  selected: DatePreset;
-  onSelect: (p: DatePreset) => void;
-  sheetRef: React.RefObject<BottomSheetModal | null>;
-}) => {
-  const { t } = useTranslation();
-  return (
-    <BottomSheetView>
-      {DATE_PRESETS.map((preset, i) => (
-        <Pressable
-          key={preset}
-          style={({ pressed }) => [
-            ds.row,
-            i < DATE_PRESETS.length - 1 && ds.divider,
-            pressed && ds.pressed,
-          ]}
-          onPress={() => {
-            onSelect(preset);
-            sheetRef.current?.dismiss();
-          }}
-        >
-          <Typography variant="body">
-            {t(`analytics.datePresets.${preset}`)}
-          </Typography>
-          {preset === selected && (
-            <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-          )}
-        </Pressable>
-      ))}
-    </BottomSheetView>
-  );
-};
-
-const ds = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-  } as ViewStyle,
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  } as ViewStyle,
-  pressed: { opacity: 0.6 } as ViewStyle,
-});
 
 // ─── Donut chart ───────────────────────────────────────────────────────────────
 
@@ -252,28 +194,45 @@ const CategoryRow = ({
   accountIds: string[];
 }) => {
   const { t } = useTranslation();
-  const name = item.categoryId
-    ? getCategoryDisplayName(
-        {
-          name: item.categoryName ?? "",
-          translationKey: item.categoryTranslationKey,
-        },
-        t,
-      )
-    : t("analytics.uncategorised");
+  const isBalanceCorrectionCategory = item.categoryId === "balance_correction";
+  const name = isBalanceCorrectionCategory
+    ? t("addTransaction.balanceCorrection")
+    : item.categoryId
+      ? getCategoryDisplayName(
+          {
+            name: item.categoryName ?? "",
+            translationKey: item.categoryTranslationKey,
+          },
+          t,
+        )
+      : t("analytics.uncategorised");
   const bg = item.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 
+  const isUncategorizedCategory = !item.categoryId;
+  const isNavigable =
+    item.categoryId != null ||
+    isUncategorizedCategory ||
+    isBalanceCorrectionCategory;
+
   const handlePress = () => {
-    if (!item.categoryId) return;
-    const p = new URLSearchParams({ categoryId: item.categoryId });
+    const p = new URLSearchParams();
     if (datePreset) p.set("datePreset", datePreset);
     if (accountIds.length > 0) p.set("accountIds", accountIds.join(","));
+
+    if (isBalanceCorrectionCategory) {
+      p.set("balanceCorrection", "1");
+    } else if (isUncategorizedCategory) {
+      p.set("uncategorized", "1");
+    } else {
+      p.set("categoryId", item.categoryId!);
+    }
+
     router.push(`/transactions?${p.toString()}` as never);
   };
 
   return (
     <TouchableOpacity
-      activeOpacity={item.categoryId ? 0.6 : 1}
+      activeOpacity={0.6}
       onPress={handlePress}
       style={[
         cr.row,
@@ -285,8 +244,10 @@ const CategoryRow = ({
       <View style={[cr.icon, { backgroundColor: bg }]}>
         <Ionicons
           name={
-            (item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
-            "pricetag-outline"
+            isUncategorizedCategory
+              ? "help"
+              : ((item.icon as React.ComponentProps<typeof Ionicons>["name"]) ??
+                "pricetag-outline")
           }
           size={18}
           color={getIconColor(bg)}
@@ -306,7 +267,7 @@ const CategoryRow = ({
           {item.percent}%
         </Typography>
       </View>
-      {item.categoryId && (
+      {isNavigable && (
         <Ionicons
           name="chevron-forward"
           size={14}
@@ -620,9 +581,9 @@ const StatsBreakdownScreen = () => {
         handleIndicatorStyle={s.sheetHandle}
         backdropComponent={renderBackdrop}
       >
-        <DateSheet
+        <DatePickerSheet
           selected={datePreset}
-          onSelect={setDatePreset}
+          onSelect={(p) => p && setDatePreset(p)}
           sheetRef={dateSheetRef}
         />
       </BottomSheetModal>

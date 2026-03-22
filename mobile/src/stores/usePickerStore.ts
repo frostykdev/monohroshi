@@ -13,6 +13,8 @@ type PickerStore = {
   categoryColor: string | null;
   /** True when the category was picked via refund mode (expense category for an income refund transaction) */
   isRefundCategory: boolean;
+  /** When non-null, the picked category should update the split item at this index */
+  splitPickerIndex: number | null;
   selectedAccountIds: string[] | null;
   selectedTags: PickedTag[] | null;
   /** ID of the most recently created transaction — used to animate it on the home screen */
@@ -42,6 +44,7 @@ export const usePickerStore = create<PickerStore>((set) => ({
   categoryIcon: null,
   categoryColor: null,
   isRefundCategory: false,
+  splitPickerIndex: null,
   selectedAccountIds: null,
   selectedTags: null,
   newTransactionId: null,
@@ -69,6 +72,7 @@ export const usePickerStore = create<PickerStore>((set) => ({
       categoryIcon: null,
       categoryColor: null,
       isRefundCategory: false,
+      splitPickerIndex: null,
       selectedAccountIds: null,
       selectedTags: null,
       newTransactionId: null,

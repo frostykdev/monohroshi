@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   getAuth,
   onAuthStateChanged,
+  reload,
   signOut,
 } from "@react-native-firebase/auth";
 import { router } from "expo-router";
@@ -21,7 +22,7 @@ export const useAuthListener = () => {
 
       if (user) {
         try {
-          await user.reload();
+          await reload(user);
         } catch {
           await signOut(getAuth());
           router.replace("/(onboarding)/welcome");
