@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { getAuth } from "@react-native-firebase/auth";
+import { getAuth, getIdToken } from "@react-native-firebase/auth";
 import { env } from "@constants/env";
 
 if (!env.apiUrl) {
@@ -24,7 +24,8 @@ export const isApiError = (error: unknown): error is ApiError => {
 };
 
 const attachAuthToken = async (config: InternalAxiosRequestConfig) => {
-  const token = await getAuth().currentUser?.getIdToken();
+  const user = getAuth().currentUser;
+  const token = user ? await getIdToken(user) : null;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
